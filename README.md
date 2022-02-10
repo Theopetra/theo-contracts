@@ -5,7 +5,7 @@
 - Yarn 3.1.0
 
 
-The Theopetra Protocol is built in solidity and leverages the hardhat development.
+The Theopetra Protocol is built in solidity and leverages the hardhat development environment.
 
 To get started, try running some of the following tasks after running `yarn`:
 
