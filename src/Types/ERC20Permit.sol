@@ -3,6 +3,7 @@ pragma solidity 0.7.5;
 
 import "./ERC20.sol";
 import "../Interfaces/IERC2612Permit.sol";
+import "../Libraries/Counters.sol";
 
 abstract contract ERC20Permit is ERC20, IERC2612Permit {
     using Counters for Counters.Counter;

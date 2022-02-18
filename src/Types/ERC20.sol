@@ -2,7 +2,6 @@
 pragma solidity 0.7.5;
 
 import "../Libraries/SafeMath.sol";
-
 import "../Interfaces/IERC20.sol";
 
 abstract contract ERC20 is IERC20 {
@@ -242,12 +241,12 @@ abstract contract ERC20 is IERC20 {
      * - `to` cannot be the zero address.
      */
     // Present in ERC777
-    function _mint(address account_, uint256 ammount_) internal virtual {
+    function _mint(address account_, uint256 amount_) internal virtual {
         require(account_ != address(0), "ERC20: mint to the zero address");
-        _beforeTokenTransfer(address(this), account_, ammount_);
-        _totalSupply = _totalSupply.add(ammount_);
-        _balances[account_] = _balances[account_].add(ammount_);
-        emit Transfer(address(this), account_, ammount_);
+        _beforeTokenTransfer(address( this ), account_, amount_);
+        _totalSupply = _totalSupply.add(amount_);
+        _balances[account_] = _balances[account_].add(amount_);
+        emit Transfer(address( this ), account_, amount_);
     }
 
     /**

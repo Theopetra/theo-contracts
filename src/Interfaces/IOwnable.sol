@@ -2,11 +2,9 @@
 pragma solidity 0.7.5;
 
 interface IOwnable {
-  function manager() external view returns (address);
+    function owner() external view returns (address);
 
-  function renounceManagement() external;
+    function renounceOwnership() external;
 
-  function pushManagement( address newOwner_ ) external;
-
-  function pullManagement() external;
+    function transferOwnership(address newOwner_) external;
 }
