@@ -4,8 +4,26 @@
 - Node v16
 - Yarn 3.1.0
 
+### TLDR; How do i get started?
+1. Contracts go in `src` directory
+2. `yarn compile` compiles the solidity contracts
+3. `yarn test` compiles contracts and runs tests located under `test` directory.
 
-The Theopetra Protocol is built in solidity and leverages the hardhat development environment.
+
+The Theopetra Protocol is built using solidity, leverages the hardhat development environment and the following packages:
+
+Package | Description
+---|---
+Hardhat<sup>1</sup> | 💻 [Ethereum development environment](https://hardhat.org/)
+Hardhat Deploy  | 🚀 [Hardhat Plugin For Replicable Deployments And Easy Testing](https://github.com/wighawag/hardhat-deploy#readme)
+Ethers | 🔌 [A compact library for interacting with the Ethereum Blockchain ](https://docs.ethers.io/v5/)
+TypeChain |  [ΞTH 🤝 TypeScript](https://github.com/dethcrypto/TypeChain)
+Mocha  | 🤖 [JS Testing Environment](https://mochajs.org/)
+ESLint | 📝 [JS Linting](https://eslint.org/)
+SOLHint | 📝 [Solidity Linting](https://github.com/protofire/solhint)
+solidity-coverage | ✅ [Code Coverage](https://github.com/sc-forks/solidity-coverage)
+hardhat-gas-reporter | ⛽️ [Contract Gas Usage](https://github.com/cgewecke/hardhat-gas-reporter#readme)
+
 
 To get started, try running some of the following tasks after running `yarn`:
 
@@ -27,6 +45,22 @@ npx prettier '**/*.{json,sol,md}' --write
 npx solhint 'contracts/**/*.sol'
 npx solhint 'contracts/**/*.sol' --fix
 ```
+
+Script | Description
+---|---
+`yarn prepare` | Standard lifecycle npm script. Executed automatically upon install. Generates TypeChain files from smart contracts.
+`yarn dev` | Starts Hardhat development server.
+`yarn test` | Execute tests located in `test` folder. Can also pass extra arguments to mocha
+`yarn build` | Cleans then runs `yarn compile`
+`yarn compile` | Compiles smart contract artifacts
+`yarn deploy` | usage: `yarn deploy <network> [args...]`. Deploys compiled smart contracts to target network.
+`yarn lint`, `yarn lint:fix`, `yarn format` and `yarn format:fix` | Formats code. `:fix` will modify the files to match the requirement specified in .eslintrc and .prettierrc.
+`yarn void:deploy` | This will deploy your contracts on the in-memory hardhat network and exit, leaving no trace.
+`yarn local:dev` | Assumes local node running on localhost:8545 and deploys the contracts to it. Watches for changes and redeploys.
+`yarn execute <network> <file.ts> [args...]` | Executes the script `<file.ts>` against the specified network.
+`yarn fork:*` |  Forks the specified network, Runs corresponding yarn task against forked network. i.e. `fork:deploy` deploys to forked network.
+
+
 
 # Etherscan verification
 
