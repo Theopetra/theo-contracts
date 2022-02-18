@@ -243,10 +243,10 @@ abstract contract ERC20 is IERC20 {
     // Present in ERC777
     function _mint(address account_, uint256 amount_) internal virtual {
         require(account_ != address(0), "ERC20: mint to the zero address");
-        _beforeTokenTransfer(address( this ), account_, amount_);
+        _beforeTokenTransfer(address(this), account_, amount_);
         _totalSupply = _totalSupply.add(amount_);
         _balances[account_] = _balances[account_].add(amount_);
-        emit Transfer(address( this ), account_, amount_);
+        emit Transfer(address(this), account_, amount_);
     }
 
     /**

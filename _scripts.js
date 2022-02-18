@@ -2,7 +2,7 @@
 'use strict';
 /* eslint-disable no-undef */
 /* eslint-disable @typescript-eslint/no-var-requires */
-const {spawn} = require('child_process');
+const { spawn } = require('child_process');
 const path = require('path');
 require('dotenv').config();
 
@@ -44,7 +44,7 @@ function parseArgs(rawArgs, numFixedArgs, expectedOptions) {
       }
     }
   }
-  return {options, extra, fixedArgs};
+  return { options, extra, fixedArgs };
 }
 
 function execute(command) {
@@ -66,7 +66,7 @@ async function performAction(rawArgs) {
   const firstArg = rawArgs[0];
   const args = rawArgs.slice(1);
   if (firstArg === 'run') {
-    const {fixedArgs, extra} = parseArgs(args, 2, {});
+    const { fixedArgs, extra } = parseArgs(args, 2, {});
     let filepath = fixedArgs[1];
     const folder = path.basename(__dirname);
     if (filepath.startsWith(folder + '/') || filepath.startsWith(folder + '\\')) {
@@ -76,13 +76,13 @@ async function performAction(rawArgs) {
       `cross-env HARDHAT_DEPLOY_LOG=true HARDHAT_NETWORK=${fixedArgs[0]} ts-node --files ${filepath} ${extra.join(' ')}`
     );
   } else if (firstArg === 'deploy') {
-    const {fixedArgs, extra} = parseArgs(args, 1, {});
+    const { fixedArgs, extra } = parseArgs(args, 1, {});
     await execute(`hardhat --network ${fixedArgs[0]} deploy ${extra.join(' ')}`);
   } else if (firstArg === 'export') {
-    const {fixedArgs} = parseArgs(args, 2, {});
+    const { fixedArgs } = parseArgs(args, 2, {});
     await execute(`hardhat --network ${fixedArgs[0]} export --export ${fixedArgs[1]}`);
   } else if (firstArg === 'fork:run') {
-    const {fixedArgs, options, extra} = parseArgs(args, 2, {
+    const { fixedArgs, options, extra } = parseArgs(args, 2, {
       deploy: 'boolean',
       blockNumber: 'string',
       'no-impersonation': 'boolean',
@@ -100,7 +100,7 @@ async function performAction(rawArgs) {
       } ts-node --files ${filepath} ${extra.join(' ')}`
     );
   } else if (firstArg === 'fork:deploy') {
-    const {fixedArgs, options, extra} = parseArgs(args, 1, {
+    const { fixedArgs, options, extra } = parseArgs(args, 1, {
       blockNumber: 'string',
       'no-impersonation': 'boolean',
     });
@@ -110,7 +110,7 @@ async function performAction(rawArgs) {
       } ${options['no-impersonation'] ? `HARDHAT_DEPLOY_NO_IMPERSONATION=true` : ''} hardhat deploy ${extra.join(' ')}`
     );
   } else if (firstArg === 'fork:node') {
-    const {fixedArgs, options, extra} = parseArgs(args, 1, {
+    const { fixedArgs, options, extra } = parseArgs(args, 1, {
       blockNumber: 'string',
       'no-impersonation': 'boolean',
     });
@@ -122,9 +122,10 @@ async function performAction(rawArgs) {
       } hardhat node --hostname 0.0.0.0 ${extra.join(' ')}`
     );
   } else if (firstArg === 'fork:test') {
-    const {fixedArgs, options, extra} = parseArgs(args, 1, {
+    const { fixedArgs, options, extra } = parseArgs(args, 1, {
       blockNumber: 'string',
-      'no-impersonation': 'boolean',firstArg
+      'no-impersonation': 'boolean',
+      firstArg,
     });
     await execute(
       `cross-env HARDHAT_FORK=${fixedArgs[0]} ${
@@ -134,7 +135,7 @@ async function performAction(rawArgs) {
       } HARDHAT_DEPLOY_FIXTURE=true HARDHAT_COMPILE=true mocha --bail --recursive test ${extra.join(' ')}`
     );
   } else if (firstArg === 'fork:dev') {
-    const {fixedArgs, options, extra} = parseArgs(args, 1, {
+    const { fixedArgs, options, extra } = parseArgs(args, 1, {
       blockNumber: 'string',
       'no-impersonation': 'boolean',
     });
