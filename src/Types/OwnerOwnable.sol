@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.5;
 
-import "../Interfaces/IOwnable.sol";
+import "../Interfaces/IOwnerOwnable.sol";
 
-contract Ownable is IOwnable {
+contract OwnerOwnable is IOwnerOwnable {
     address internal _owner;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);

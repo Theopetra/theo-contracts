@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.5;
 
-import "./Ownable.sol";
+import "./OwnerOwnable.sol";
 
-contract VaultOwned is Ownable {
+contract VaultOwned is OwnerOwnable {
     address internal _vault;
 
     function setVault(address vault_) external onlyOwner returns (bool) {
