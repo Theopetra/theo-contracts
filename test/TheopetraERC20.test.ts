@@ -19,43 +19,33 @@ const setup = deployments.createFixture(async () => {
 });
 
 describe('TheopetraERC20', function () {
-  it('can be deployed', async function () {
-    await setup();
+  describe('Deployment', function () {
+    it('can be deployed', async function () {
+      await setup();
+    });
+
+    it('should set the correct owner when deployed', async function () {
+      const { TheopetraERC20Token, owner } = await setup();
+
+      expect(await TheopetraERC20Token.owner()).to.equal(owner);
+    });
+
+    it('is deployed with a name of Theopetra', async function () {
+      const { TheopetraERC20Token } = await setup();
+      const contractName = await TheopetraERC20Token.name();
+
+      expect(contractName).to.equal('Theopetra');
+    });
+
+    it('is deployed with a symbol THEO', async function () {
+      const { TheopetraERC20Token } = await setup();
+      const contractSymbol = await TheopetraERC20Token.symbol();
+
+      expect(contractSymbol).to.equal('THEO');
+    });
   });
 
-  it('is deployed with a name of Theopetra', async function () {
-    const { TheopetraERC20Token } = await setup();
-    const contractName = await TheopetraERC20Token.name();
-
-    expect(contractName).to.equal('Theopetra');
-  });
-
-  it('is deployed with a symbol THEO', async function () {
-    const { TheopetraERC20Token } = await setup();
-    const contractSymbol = await TheopetraERC20Token.symbol();
-
-    expect(contractSymbol).to.equal('THEO');
-  });
-
-  it('has a function that returns the owner address, which is the contract deployer', async function () {
-    const { TheopetraERC20Token, owner } = await setup();
-    const response = await TheopetraERC20Token.owner();
-
-    expect(response).to.equal(owner);
-  });
-
-  it('can mint an amount of tokens and assign them to an account', async function () {
-    const { TheopetraERC20Token } = await setup();
-    const [, vault, tokenBeneficiary] = await ethers.getSigners();
-    const amountToMint = 5000;
-    await TheopetraERC20Token.setVault(vault.address);
-    await TheopetraERC20Token.connect(vault).mint(tokenBeneficiary.address, amountToMint);
-    const beneficiaryBalance = await TheopetraERC20Token.balanceOf(tokenBeneficiary.address);
-
-    expect(beneficiaryBalance).to.equal(ethers.BigNumber.from(amountToMint));
-  });
-
-  describe('Inherited from VaultOwned', async function () {
+  describe('Vault', function () {
     it('has a function to return the vault address, which is initialized at address zero', async function () {
       const { TheopetraERC20Token, addressZero } = await setup();
       expect(await TheopetraERC20Token.vault()).to.equal(addressZero);
@@ -68,12 +58,38 @@ describe('TheopetraERC20', function () {
     });
 
     it('should revert if a user other than the owner makes a call to set the vault address', async function () {
-      const { TheopetraERC20Token, users, addressZero } = await setup();
+      const { TheopetraERC20Token, addressZero } = await setup();
       const [, addr1, { address: address2 }] = await ethers.getSigners();
       await expect(TheopetraERC20Token.connect(addr1).setVault(address2)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       );
       expect(await TheopetraERC20Token.vault()).to.equal(addressZero);
+    });
+  });
+
+  describe('Minting', function () {
+    it('can mint an amount of tokens and assign them to an account', async function () {
+      const { TheopetraERC20Token } = await setup();
+      const [, vault, tokenBeneficiary] = await ethers.getSigners();
+      const amountToMint = 5000;
+      await TheopetraERC20Token.setVault(vault.address);
+      await TheopetraERC20Token.connect(vault).mint(tokenBeneficiary.address, amountToMint);
+      const beneficiaryBalance = await TheopetraERC20Token.balanceOf(tokenBeneficiary.address);
+
+      expect(beneficiaryBalance).to.equal(ethers.BigNumber.from(amountToMint));
+    });
+
+    it('should add to the total supply when minting', async function () {
+      const { TheopetraERC20Token } = await setup();
+      const [, vault, tokenBeneficiary] = await ethers.getSigners();
+      const amountToMint = 5;
+
+      expect(await TheopetraERC20Token.totalSupply()).to.equal(0);
+
+      await TheopetraERC20Token.setVault(vault.address);
+      await TheopetraERC20Token.connect(vault).mint(tokenBeneficiary.address, amountToMint);
+
+      expect(await TheopetraERC20Token.totalSupply()).to.equal(amountToMint);
     });
 
     it('should revert if an address other than the vault owner makes a call to mint tokens', async function () {
@@ -88,6 +104,65 @@ describe('TheopetraERC20', function () {
 
       const beneficiaryBalance = await TheopetraERC20Token.balanceOf(tokenBeneficiary.address);
       expect(beneficiaryBalance).to.equal(ethers.BigNumber.from(0));
+    });
+  });
+
+  describe('Token burning', function () {
+    it('allows a user to burn their own tokens', async function () {
+      const { TheopetraERC20Token } = await setup();
+      const [, vault, tokenBeneficiary] = await ethers.getSigners();
+      const amountToMint = 15;
+
+      await TheopetraERC20Token.setVault(vault.address);
+      await TheopetraERC20Token.connect(vault).mint(tokenBeneficiary.address, amountToMint);
+      await TheopetraERC20Token.connect(tokenBeneficiary).burn(3);
+
+      const beneficiaryBalance = await TheopetraERC20Token.balanceOf(tokenBeneficiary.address);
+      expect(beneficiaryBalance).to.equal(ethers.BigNumber.from(12));
+    });
+
+    it('allows an approved user to burn tokens of another user, within an allowance limit', async function () {
+      const { TheopetraERC20Token } = await setup();
+      const [, vault, tokenBeneficiary, tokenBurner] = await ethers.getSigners();
+      const amountToMint = 100;
+
+      await TheopetraERC20Token.setVault(vault.address);
+      await TheopetraERC20Token.connect(vault).mint(tokenBeneficiary.address, amountToMint);
+      await TheopetraERC20Token.connect(tokenBeneficiary).approve(tokenBurner.address, 25);
+      await TheopetraERC20Token.connect(tokenBurner).burnFrom(tokenBeneficiary.address, 20);
+
+      const beneficiaryBalance = await TheopetraERC20Token.balanceOf(tokenBeneficiary.address);
+      expect(beneficiaryBalance).to.equal(ethers.BigNumber.from(80));
+
+      const allowanceRemaining = await TheopetraERC20Token.allowance(tokenBeneficiary.address, tokenBurner.address);
+      expect(allowanceRemaining).to.equal(5);
+    });
+
+    it('it prevents a user burning tokens of another user if they are not approved to spend them', async function () {
+      const { TheopetraERC20Token } = await setup();
+
+      const [, vault, tokenBeneficiary, tokenBurner] = await ethers.getSigners();
+      const amountToMint = 100;
+      await TheopetraERC20Token.setVault(vault.address);
+      await TheopetraERC20Token.connect(vault).mint(tokenBeneficiary.address, amountToMint);
+
+      await expect(TheopetraERC20Token.connect(tokenBurner).burnFrom(tokenBeneficiary.address, 100)).to.be.revertedWith(
+        'ERC20: burn amount exceeds allowance'
+      );
+    });
+
+    it('reverts if the burn amount exceeds the allowance of a user', async function () {
+      const { TheopetraERC20Token } = await setup();
+
+      const [, vault, tokenBeneficiary, tokenBurner] = await ethers.getSigners();
+      const amountToMint = 100;
+      await TheopetraERC20Token.setVault(vault.address);
+
+      await TheopetraERC20Token.connect(vault).mint(tokenBeneficiary.address, amountToMint);
+      await TheopetraERC20Token.connect(tokenBeneficiary).approve(tokenBurner.address, 25);
+      await expect(TheopetraERC20Token.connect(tokenBurner).burnFrom(tokenBeneficiary.address, 99)).to.be.revertedWith(
+        'ERC20: burn amount exceeds allowance'
+      );
     });
   });
 });

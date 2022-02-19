@@ -9,7 +9,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await deploy('TheopetraERC20Token', {
     from: deployer,
-    // log: true,
+    log: true,
   });
 };
 
