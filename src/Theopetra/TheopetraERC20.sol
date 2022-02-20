@@ -11,21 +11,19 @@ contract TheopetraERC20Token is ERC20Permit, VaultOwned {
 
     constructor() ERC20("Theopetra", "THEO", 9) {}
 
-    /** @dev Modifier to prevent minting more than 5% of `_totalSupply`,
+    /** @dev The amount to mint is limited to at most 5% of `_totalSupply`,
      * if `_totalSupply` is not zero
      *
      * Note _totalSupply is initialized to zero
      */
-    modifier belowInflationCap(uint256 amount_) {
-        if (_totalSupply != 0) {
-            uint256 maxAllowedIncrease = (_totalSupply * 5) / 100;
-            require(amount_ <= maxAllowedIncrease, "Mint amount exceeds inflation cap");
-        }
-        _;
-    }
+    function mint(address account_, uint256 amount_) external onlyVault {
+        uint256 amount = amount_;
+        uint256 mintLimit = (_totalSupply * 5) / 100;
 
-    function mint(address account_, uint256 amount_) external onlyVault belowInflationCap(amount_) {
-        _mint(account_, amount_);
+        if (_totalSupply != 0 && amount_ > mintLimit) {
+            amount = mintLimit;
+        }
+        _mint(account_, amount);
     }
 
     function burn(uint256 amount) public virtual {
