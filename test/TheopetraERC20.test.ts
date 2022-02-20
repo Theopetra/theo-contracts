@@ -105,6 +105,47 @@ describe('TheopetraERC20', function () {
       const beneficiaryBalance = await TheopetraERC20Token.balanceOf(tokenBeneficiary.address);
       expect(beneficiaryBalance).to.equal(ethers.BigNumber.from(0));
     });
+
+    it('should revert if a call is made to mint a negative number of tokens', async function () {
+      const { TheopetraERC20Token } = await setup();
+      const [, vault] = await ethers.getSigners();
+      const amountToMint = -100;
+      await TheopetraERC20Token.setVault(vault.address);
+
+      await expect(TheopetraERC20Token.connect(vault).mint(vault.address, amountToMint)).to.be.reverted;
+    });
+
+    it('if total supply is not zero, it should allow minting tokens up to the inflation cap of 5%', async function () {
+      const { TheopetraERC20Token } = await setup();
+      const [, vault] = await ethers.getSigners();
+      const initialAmountToMint = 100;
+
+      await TheopetraERC20Token.setVault(vault.address);
+      await TheopetraERC20Token.connect(vault).mint(vault.address, initialAmountToMint);
+      const vaultBalance = await TheopetraERC20Token.balanceOf(vault.address);
+
+      expect(vaultBalance).to.equal(ethers.BigNumber.from(100));
+
+      await TheopetraERC20Token.connect(vault).mint(vault.address, 5);
+      const newVaultBalance = await TheopetraERC20Token.balanceOf(vault.address);
+      expect(newVaultBalance).to.equal(ethers.BigNumber.from(105));
+    });
+
+    it('if total supply is not zero, it should revert if minting would increase total supply by more than 5%', async function () {
+      const { TheopetraERC20Token } = await setup();
+      const [, vault] = await ethers.getSigners();
+      const initialAmountToMint = 100;
+
+      await TheopetraERC20Token.setVault(vault.address);
+      await TheopetraERC20Token.connect(vault).mint(vault.address, initialAmountToMint);
+      const vaultBalance = await TheopetraERC20Token.balanceOf(vault.address);
+
+      expect(vaultBalance).to.equal(ethers.BigNumber.from(100));
+      await expect(TheopetraERC20Token.connect(vault).mint(vault.address, 150)).to.be.revertedWith(
+        'Mint amount exceeds inflation cap'
+      );
+      expect(await TheopetraERC20Token.totalSupply()).to.equal(initialAmountToMint);
+    });
   });
 
   describe('Token burning', function () {
