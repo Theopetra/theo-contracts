@@ -92,6 +92,36 @@ describe('TheopetraERC20', function () {
       expect(await TheopetraERC20Token.totalSupply()).to.equal(amountToMint);
     });
 
+    it('the first time called, should update the state of initial supply', async function () {
+      const { TheopetraERC20Token } = await setup();
+      const [, vault] = await ethers.getSigners();
+      const amountToMint = 5;
+
+      expect(await TheopetraERC20Token.getInitialSupply()).to.equal(0);
+
+      await TheopetraERC20Token.setVault(vault.address);
+      await TheopetraERC20Token.connect(vault).mint(vault.address, amountToMint);
+
+      expect(await TheopetraERC20Token.getInitialSupply()).to.equal(amountToMint);
+    });
+
+    it('should not update the state of initial supply after first being called', async function () {
+      const { TheopetraERC20Token } = await setup();
+      const [, vault] = await ethers.getSigners();
+      const firstAmountToMint = 100;
+      const secondAmountToMint = 4;
+
+      expect(await TheopetraERC20Token.getInitialSupply()).to.equal(0);
+
+      await TheopetraERC20Token.setVault(vault.address);
+      await TheopetraERC20Token.connect(vault).mint(vault.address, firstAmountToMint);
+      expect(await TheopetraERC20Token.getInitialSupply()).to.equal(firstAmountToMint);
+
+      await TheopetraERC20Token.connect(vault).mint(vault.address, secondAmountToMint);
+      expect(await TheopetraERC20Token.getInitialSupply()).to.equal(firstAmountToMint);
+      expect(await TheopetraERC20Token.totalSupply()).to.equal(firstAmountToMint + secondAmountToMint);
+    });
+
     it('should revert if an address other than the vault owner makes a call to mint tokens', async function () {
       const { TheopetraERC20Token } = await setup();
       const [, vault, tokenBeneficiary, address3] = await ethers.getSigners();
