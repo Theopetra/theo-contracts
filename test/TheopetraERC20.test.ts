@@ -128,9 +128,9 @@ describe('TheopetraERC20', function () {
       const amountToMint = 5000;
       await TheopetraERC20Token.setVault(vault.address);
 
-      await expect(
-        user3.TheopetraERC20Token.mint(tokenBeneficiary.address, amountToMint)
-      ).to.be.revertedWith('VaultOwned: caller is not the Vault');
+      await expect(user3.TheopetraERC20Token.mint(tokenBeneficiary.address, amountToMint)).to.be.revertedWith(
+        'VaultOwned: caller is not the Vault'
+      );
 
       const beneficiaryBalance = await TheopetraERC20Token.balanceOf(tokenBeneficiary.address);
       expect(beneficiaryBalance).to.equal(ethers.BigNumber.from(0));
