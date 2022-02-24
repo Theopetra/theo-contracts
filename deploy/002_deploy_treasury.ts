@@ -10,6 +10,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deploy('TheopetraTreasury', {
     from: deployer,
     log: true,
+    args: [],
   });
 };
 

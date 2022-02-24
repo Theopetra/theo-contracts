@@ -2,7 +2,7 @@ import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture(['Treasury']);
+  await deployments.fixture(['TheopetraTreasury']);
   const { deployer: owner } = await getNamedAccounts();
   const contracts = {
     Treasury: await deployments.get('Treasury'),
@@ -15,7 +15,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe('Treasury', () => {
+describe('TheopetraTreasury', () => {
   describe('Deployment', () => {
     it('deploys as expected', async () => {
       await setup();
