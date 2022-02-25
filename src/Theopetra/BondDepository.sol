@@ -46,7 +46,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         ITreasury _treasury
     ) NoteKeeper(_authority, _theo, _gtheo, _staking, _treasury) {
         // save gas for users by bulk approving stake() transactions
-        // _theo.approve(address(_staking), 1e45);
+        _theo.approve(address(_staking), 1e45);
     }
 
     /* ======== DEPOSIT ======== */
