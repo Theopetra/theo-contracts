@@ -16,6 +16,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       from: deployer,
       log: true,
     })
+    const usdcTokenMock = await deploy(MOCKS.usdcTokenMock, {
+      from: deployer,
+      log: true,
+    })
     args[1] = theoTokenMock?.address
   }
 

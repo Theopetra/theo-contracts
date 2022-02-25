@@ -8,11 +8,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy(CONTRACTS.theo, {
+  await deploy(CONTRACTS.theoToken, {
     from: deployer,
     log: true,
   });
 };
 
 export default func;
-func.tags = [CONTRACTS.theo];
+func.tags = [CONTRACTS.theoToken];
