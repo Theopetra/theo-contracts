@@ -6,30 +6,26 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getChainId, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
+  const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
   const { deployer } = await getNamedAccounts();
   const chainId = await getChainId();
-  const args = [deployer, deployer, deployer, deployer, deployer]
+  const args = [TheopetraAuthority.address, deployer, deployer, deployer, deployer];
 
   // If on Hardhat network, deploy mocks and update args with mocks' addresses
   if (chainId === '1337') {
     const theoTokenMock = await deploy(MOCKS.theoTokenMock, {
       from: deployer,
       log: true,
-    })
+    });
     await deploy(MOCKS.usdcTokenMock, {
       from: deployer,
       log: true,
-    })
+    });
     const TreasuryMock = await deploy(MOCKS.treasuryMock, {
       from: deployer,
       log: true,
-    })
-    const TheopetraAuthority = await deploy(CONTRACTS.authority, {
-      from: deployer,
-      log: true,
-      args: [deployer, deployer, deployer, deployer],
-    })
-    args[0] = TheopetraAuthority?.address;
+    });
+
     args[1] = theoTokenMock?.address;
     args[4] = TreasuryMock?.address;
   }
@@ -43,3 +39,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = [CONTRACTS.bondDepo];
+func.dependencies = [CONTRACTS.authority];

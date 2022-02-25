@@ -22,7 +22,6 @@ const setup = deployments.createFixture(async () => {
     ...contracts,
     users,
     owner,
-    addressZero: '0x0000000000000000000000000000000000000000',
   };
 });
 
