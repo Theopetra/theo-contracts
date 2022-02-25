@@ -13,32 +13,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // If on Hardhat network, deploy mocks and update args with mocks' addresses
   if (chainId === '1337') {
-    await deploy(MOCKS.usdcTokenMock, {
-      from: deployer,
-      log: true,
-    });
-    await deploy(MOCKS.WETH9, {
-      from: deployer,
-      log: true,
-    });
-    const theoTokenMock = await deploy(MOCKS.theoTokenMock, {
-      from: deployer,
-      log: true,
-    });
-    const TreasuryMock = await deploy(MOCKS.treasuryMock, {
-      from: deployer,
-      log: true,
-    });
-    const StakingMock = await deploy(MOCKS.stakingMock, {
-      from: deployer,
-      log: true,
-    });
-    const gTheoMock = await deploy(MOCKS.gTheoMock, {
-      from: deployer,
-      log: true,
-    });
+    const namedMockAddresses: Record<string, string> = {};
+    for (const key in MOCKS) {
+      const deployedMock: any = await deploy(MOCKS[key], {
+        from: deployer,
+        log: true,
+      });
+      namedMockAddresses[deployedMock.contractName] = deployedMock.address;
+    }
 
-    args.splice(1, 4, theoTokenMock?.address, gTheoMock?.address, StakingMock?.address, TreasuryMock?.address);
+    const { TheopetraERC20Mock, gTheoMock, StakingMock, TreasuryMock } = namedMockAddresses;
+    args.splice(1, 4, TheopetraERC20Mock, gTheoMock, StakingMock, TreasuryMock);
   }
 
   await deploy(CONTRACTS.bondDepo, {
