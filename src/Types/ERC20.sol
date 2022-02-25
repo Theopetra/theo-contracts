@@ -78,7 +78,7 @@ abstract contract ERC20 is IERC20 {
      * {IERC20-balanceOf} and {IERC20-transfer}.
      */
     // Present in ERC777
-    function decimals() public view returns (uint8) {
+    function decimals() public view override returns (uint8) {
         return _decimals;
     }
 
