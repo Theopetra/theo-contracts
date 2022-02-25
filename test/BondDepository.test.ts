@@ -1,6 +1,6 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
-// import { BondDepository } from '../../next-app/src/typechain';
+// import { TheopetraBondDepository } from '../../next-app/src/typechain';
 import { setupUsers } from './utils';
 import { CONTRACTS, MOCKS } from '../utils/constants';
 
@@ -15,6 +15,7 @@ const setup = deployments.createFixture(async () => {
   ]);
 
   const { deployer: owner } = await getNamedAccounts();
+
   const contracts = {
     TheopetraAuthority: await ethers.getContract(CONTRACTS.authority),
     BondDepository: await ethers.getContract(CONTRACTS.bondDepo),
@@ -23,7 +24,9 @@ const setup = deployments.createFixture(async () => {
     TreasuryMock: await ethers.getContract(MOCKS.treasuryMock),
     WETH9: await ethers.getContract(MOCKS.WETH9),
   };
+
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
+
   return {
     ...contracts,
     users,
@@ -52,7 +55,6 @@ describe('Bond depository', function () {
   let UsdcTokenMock: any;
   let users: any;
   let WETH9: any;
-
 
   beforeEach(async function () {
     ({ BondDepository, UsdcTokenMock, WETH9, users } = await setup());
@@ -87,7 +89,6 @@ describe('Bond depository', function () {
 
     it('should allow a market to be created with wETH', async function () {
       ({ BondDepository, WETH9 } = await setup());
-      
 
       await BondDepository.create(
         WETH9.address,
@@ -98,14 +99,14 @@ describe('Bond depository', function () {
       );
     });
 
-    it('should allow multiple markets to be created', async function () {
+    it('should allow multiple markets to be created and be live', async function () {
       await BondDepository.create(
         WETH9.address,
         [capacity, initialPrice, buffer],
         [capacityInQuote, fixedTerm],
         [vesting, conclusion],
         [depositInterval, tuneInterval]
-        );
+      );
       expect(await BondDepository.isLive(bid)).to.equal(true);
       expect(await BondDepository.isLive(1)).to.equal(true);
       expect((await BondDepository.liveMarkets()).length).to.equal(2);
@@ -139,9 +140,9 @@ describe('Bond depository', function () {
     it('should revert if a user attempts to deposit an amount greater than max payout', async () => {
       const [, , bob, carol] = users;
       const amount = '6700000000000000000000000';
-      await expect(bob.BondDepository.deposit(bid, amount, initialPrice, bob.address, carol.address)).to.be.revertedWith(
-        'Depository: max size exceeded'
-      );
+      await expect(
+        bob.BondDepository.deposit(bid, amount, initialPrice, bob.address, carol.address)
+      ).to.be.revertedWith('Depository: max size exceeded');
     });
   });
 
@@ -158,7 +159,7 @@ describe('Bond depository', function () {
     });
 
     it('should revert if an address other than the policy owner makes a call to close a market', async () => {
-      const [, , bob,] = users;
+      const [, , bob] = users;
       const [marketCap, , , , , ,] = await BondDepository.markets(bid);
       expect(Number(marketCap)).to.be.greaterThan(0);
 
