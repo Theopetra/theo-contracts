@@ -31,30 +31,24 @@ describe('Bond depository', function () {
     it('can be deployed', async function () {
       await setup();
     });
-
-    // it('should use the correct address for the theo token when deployed', async function () {
-    //   const { BondDepository, owner } = await setup();
-
-    //   expect(await BondDepository.theo()).to.equal(owner);
-    // });
   });
 
   describe('Create market', function () {
-    it.only('is access controlled to allow only the policy to create a market', async function () {
-      const { BondDepository, owner, UsdcTokenMock } = await setup();
-      const capacity = 10000e9;
-      const initialPrice = 400e9;
-      const buffer = 2e5;
-      const capacityInQuote = true;
-      const fixedTerm = true;
-      const vesting = 100;
-      const timeToConclusion = 60 * 60 * 24;
+    const capacity = 10000e9;
+    const initialPrice = 400e9;
+    const buffer = 2e5;
+    const capacityInQuote = true;
+    const fixedTerm = true;
+    const vesting = 100;
+    const timeToConclusion = 60 * 60 * 24;
+    const depositInterval = 60 * 60 * 4;
+    const tuneInterval = 60 * 60;
+
+    it('allows the policy owner to create a market', async function () {
+      const { BondDepository, UsdcTokenMock } = await setup();
       const block = await ethers.provider.getBlock('latest');
       const conclusion = block.timestamp + timeToConclusion;
-      const depositInterval = 60 * 60 * 4;
-      const tuneInterval = 60 * 60;
 
-      // TODO: Update quote token to mock token (e.g. USDC)
       await BondDepository.create(
         UsdcTokenMock.address,
         [capacity, initialPrice, buffer],
@@ -62,6 +56,25 @@ describe('Bond depository', function () {
         [vesting, conclusion],
         [depositInterval, tuneInterval]
       );
+      expect(await BondDepository.isLive(0)).to.equal(true);
+    });
+
+    it('should revert if an address other than the policy owner makes a call to create a market', async function () {
+      const { UsdcTokenMock, users } = await setup();
+      const block = await ethers.provider.getBlock('latest');
+      const conclusion = block.timestamp + timeToConclusion;
+
+      const [, address2] = users;
+
+      await expect(
+        address2.BondDepository.create(
+          UsdcTokenMock.address,
+          [capacity, initialPrice, buffer],
+          [capacityInQuote, fixedTerm],
+          [vesting, conclusion],
+          [depositInterval, tuneInterval]
+        )
+      ).to.be.revertedWith('UNAUTHORIZED');
     });
   });
 });

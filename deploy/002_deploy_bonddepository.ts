@@ -16,11 +16,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       from: deployer,
       log: true,
     })
-    const usdcTokenMock = await deploy(MOCKS.usdcTokenMock, {
+    await deploy(MOCKS.usdcTokenMock, {
       from: deployer,
       log: true,
     })
-    args[1] = theoTokenMock?.address
+    const TreasuryMock = await deploy(MOCKS.treasuryMock, {
+      from: deployer,
+      log: true,
+    })
+    const TheopetraAuthority = await deploy(CONTRACTS.authority, {
+      from: deployer,
+      log: true,
+      args: [deployer, deployer, deployer, deployer],
+    })
+    args[0] = TheopetraAuthority?.address;
+    args[1] = theoTokenMock?.address;
+    args[4] = TreasuryMock?.address;
   }
 
   await deploy(CONTRACTS.bondDepo, {
