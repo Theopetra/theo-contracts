@@ -4,7 +4,7 @@ pragma solidity >=0.7.5;
 interface INoteKeeper {
     // Info for market note
     struct Note {
-        uint256 payout; // gOHM remaining to be paid
+        uint256 payout; // gTHEO remaining to be paid
         uint48 created; // time market was created
         uint48 matured; // timestamp when market is matured
         uint48 redeemed; // time market was redeemed
@@ -14,10 +14,10 @@ interface INoteKeeper {
     function redeem(
         address _user,
         uint256[] memory _indexes,
-        bool _sendgOHM
+        bool _sendgTHEO
     ) external returns (uint256);
 
-    function redeemAll(address _user, bool _sendgOHM) external returns (uint256);
+    function redeemAll(address _user, bool _sendgTHEO) external returns (uint256);
 
     function pushNote(address to, uint256 index) external;
 

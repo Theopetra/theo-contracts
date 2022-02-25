@@ -8,9 +8,12 @@ import "../Libraries/SafeERC20.sol";
 import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/IBondDepository.sol";
 
-/// @title Theopetra Bond Depository V2
+    /**
+     * @title Theopetra Bond Depository
+     * @notice Originally based off of Olympus Bond Depository V2
+     */
 
-contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
+contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     /* ======== DEPENDENCIES ======== */
 
     using SafeERC20 for IERC20;
@@ -36,14 +39,14 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
     /* ======== CONSTRUCTOR ======== */
 
     constructor(
-        IOlympusAuthority _authority,
-        IERC20 _ohm,
-        IgOHM _gohm,
+        ITheopetraAuthority _authority,
+        IERC20 _theo,
+        IgTHEO _gtheo,
         IStaking _staking,
         ITreasury _treasury
-    ) NoteKeeper(_authority, _ohm, _gohm, _staking, _treasury) {
+    ) NoteKeeper(_authority, _theo, _gtheo, _staking, _treasury) {
         // save gas for users by bulk approving stake() transactions
-        _ohm.approve(address(_staking), 1e45);
+        // _theo.approve(address(_staking), 1e45);
     }
 
     /* ======== DEPOSIT ======== */
@@ -55,7 +58,7 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
      * @param _maxPrice    the maximum price at which to buy
      * @param _user        the recipient of the payout
      * @param _referral    the front end operator address
-     * @return payout_     the amount of gOHM due
+     * @return payout_     the amount of gTHEO due
      * @return expiry_     the timestamp at which payout is redeemable
      * @return index_      the user index of the Note (used to redeem or query information)
      */
@@ -94,11 +97,11 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
          * payout for the deposit = amount / price
          *
          * where
-         * payout = OHM out
+         * payout = THEO out
          * amount = quote tokens in
-         * price = quote tokens : ohm (i.e. 42069 DAI : OHM)
+         * price = quote tokens : theo (i.e. 42069 DAI : THEO)
          *
-         * 1e18 = OHM decimals (9) + price decimals (9)
+         * 1e18 = THEO decimals (9) + price decimals (9)
          */
         payout_ = ((_amount * 1e18) / price) / (10**metadata[_id].quoteDecimals);
 
@@ -109,7 +112,7 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
         /*
          * each market is initialized with a capacity
          *
-         * this is either the number of OHM that the market can sell
+         * this is either the number of THEO that the market can sell
          * (if capacity in quote is false),
          *
          * or the number of quote tokens that the market can buy
@@ -135,7 +138,7 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
         expiry_ = term.fixedTerm ? term.vesting + currentTime : term.vesting;
 
         // markets keep track of how many quote tokens have been
-        // purchased, and how much OHM has been sold
+        // purchased, and how much THEO has been sold
         market.purchased += _amount;
         market.sold += uint64(payout_);
 
@@ -227,7 +230,7 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
             uint256 price = _marketPrice(_id);
 
             // standardize capacity into an base token amount
-            // ohm decimals (9) + price decimals (9)
+            // theo decimals (9) + price decimals (9)
             uint256 capacity = market.capacityInQuote
                 ? ((market.capacity * 1e18) / price) / (10**meta.quoteDecimals)
                 : market.capacity;
@@ -237,7 +240,7 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
              * will be max size in the desired deposit interval for the remaining time
              *
              * i.e. market has 10 days remaining. deposit interval is 1 day. capacity
-             * is 10,000 OHM. max payout would be 1,000 OHM (10,000 * 1 / 10).
+             * is 10,000 THEO. max payout would be 1,000 THEO (10,000 * 1 / 10).
              */
             markets[_id].maxPayout = uint64((capacity * meta.depositInterval) / timeRemaining);
 
@@ -267,7 +270,7 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
      * @notice             creates a new market type
      * @dev                current price should be in 9 decimals.
      * @param _quoteToken  token used to deposit
-     * @param _market      [capacity (in OHM or quote), initial price / OHM (9 decimals), debt buffer (3 decimals)]
+     * @param _market      [capacity (in THEO or quote), initial price / THEO (9 decimals), debt buffer (3 decimals)]
      * @param _booleans    [capacity in quote, fixed term]
      * @param _terms       [vesting length (if fixed term) or vested timestamp, conclusion timestamp]
      * @param _intervals   [deposit interval (seconds), tune interval (seconds)]
@@ -291,14 +294,14 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
          * that will decay over in the length of the program if price remains the same).
          * it is converted into base token terms if passed in in quote token terms.
          *
-         * 1e18 = ohm decimals (9) + initial price decimals (9)
+         * 1e18 = theo decimals (9) + initial price decimals (9)
          */
         uint64 targetDebt = uint64(_booleans[0] ? ((_market[0] * 1e18) / _market[1]) / 10**decimals : _market[0]);
 
         /*
          * max payout is the amount of capacity that should be utilized in a deposit
-         * interval. for example, if capacity is 1,000 OHM, there are 10 days to conclusion,
-         * and the preferred deposit interval is 1 day, max payout would be 100 OHM.
+         * interval. for example, if capacity is 1,000 THEO, there are 10 days to conclusion,
+         * and the preferred deposit interval is 1 day, max payout would be 100 THEO.
          */
         uint64 maxPayout = uint64((targetDebt * _intervals[0]) / secondsToConclusion);
 
@@ -361,7 +364,7 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
 
         marketsForQuote[address(_quoteToken)].push(id_);
 
-        emit CreateMarket(id_, address(ohm), address(_quoteToken), _market[1]);
+        emit CreateMarket(id_, address(theo), address(_quoteToken), _market[1]);
     }
 
     /**
@@ -380,7 +383,7 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
      * @notice             calculate current market price of quote token in base token
      * @dev                accounts for debt and control variable decay since last deposit (vs _marketPrice())
      * @param _id          ID of market
-     * @return             price for market in OHM decimals
+     * @return             price for market in THEO decimals
      *
      * price is derived from the equation
      *
@@ -412,9 +415,9 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
      * @dev                accounts for debt and control variable decay so it is up to date
      * @param _amount      amount of quote tokens to spend
      * @param _id          ID of market
-     * @return             amount of OHM to be paid in OHM decimals
+     * @return             amount of THEO to be paid in THEO decimals
      *
-     * @dev 1e18 = ohm decimals (9) + market price decimals (9)
+     * @dev 1e18 = theo decimals (9) + market price decimals (9)
      */
     function payoutFor(uint256 _amount, uint256 _id) external view override returns (uint256) {
         Metadata memory meta = metadata[_id];
@@ -435,7 +438,7 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
      * @notice             calculate debt factoring in decay
      * @dev                accounts for debt decay since last deposit
      * @param _id          ID of market
-     * @return             current debt for market in OHM decimals
+     * @return             current debt for market in THEO decimals
      */
     function currentDebt(uint256 _id) public view override returns (uint256) {
         return markets[_id].totalDebt - debtDecay(_id);
@@ -458,7 +461,7 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
      * @notice             up to date control variable
      * @dev                accounts for control variable adjustment
      * @param _id          ID of market
-     * @return             control variable for market in OHM decimals
+     * @return             control variable for market in THEO decimals
      */
     function currentControlVariable(uint256 _id) public view returns (uint256) {
         (uint64 decay, , ) = _controlDecay(_id);
@@ -524,7 +527,7 @@ contract OlympusBondDepositoryV2 is IBondDepository, NoteKeeper {
      * @dev                     see marketPrice() for explanation of price computation
      * @dev                     uses info from storage because data has been updated before call (vs marketPrice())
      * @param _id               market ID
-     * @return                  price for market in OHM decimals
+     * @return                  price for market in THEO decimals
      */
     function _marketPrice(uint256 _id) internal view returns (uint256) {
         return (terms[_id].controlVariable * _debtRatio(_id)) / (10**metadata[_id].quoteDecimals);

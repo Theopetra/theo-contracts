@@ -8,7 +8,7 @@ interface IBondDepository {
     struct Market {
         uint256 capacity; // capacity remaining
         IERC20 quoteToken; // token to accept as payment
-        bool capacityInQuote; // capacity limit is in payment token (true) or in OHM (false, default)
+        bool capacityInQuote; // capacity limit is in payment token (true) or in THEO (false, default)
         uint64 totalDebt; // total debt from market
         uint64 maxPayout; // max tokens in/out (determined by capacityInQuote false/true, respectively)
         uint64 sold; // base tokens out
@@ -21,7 +21,7 @@ interface IBondDepository {
         uint64 controlVariable; // scaling variable for price
         uint48 vesting; // length of time from deposit to maturity if fixed-term
         uint48 conclusion; // timestamp when market no longer offered (doubles as time when market matures if fixed-expiry)
-        uint64 maxDebt; // 9 decimal debt maximum in OHM
+        uint64 maxDebt; // 9 decimal debt maximum in THEO
     }
 
     // Additional info about market.

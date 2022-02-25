@@ -3,20 +3,20 @@ pragma solidity >=0.7.5;
 
 import "../Interfaces/ITheopetraAuthority.sol";
 
-abstract contract OlympusAccessControlled {
+abstract contract TheopetraAccessControlled {
     /* ========== EVENTS ========== */
 
-    event AuthorityUpdated(IOlympusAuthority indexed authority);
+    event AuthorityUpdated(ITheopetraAuthority indexed authority);
 
     string UNAUTHORIZED = "UNAUTHORIZED"; // save gas
 
     /* ========== STATE VARIABLES ========== */
 
-    IOlympusAuthority public authority;
+    ITheopetraAuthority public authority;
 
     /* ========== Constructor ========== */
 
-    constructor(IOlympusAuthority _authority) {
+    constructor(ITheopetraAuthority _authority) {
         authority = _authority;
         emit AuthorityUpdated(_authority);
     }
@@ -45,7 +45,7 @@ abstract contract OlympusAccessControlled {
 
     /* ========== GOV ONLY ========== */
 
-    function setAuthority(IOlympusAuthority _newAuthority) external onlyGovernor {
+    function setAuthority(ITheopetraAuthority _newAuthority) external onlyGovernor {
         authority = _newAuthority;
         emit AuthorityUpdated(_newAuthority);
     }
