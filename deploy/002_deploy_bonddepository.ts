@@ -13,11 +13,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // If on Hardhat network, deploy mocks and update args with mocks' addresses
   if (chainId === '1337') {
-    const theoTokenMock = await deploy(MOCKS.theoTokenMock, {
+    await deploy(MOCKS.usdcTokenMock, {
       from: deployer,
       log: true,
     });
-    await deploy(MOCKS.usdcTokenMock, {
+    await deploy(MOCKS.WETH9, {
+      from: deployer,
+      log: true,
+    });
+    const theoTokenMock = await deploy(MOCKS.theoTokenMock, {
       from: deployer,
       log: true,
     });

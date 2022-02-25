@@ -11,6 +11,7 @@ const setup = deployments.createFixture(async () => {
     MOCKS.theoTokenMock,
     MOCKS.usdcTokenMock,
     MOCKS.treasuryMock,
+    MOCKS.WETH9,
   ]);
 
   const { deployer: owner } = await getNamedAccounts();
@@ -20,6 +21,7 @@ const setup = deployments.createFixture(async () => {
     TheopetraERC20Mock: await ethers.getContract(MOCKS.theoTokenMock),
     UsdcTokenMock: await ethers.getContract(MOCKS.usdcTokenMock),
     TreasuryMock: await ethers.getContract(MOCKS.treasuryMock),
+    WETH9: await ethers.getContract(MOCKS.WETH9),
   };
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
   return {
@@ -49,10 +51,11 @@ describe('Bond depository', function () {
   let conclusion: number;
   let UsdcTokenMock: any;
   let users: any;
+  let WETH9: any;
 
 
   beforeEach(async function () {
-    ({ BondDepository, UsdcTokenMock, users } = await setup());
+    ({ BondDepository, UsdcTokenMock, WETH9, users } = await setup());
     const [, , bob] = users;
     block = await ethers.provider.getBlock('latest');
     conclusion = block.timestamp + timeToConclusion;
@@ -80,6 +83,32 @@ describe('Bond depository', function () {
   describe('Create market', function () {
     it('should allow the policy owner to create a market', async function () {
       expect(await BondDepository.isLive(bid)).to.equal(true);
+    });
+
+    it('should allow a market to be created with wETH', async function () {
+      ({ BondDepository, WETH9 } = await setup());
+      
+
+      await BondDepository.create(
+        WETH9.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [depositInterval, tuneInterval]
+      );
+    });
+
+    it('should allow multiple markets to be created', async function () {
+      await BondDepository.create(
+        WETH9.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [depositInterval, tuneInterval]
+        );
+      expect(await BondDepository.isLive(bid)).to.equal(true);
+      expect(await BondDepository.isLive(1)).to.equal(true);
+      expect((await BondDepository.liveMarkets()).length).to.equal(2);
     });
 
     it('should revert if an address other than the policy owner makes a call to create a market', async function () {
