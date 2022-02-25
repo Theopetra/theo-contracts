@@ -8,7 +8,7 @@ contract TreasuryMock {
         emit Minted(msg.sender, _recipient, _amount);
     }
 
-    function baseSupply() external view returns (uint256) {
+    function baseSupply() external pure returns (uint256) {
         return 1000000;
     }
 }
