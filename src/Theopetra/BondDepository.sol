@@ -8,10 +8,10 @@ import "../Libraries/SafeERC20.sol";
 import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/IBondDepository.sol";
 
-    /**
-     * @title Theopetra Bond Depository
-     * @notice Originally based off of Olympus Bond Depository V2
-     */
+/**
+ * @title Theopetra Bond Depository
+ * @notice Originally based off of Olympus Bond Depository V2
+ */
 
 contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     /* ======== DEPENDENCIES ======== */

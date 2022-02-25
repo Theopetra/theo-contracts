@@ -51,7 +51,7 @@ describe('Bond depository', function () {
       block = await ethers.provider.getBlock('latest');
       conclusion = block.timestamp + timeToConclusion;
     });
-    
+
     it('allows the policy owner to create a market', async function () {
       const { BondDepository, UsdcTokenMock } = await setup();
 
@@ -90,12 +90,11 @@ describe('Bond depository', function () {
     let UsdcTokenMock: any;
     let users: any;
     before(async function () {
-      ({ BondDepository, UsdcTokenMock, users } =
-        await setup());
+      ({ BondDepository, UsdcTokenMock, users } = await setup());
     });
 
     beforeEach(async function () {
-      const [, , bob, ] = users;
+      const [, , bob] = users;
 
       await UsdcTokenMock.mint(bob.address, initialMint);
 
@@ -122,16 +121,14 @@ describe('Bond depository', function () {
       expect(Array(await BondDepository.indexesFor(bob.address)).length).to.equal(1);
     });
 
-    it("should not allow a deposit greater than max payout", async () => {
+    it('should not allow a deposit greater than max payout', async () => {
       const [, , bob, carol] = users;
-      const amount = "6700000000000000000000000";
-      await expect(
-          bob.BondDepository.deposit(0, amount, initialPrice, bob.address, carol.address)
-      ).to.be.revertedWith("Depository: max size exceeded");
-  });
+      const amount = '6700000000000000000000000';
+      await expect(bob.BondDepository.deposit(0, amount, initialPrice, bob.address, carol.address)).to.be.revertedWith(
+        'Depository: max size exceeded'
+      );
+    });
   });
 
-  describe('Close market', function () {
-    
-  })
+  describe('Close market', function () {});
 });

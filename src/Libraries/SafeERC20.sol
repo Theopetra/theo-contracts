@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.7.5;
 
-import {IERC20} from "../Interfaces/IERC20.sol";
+import { IERC20 } from "../Interfaces/IERC20.sol";
 
 /// @notice Safe IERC20 and ETH transfer library that safely handles missing return values.
 /// @author Modified from Uniswap (https://github.com/Uniswap/uniswap-v3-periphery/blob/main/contracts/libraries/TransferHelper.sol)
@@ -45,7 +45,7 @@ library SafeERC20 {
     }
 
     function safeTransferETH(address to, uint256 amount) internal {
-        (bool success, ) = to.call{value: amount}(new bytes(0));
+        (bool success, ) = to.call{ value: amount }(new bytes(0));
 
         require(success, "ETH_TRANSFER_FAILED");
     }
