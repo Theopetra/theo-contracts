@@ -5,11 +5,13 @@ import { setupUsers } from './utils';
 import { CONTRACTS, MOCKS } from '../utils/constants';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.bondDepo]);
-  await deployments.fixture([CONTRACTS.authority]);
-  await deployments.fixture([MOCKS.theoTokenMock]);
-  await deployments.fixture([MOCKS.usdcTokenMock]);
-  await deployments.fixture([MOCKS.treasuryMock]);
+  await deployments.fixture([
+    CONTRACTS.bondDepo,
+    CONTRACTS.authority,
+    MOCKS.theoTokenMock,
+    MOCKS.usdcTokenMock,
+    MOCKS.treasuryMock,
+  ]);
 
   const { deployer: owner } = await getNamedAccounts();
   const contracts = {
@@ -37,6 +39,34 @@ describe('Bond depository', function () {
   const timeToConclusion = 60 * 60 * 24;
   const depositInterval = 60 * 60 * 4;
   const tuneInterval = 60 * 60;
+  const LARGE_APPROVAL = '100000000000000000000000000000000';
+  // Initial mint for Mock USDC
+  const initialMint = '10000000000000000000000000';
+
+  let BondDepository: any;
+  let UsdcTokenMock: any;
+  let users: any;
+
+  beforeEach(async function () {
+    ({ BondDepository, UsdcTokenMock, users } = await setup());
+    const [, , bob] = users;
+
+    await UsdcTokenMock.mint(bob.address, initialMint);
+
+    await bob.UsdcTokenMock.approve(BondDepository.address, LARGE_APPROVAL);
+
+    const block = await ethers.provider.getBlock('latest');
+    const conclusion = block.timestamp + timeToConclusion;
+
+    await BondDepository.create(
+      UsdcTokenMock.address,
+      [capacity, initialPrice, buffer],
+      [capacityInQuote, fixedTerm],
+      [vesting, conclusion],
+      [depositInterval, tuneInterval]
+    );
+    expect(await BondDepository.isLive(0)).to.equal(true);
+  });
 
   describe('Deployment', function () {
     it('can be deployed', async function () {
@@ -82,37 +112,6 @@ describe('Bond depository', function () {
   });
 
   describe('Deposit', function () {
-    const LARGE_APPROVAL = '100000000000000000000000000000000';
-    // Initial mint for Mock USDC
-    const initialMint = '10000000000000000000000000';
-
-    let BondDepository: any;
-    let UsdcTokenMock: any;
-    let users: any;
-    before(async function () {
-      ({ BondDepository, UsdcTokenMock, users } = await setup());
-    });
-
-    beforeEach(async function () {
-      const [, , bob] = users;
-
-      await UsdcTokenMock.mint(bob.address, initialMint);
-
-      await bob.UsdcTokenMock.approve(BondDepository.address, LARGE_APPROVAL);
-
-      const block = await ethers.provider.getBlock('latest');
-      const conclusion = block.timestamp + timeToConclusion;
-
-      await BondDepository.create(
-        UsdcTokenMock.address,
-        [capacity, initialPrice, buffer],
-        [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
-        [depositInterval, tuneInterval]
-      );
-      expect(await BondDepository.isLive(0)).to.equal(true);
-    });
-
     it('should allow a deposit', async () => {
       const [, , bob, carol] = users;
       const amount = '10000';
@@ -130,5 +129,16 @@ describe('Bond depository', function () {
     });
   });
 
-  describe('Close market', function () {});
+  describe('Close market', function () {
+    it('allows a policy owner to close a market', async () => {
+      let marketCap;
+      [marketCap, , , , , ,] = await BondDepository.markets(0);
+      expect(Number(marketCap)).to.be.greaterThan(0);
+
+      await BondDepository.close(0);
+
+      [marketCap, , , , , ,] = await BondDepository.markets(0);
+      expect(Number(marketCap)).to.equal(0);
+    });
+  });
 });
