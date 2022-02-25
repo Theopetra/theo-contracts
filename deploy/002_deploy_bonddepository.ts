@@ -25,9 +25,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       from: deployer,
       log: true,
     });
+    const StakingMock = await deploy(MOCKS.stakingMock, {
+      from: deployer,
+      log: true,
+    });
+    const gTheoMock = await deploy(MOCKS.gTheoMock, {
+      from: deployer,
+      log: true,
+    });
 
-    args[1] = theoTokenMock?.address;
-    args[4] = TreasuryMock?.address;
+    args.splice(1, 4, theoTokenMock?.address, gTheoMock?.address, StakingMock?.address, TreasuryMock?.address);
   }
 
   await deploy(CONTRACTS.bondDepo, {
