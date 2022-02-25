@@ -30,33 +30,36 @@ const setup = deployments.createFixture(async () => {
 });
 
 describe('Bond depository', function () {
-  const capacity = 10000e9;
-  const initialPrice = 400e9;
+  const bid = 0;
   const buffer = 2e5;
+  const capacity = 10000e9;
   const capacityInQuote = true;
-  const fixedTerm = true;
-  const vesting = 100;
-  const timeToConclusion = 60 * 60 * 24;
   const depositInterval = 60 * 60 * 4;
-  const tuneInterval = 60 * 60;
+  const fixedTerm = true;
+  const initialPrice = 400e9;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
+  const timeToConclusion = 60 * 60 * 24;
+  const tuneInterval = 60 * 60;
+  const vesting = 100;
   // Initial mint for Mock USDC
   const initialMint = '10000000000000000000000000';
 
+  let block;
   let BondDepository: any;
+  let conclusion: number;
   let UsdcTokenMock: any;
   let users: any;
+
 
   beforeEach(async function () {
     ({ BondDepository, UsdcTokenMock, users } = await setup());
     const [, , bob] = users;
+    block = await ethers.provider.getBlock('latest');
+    conclusion = block.timestamp + timeToConclusion;
 
     await UsdcTokenMock.mint(bob.address, initialMint);
 
     await bob.UsdcTokenMock.approve(BondDepository.address, LARGE_APPROVAL);
-
-    const block = await ethers.provider.getBlock('latest');
-    const conclusion = block.timestamp + timeToConclusion;
 
     await BondDepository.create(
       UsdcTokenMock.address,
@@ -65,7 +68,7 @@ describe('Bond depository', function () {
       [vesting, conclusion],
       [depositInterval, tuneInterval]
     );
-    expect(await BondDepository.isLive(0)).to.equal(true);
+    expect(await BondDepository.isLive(bid)).to.equal(true);
   });
 
   describe('Deployment', function () {
@@ -75,24 +78,8 @@ describe('Bond depository', function () {
   });
 
   describe('Create market', function () {
-    let block;
-    let conclusion: number;
-    beforeEach(async function () {
-      block = await ethers.provider.getBlock('latest');
-      conclusion = block.timestamp + timeToConclusion;
-    });
-
-    it('allows the policy owner to create a market', async function () {
-      const { BondDepository, UsdcTokenMock } = await setup();
-
-      await BondDepository.create(
-        UsdcTokenMock.address,
-        [capacity, initialPrice, buffer],
-        [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
-        [depositInterval, tuneInterval]
-      );
-      expect(await BondDepository.isLive(0)).to.equal(true);
+    it('should allow the policy owner to create a market', async function () {
+      expect(await BondDepository.isLive(bid)).to.equal(true);
     });
 
     it('should revert if an address other than the policy owner makes a call to create a market', async function () {
@@ -116,29 +103,37 @@ describe('Bond depository', function () {
       const [, , bob, carol] = users;
       const amount = '10000';
 
-      await bob.BondDepository.deposit(0, amount, initialPrice, bob.address, carol.address);
+      await bob.BondDepository.deposit(bid, amount, initialPrice, bob.address, carol.address);
       expect(Array(await BondDepository.indexesFor(bob.address)).length).to.equal(1);
     });
 
-    it('should not allow a deposit greater than max payout', async () => {
+    it('should revert if a user attempts to deposit an amount greater than max payout', async () => {
       const [, , bob, carol] = users;
       const amount = '6700000000000000000000000';
-      await expect(bob.BondDepository.deposit(0, amount, initialPrice, bob.address, carol.address)).to.be.revertedWith(
+      await expect(bob.BondDepository.deposit(bid, amount, initialPrice, bob.address, carol.address)).to.be.revertedWith(
         'Depository: max size exceeded'
       );
     });
   });
 
   describe('Close market', function () {
-    it('allows a policy owner to close a market', async () => {
+    it('should allow a policy owner to close a market', async () => {
       let marketCap;
-      [marketCap, , , , , ,] = await BondDepository.markets(0);
+      [marketCap, , , , , ,] = await BondDepository.markets(bid);
       expect(Number(marketCap)).to.be.greaterThan(0);
 
-      await BondDepository.close(0);
+      await BondDepository.close(bid);
 
-      [marketCap, , , , , ,] = await BondDepository.markets(0);
+      [marketCap, , , , , ,] = await BondDepository.markets(bid);
       expect(Number(marketCap)).to.equal(0);
+    });
+
+    it('should revert if an address other than the policy owner makes a call to close a market', async () => {
+      const [, , bob,] = users;
+      const [marketCap, , , , , ,] = await BondDepository.markets(bid);
+      expect(Number(marketCap)).to.be.greaterThan(0);
+
+      await expect(bob.BondDepository.close(bid)).to.be.revertedWith('UNAUTHORIZED');
     });
   });
 });
