@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
+import { CONTRACTS } from '../utils/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -7,11 +8,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy('TheopetraERC20Token', {
+  await deploy(CONTRACTS.theo, {
     from: deployer,
     log: true,
   });
 };
 
 export default func;
-func.tags = ['TheopetraERC20Token'];
+func.tags = [CONTRACTS.theo];
