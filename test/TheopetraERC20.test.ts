@@ -2,12 +2,13 @@ import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 // import { TheopetraERC20Token } from '../../next-app/src/typechain';
 import { setupUsers } from './utils';
+import { CONTRACTS } from '../utils/constants';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture(['TheopetraERC20Token']);
+  await deployments.fixture([CONTRACTS.theoToken]);
   const { deployer: owner } = await getNamedAccounts();
   const contracts = {
-    TheopetraERC20Token: await ethers.getContract('TheopetraERC20Token'),
+    TheopetraERC20Token: await ethers.getContract(CONTRACTS.theoToken),
   };
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
   return {

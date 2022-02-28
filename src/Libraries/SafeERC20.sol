@@ -1,37 +1,52 @@
-// SPDX-License-Identifier: AGPL-1.0
-pragma solidity 0.7.5;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity >=0.7.5;
 
-import "./SafeMath.sol";
-import "./Address.sol";
-import "../Interfaces/IERC20.sol";
+import { IERC20 } from "../Interfaces/IERC20.sol";
 
+/// @notice Safe IERC20 and ETH transfer library that safely handles missing return values.
+/// @author Modified from Uniswap (https://github.com/Uniswap/uniswap-v3-periphery/blob/main/contracts/libraries/TransferHelper.sol)
+/// Taken from Solmate
 library SafeERC20 {
-    using SafeMath for uint256;
-    using Address for address;
-
-    function safeTransfer(
-        IERC20 token,
-        address to,
-        uint256 value
-    ) internal {
-        _callOptionalReturn(token, abi.encodeWithSelector(token.transfer.selector, to, value));
-    }
-
     function safeTransferFrom(
         IERC20 token,
         address from,
         address to,
-        uint256 value
+        uint256 amount
     ) internal {
-        _callOptionalReturn(token, abi.encodeWithSelector(token.transferFrom.selector, from, to, value));
+        (bool success, bytes memory data) = address(token).call(
+            abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, amount)
+        );
+
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "TRANSFER_FROM_FAILED");
     }
 
-    function _callOptionalReturn(IERC20 token, bytes memory data) private {
-        bytes memory returndata = address(token).functionCall(data, "SafeERC20: low-level call failed");
-        if (returndata.length > 0) {
-            // Return data is optional
-            // solhint-disable-next-line max-line-length
-            require(abi.decode(returndata, (bool)), "SafeERC20: ERC20 operation did not succeed");
-        }
+    function safeTransfer(
+        IERC20 token,
+        address to,
+        uint256 amount
+    ) internal {
+        (bool success, bytes memory data) = address(token).call(
+            abi.encodeWithSelector(IERC20.transfer.selector, to, amount)
+        );
+
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "TRANSFER_FAILED");
+    }
+
+    function safeApprove(
+        IERC20 token,
+        address to,
+        uint256 amount
+    ) internal {
+        (bool success, bytes memory data) = address(token).call(
+            abi.encodeWithSelector(IERC20.approve.selector, to, amount)
+        );
+
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "APPROVE_FAILED");
+    }
+
+    function safeTransferETH(address to, uint256 amount) internal {
+        (bool success, ) = to.call{ value: amount }(new bytes(0));
+
+        require(success, "ETH_TRANSFER_FAILED");
     }
 }
