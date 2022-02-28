@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { CONTRACTS, MOCKS } from '../utils/constants';
+import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getChainId, getNamedAccounts } = hre;
@@ -22,6 +22,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       namedMockAddresses[deployedMock.contractName] = deployedMock.address;
     }
 
+    for (const key in MOCKSWITHARGS) {
+      
+      let args;
+
+      if (key === 'treasuryMock') {
+        args = [namedMockAddresses.TheopetraERC20Mock]
+      }
+      
+      const deployedMock: any = await deploy(MOCKSWITHARGS[key], {
+        from: deployer,
+        log: true,
+        args,
+      });
+      namedMockAddresses[deployedMock.contractName] = deployedMock.address;
+    }
+    
     const { TheopetraERC20Mock, gTheoMock, StakingMock, TreasuryMock } = namedMockAddresses;
     args.splice(1, 4, TheopetraERC20Mock, gTheoMock, StakingMock, TreasuryMock);
   }

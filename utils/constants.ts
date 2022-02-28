@@ -7,8 +7,11 @@ export const CONTRACTS: Record<string, string> = {
 export const MOCKS: Record<string, string> = {
   theoTokenMock: 'TheopetraERC20Mock',
   usdcTokenMock: 'UsdcERC20Mock',
-  treasuryMock: 'TreasuryMock',
   stakingMock: 'StakingMock',
   gTheoMock: 'gTheoMock',
   WETH9: 'WETH9',
+};
+
+export const MOCKSWITHARGS: Record<string, string> = {
+  treasuryMock: 'TreasuryMock',
 };
