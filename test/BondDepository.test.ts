@@ -314,7 +314,7 @@ describe('Bond depository', function () {
   });
 
   describe('Redeem', function () {
-    it('should not redeem before vested', async function () {
+    it('should not be immediately redeemable', async function () {
       const [, , bob, carol] = users;
       const amount = '10000000000000000000000'; // 10,000
 
@@ -329,7 +329,26 @@ describe('Bond depository', function () {
       expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(balance);
     });
 
-    it('should mature after vesting time', async function () {
+    it('should not be redeemable before the vesting time', async function () {
+      const [, , bob, carol] = users;
+      const amount = '10000000000000000000000'; // 10,000
+
+      const balance = await TheopetraERC20Mock.balanceOf(bob.address);
+      await bob.BondDepository.deposit(bid, amount, initialPrice, bob.address, carol.address);
+      
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const newTimestampInSeconds = latestBlock.timestamp + (vesting / 2);
+      await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+
+      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
+
+      expect(matured_).to.equal(false);
+
+      await bob.BondDepository.redeemAll(bob.address, true);
+      expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(balance);
+    });
+
+    it('should mature the Note after the vesting time has passed', async function () {
       const [, , bob, carol] = users;
       const amount = '10000000000000000000000';
 
@@ -337,7 +356,7 @@ describe('Bond depository', function () {
       expect(Array(await BondDepository.indexesFor(bob.address)).length).to.equal(1);
 
       const latestBlock = await ethers.provider.getBlock('latest');
-      const newTimestampInSeconds = latestBlock.timestamp + 1000;
+      const newTimestampInSeconds = latestBlock.timestamp + (vesting * 10);
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
@@ -345,7 +364,7 @@ describe('Bond depository', function () {
       expect(matured_).to.equal(true);
     });
 
-    it.only('should allow a deposit to be redeemed', async () => {
+    it('can be redeemed after the vesting time has passed', async () => {
       const [, , bob, carol] = users;
       const amount = '10000000000000000000000';
 
@@ -354,7 +373,7 @@ describe('Bond depository', function () {
       expect(Array(await BondDepository.indexesFor(bob.address)).length).to.equal(1);
 
       const latestBlock = await ethers.provider.getBlock('latest');
-      const newTimestampInSeconds = latestBlock.timestamp + 1000;
+      const newTimestampInSeconds = latestBlock.timestamp + (vesting * 2);
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       await BondDepository.redeemAll(bob.address, true);
