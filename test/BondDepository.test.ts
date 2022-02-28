@@ -8,8 +8,10 @@ const setup = deployments.createFixture(async () => {
   await deployments.fixture([
     CONTRACTS.bondDepo,
     CONTRACTS.authority,
+    MOCKS.gTheoMock,
     MOCKS.theoTokenMock,
     MOCKS.usdcTokenMock,
+    MOCKSWITHARGS.stakingMock,
     MOCKSWITHARGS.treasuryMock,
     MOCKS.WETH9,
   ]);
@@ -19,9 +21,11 @@ const setup = deployments.createFixture(async () => {
   const contracts = {
     TheopetraAuthority: await ethers.getContract(CONTRACTS.authority),
     BondDepository: await ethers.getContract(CONTRACTS.bondDepo),
+    gTheoMock: await ethers.getContract(MOCKS.gTheoMock),
+    StakingMock: await ethers.getContract(MOCKSWITHARGS.stakingMock),
     TheopetraERC20Mock: await ethers.getContract(MOCKS.theoTokenMock),
-    UsdcTokenMock: await ethers.getContract(MOCKS.usdcTokenMock),
     TreasuryMock: await ethers.getContract(MOCKSWITHARGS.treasuryMock),
+    UsdcTokenMock: await ethers.getContract(MOCKS.usdcTokenMock),
     WETH9: await ethers.getContract(MOCKS.WETH9),
   };
 
@@ -52,6 +56,8 @@ describe('Bond depository', function () {
   let block;
   let BondDepository: any;
   let conclusion: number;
+  let gTheoMock: any;
+  let StakingMock: any;
   let TheopetraAuthority: any;
   let TheopetraERC20Mock: any;
   let TreasuryMock: any;
@@ -66,8 +72,17 @@ describe('Bond depository', function () {
   let treasury: any;
 
   beforeEach(async function () {
-    ({ BondDepository, TheopetraAuthority, TheopetraERC20Mock, TreasuryMock, UsdcTokenMock, WETH9, users } =
-      await setup());
+    ({
+      BondDepository,
+      StakingMock,
+      gTheoMock,
+      TheopetraAuthority,
+      TheopetraERC20Mock,
+      TreasuryMock,
+      UsdcTokenMock,
+      WETH9,
+      users,
+    } = await setup());
 
     const [owner, , bob] = users;
     block = await ethers.provider.getBlock('latest');
@@ -78,6 +93,9 @@ describe('Bond depository', function () {
     await TheopetraAuthority.pushVault(TreasuryMock.address, true);
 
     await TheopetraERC20Mock.mint(owner.address, '10000000000000'); // Set to be same as return value in Treasury Mock for baseSupply
+    
+    // Mint enough to allow transfers when redeeming bonds
+    await gTheoMock.mint(BondDepository.address, "1000000000000000000000")
 
     await bob.UsdcTokenMock.approve(BondDepository.address, LARGE_APPROVAL);
     await bob.WETH9.approve(BondDepository.address, LARGE_APPROVAL);
@@ -223,17 +241,30 @@ describe('Bond depository', function () {
       expect(Number(totalDebt)).to.be.greaterThan(Number(newTotalDebt));
     });
 
-    it.only('should mint a payout that is added to the balance of the bond depo', async function () {
+    it('should mint the payout in THEO, added to the balance of the bond depo', async function () {
       const [, , bob, carol] = users;
-      const amount = "10000000000000000000000";
+      const amount = '10000000000000000000000';
 
-      const initialBondDepoTheoBalance = await TheopetraERC20Mock.balanceOf(BondDepository.address)
+      const initialBondDepoTheoBalance = await TheopetraERC20Mock.balanceOf(BondDepository.address);
       await bob.BondDepository.deposit(bid, amount, initialPrice, bob.address, carol.address);
-      
+
       const newBondDepoTHEOBalance = await TheopetraERC20Mock.balanceOf(BondDepository.address);
 
       expect(Number(initialBondDepoTheoBalance)).to.be.lessThan(Number(newBondDepoTHEOBalance));
-    })
+    });
+
+    it.skip('should stake the payout', async function () {
+      const [, , bob, carol] = users;
+      const amount = '10000000000000000000000';
+
+      const initialStakingTheoBalance = await TheopetraERC20Mock.balanceOf(StakingMock.address);
+      
+      await bob.BondDepository.deposit(bid, amount, initialPrice, bob.address, carol.address);
+
+      const newStakingTHEOBalance = await TheopetraERC20Mock.balanceOf(StakingMock.address);
+      expect(Number(initialStakingTheoBalance)).to.be.lessThan(Number(newStakingTHEOBalance));
+
+    });
   });
 
   describe('Close market', function () {
@@ -285,7 +316,7 @@ describe('Bond depository', function () {
   describe('Redeem', function () {
     it('should not redeem before vested', async function () {
       const [, , bob, carol] = users;
-      const amount = "10000000000000000000000"; // 10,000
+      const amount = '10000000000000000000000'; // 10,000
 
       const balance = await TheopetraERC20Mock.balanceOf(bob.address);
       await bob.BondDepository.deposit(bid, amount, initialPrice, bob.address, carol.address);
@@ -307,28 +338,30 @@ describe('Bond depository', function () {
 
       const latestBlock = await ethers.provider.getBlock('latest');
       const newTimestampInSeconds = latestBlock.timestamp + 1000;
-      await ethers.provider.send("evm_mine", [newTimestampInSeconds]);
+      await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(matured_).to.equal(true);
     });
 
-    it.skip('should allow a deposit to be redeemed', async () => {
+    it.only('should allow a deposit to be redeemed', async () => {
       const [, , bob, carol] = users;
       const amount = '10000000000000000000000';
 
-      // await bob.BondDepository.callStatic.deposit(bid, amount, initialPrice, bob.address, carol.address);
+      const [expectedPayout, ] = await bob.BondDepository.callStatic.deposit(bid, amount, initialPrice, bob.address, carol.address);
       await bob.BondDepository.deposit(bid, amount, initialPrice, bob.address, carol.address);
       expect(Array(await BondDepository.indexesFor(bob.address)).length).to.equal(1);
 
       const latestBlock = await ethers.provider.getBlock('latest');
       const newTimestampInSeconds = latestBlock.timestamp + 1000;
-      await ethers.provider.send("evm_mine", [newTimestampInSeconds]);
+      await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
-      await bob.BondDepository.redeemAll(bob.address, true);
+      await BondDepository.redeemAll(bob.address, true);
+      const bobBalance = Number(await gTheoMock.balanceOf(bob.address));
 
-
+      expect(bobBalance).to.greaterThanOrEqual(Number(await gTheoMock.balanceTo(expectedPayout)));
+      expect(bobBalance).to.lessThan(Number(await gTheoMock.balanceTo(expectedPayout * 1.0001)));
     });
   });
 });
