@@ -8,7 +8,7 @@ const setup = deployments.createFixture(async function () {
   await deployments.fixture([
     CONTRACTS.bondDepo,
     CONTRACTS.authority,
-    MOCKS.gTheoMock,
+    MOCKS.sTheoMock,
     MOCKS.theoTokenMock,
     MOCKS.usdcTokenMock,
     MOCKSWITHARGS.stakingMock,
@@ -21,7 +21,7 @@ const setup = deployments.createFixture(async function () {
   const contracts = {
     TheopetraAuthority: await ethers.getContract(CONTRACTS.authority),
     BondDepository: await ethers.getContract(CONTRACTS.bondDepo),
-    gTheoMock: await ethers.getContract(MOCKS.gTheoMock),
+    sTheoMock: await ethers.getContract(MOCKS.sTheoMock),
     StakingMock: await ethers.getContract(MOCKSWITHARGS.stakingMock),
     TheopetraERC20Mock: await ethers.getContract(MOCKS.theoTokenMock),
     TreasuryMock: await ethers.getContract(MOCKSWITHARGS.treasuryMock),
@@ -56,7 +56,7 @@ describe('Bond depository', function () {
   let block;
   let BondDepository: any;
   let conclusion: number;
-  let gTheoMock: any;
+  let sTheoMock: any;
   let StakingMock: any;
   let TheopetraAuthority: any;
   let TheopetraERC20Mock: any;
@@ -75,7 +75,7 @@ describe('Bond depository', function () {
     ({
       BondDepository,
       StakingMock,
-      gTheoMock,
+      sTheoMock,
       TheopetraAuthority,
       TheopetraERC20Mock,
       TreasuryMock,
@@ -95,7 +95,7 @@ describe('Bond depository', function () {
     await TheopetraERC20Mock.mint(owner.address, '10000000000000'); // Set to be same as return value in Treasury Mock for baseSupply
     
     // Mint enough to allow transfers when redeeming bonds
-    await gTheoMock.mint(BondDepository.address, "1000000000000000000000")
+    await sTheoMock.mint(BondDepository.address, "1000000000000000000000")
 
     await bob.UsdcTokenMock.approve(BondDepository.address, LARGE_APPROVAL);
     await bob.WETH9.approve(BondDepository.address, LARGE_APPROVAL);
@@ -384,10 +384,10 @@ describe('Bond depository', function () {
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       await BondDepository.redeemAll(bob.address, true);
-      const bobBalance = Number(await gTheoMock.balanceOf(bob.address));
+      const bobBalance = Number(await sTheoMock.balanceOf(bob.address));
 
-      expect(bobBalance).to.greaterThanOrEqual(Number(await gTheoMock.balanceTo(expectedPayout)));
-      expect(bobBalance).to.lessThan(Number(await gTheoMock.balanceTo(expectedPayout * 1.0001)));
+      expect(bobBalance).to.greaterThanOrEqual(Number(await sTheoMock.balanceTo(expectedPayout)));
+      expect(bobBalance).to.lessThan(Number(await sTheoMock.balanceTo(expectedPayout * 1.0001)));
     });
   });
 });

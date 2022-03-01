@@ -38,8 +38,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       namedMockAddresses[deployedMock.contractName] = deployedMock.address;
     }
     
-    const { TheopetraERC20Mock, gTheoMock, StakingMock, TreasuryMock } = namedMockAddresses;
-    args.splice(1, 4, TheopetraERC20Mock, gTheoMock, StakingMock, TreasuryMock);
+    const { TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock } = namedMockAddresses;
+    args.splice(1, 4, TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock);
   }
 
   await deploy(CONTRACTS.bondDepo, {
