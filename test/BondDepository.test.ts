@@ -4,7 +4,7 @@ import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } fr
 import { setupUsers } from './utils';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
 
-const setup = deployments.createFixture(async () => {
+const setup = deployments.createFixture(async function () {
   await deployments.fixture([
     CONTRACTS.bondDepo,
     CONTRACTS.authority,
@@ -114,6 +114,12 @@ describe('Bond depository', function () {
     it('can be deployed', async function () {
       await setup();
     });
+
+    it('bulk-approves an amount of 1e45 for the staking contract to spend', async function () {
+      const stakingAllowance = await TheopetraERC20Mock.allowance(BondDepository.address, StakingMock.address);
+      const spendAmount = "1000000000000000000000000000000000000000000000" // 1e45
+      expect(stakingAllowance).to.equal(spendAmount);
+    })
   });
 
   describe('Create market', function () {
@@ -214,7 +220,7 @@ describe('Bond depository', function () {
   });
 
   describe('Deposit', function () {
-    it('should allow a deposit', async () => {
+    it('should allow a deposit', async function () {
       const [, , bob, carol] = users;
       const amount = '10000';
 
@@ -222,7 +228,7 @@ describe('Bond depository', function () {
       expect(Array(await BondDepository.indexesFor(bob.address)).length).to.equal(1);
     });
 
-    it('should revert if a user attempts to deposit an amount greater than max payout', async () => {
+    it('should revert if a user attempts to deposit an amount greater than max payout', async function () {
       const [, , bob, carol] = users;
       const amount = '6700000000000000000000000';
       await expect(
@@ -241,19 +247,20 @@ describe('Bond depository', function () {
       expect(Number(totalDebt)).to.be.greaterThan(Number(newTotalDebt));
     });
 
-    it('should mint the payout in THEO, added to the balance of the bond depo', async function () {
+    it('should mint the payout in THEO', async function () {
       const [, , bob, carol] = users;
       const amount = '10000000000000000000000';
+      const initialTotalTheoSupply = await TheopetraERC20Mock.totalSupply();
 
-      const initialBondDepoTheoBalance = await TheopetraERC20Mock.balanceOf(BondDepository.address);
       await bob.BondDepository.deposit(bid, amount, initialPrice, bob.address, carol.address);
+      
+      const newTotalTheoSupply = await TheopetraERC20Mock.totalSupply();
+      const [payout_] = await BondDepository.pendingFor(bob.address, 0);
 
-      const newBondDepoTHEOBalance = await TheopetraERC20Mock.balanceOf(BondDepository.address);
-
-      expect(Number(initialBondDepoTheoBalance)).to.be.lessThan(Number(newBondDepoTHEOBalance));
+      expect(newTotalTheoSupply - initialTotalTheoSupply).to.equal(payout_);
     });
 
-    it.skip('should stake the payout', async function () {
+    it('should stake the payout', async function () {
       const [, , bob, carol] = users;
       const amount = '10000000000000000000000';
 
@@ -268,7 +275,7 @@ describe('Bond depository', function () {
   });
 
   describe('Close market', function () {
-    it('should allow a policy owner to close a market', async () => {
+    it('should allow a policy owner to close a market', async function () {
       let marketCap;
       [marketCap, , , , , ,] = await BondDepository.markets(bid);
       expect(Number(marketCap)).to.be.greaterThan(0);
@@ -279,7 +286,7 @@ describe('Bond depository', function () {
       expect(Number(marketCap)).to.equal(0);
     });
 
-    it('should revert if an address other than the policy owner makes a call to close a market', async () => {
+    it('should revert if an address other than the policy owner makes a call to close a market', async function () {
       const [, , bob] = users;
       const [marketCap, , , , , ,] = await BondDepository.markets(bid);
       expect(Number(marketCap)).to.be.greaterThan(0);
@@ -364,7 +371,7 @@ describe('Bond depository', function () {
       expect(matured_).to.equal(true);
     });
 
-    it('can be redeemed after the vesting time has passed', async () => {
+    it('can be redeemed after the vesting time has passed', async function () {
       const [, , bob, carol] = users;
       const amount = '10000000000000000000000';
 

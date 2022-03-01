@@ -19,8 +19,7 @@ contract StakingMock {
         bool _rebasing,
         bool _claim
     ) external returns (uint256) {
-        // TODO: Update mock to allow testing of staking
-        // THEO.safeTransferFrom(msg.sender, address(this), _amount);
+        THEO.safeTransferFrom(msg.sender, address(this), _amount);
 
         return _amount;
     }

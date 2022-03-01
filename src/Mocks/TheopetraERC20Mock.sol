@@ -9,8 +9,4 @@ contract TheopetraERC20Mock is ERC20 {
     function mint(address to, uint256 value) public virtual {
         _mint(to, value);
     }
-
-    function approve(address spender, uint256 amount) public virtual override returns (bool) {
-        return true;
-    }
 }

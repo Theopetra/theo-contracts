@@ -10,6 +10,9 @@ contract gTheoMock is ERC20 {
         _mint(to, value);
     }
 
+    /**
+     * @notice    1-to-1 conversion of THEO to gTHEO
+     */
     function balanceTo(uint256 _amount) external view returns (uint256) {
         return _amount;
     }
