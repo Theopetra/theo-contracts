@@ -5,7 +5,7 @@ const setup = deployments.createFixture(async () => {
   await deployments.fixture(['TheopetraTreasury']);
   const { deployer: owner } = await getNamedAccounts();
   const contracts = {
-    Treasury: await deployments.get('Treasury'),
+    Treasury: await deployments.get('TheopetraTreasury'),
   };
 
   return {
