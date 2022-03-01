@@ -41,10 +41,10 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     constructor(
         ITheopetraAuthority _authority,
         IERC20 _theo,
-        IgTHEO _gtheo,
+        IsTHEO _stheo,
         IStaking _staking,
         ITreasury _treasury
-    ) NoteKeeper(_authority, _theo, _gtheo, _staking, _treasury) {
+    ) NoteKeeper(_authority, _theo, _stheo, _staking, _treasury) {
         // save gas for users by bulk approving stake() transactions
         _theo.approve(address(_staking), 1e45);
     }
@@ -58,7 +58,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * @param _maxPrice    the maximum price at which to buy
      * @param _user        the recipient of the payout
      * @param _referral    the front end operator address
-     * @return payout_     the amount of gTHEO due
+     * @return payout_     the amount of sTHEO due
      * @return expiry_     the timestamp at which payout is redeemable
      * @return index_      the user index of the Note (used to redeem or query information)
      */

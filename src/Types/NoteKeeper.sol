@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "./FrontEndRewarder.sol";
 
-import "../Interfaces/IgTHEO.sol";
+import "../Interfaces/IsTHEO.sol";
 import "../Interfaces/IStaking.sol";
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/INoteKeeper.sol";
@@ -12,18 +12,18 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
     mapping(address => Note[]) public notes; // user deposit data
     mapping(address => mapping(uint256 => address)) private noteTransfers; // change note ownership
 
-    IgTHEO internal immutable gTHEO;
+    IsTHEO internal immutable sTHEO;
     IStaking internal immutable staking;
     ITreasury internal treasury;
 
     constructor(
         ITheopetraAuthority _authority,
         IERC20 _theo,
-        IgTHEO _gtheo,
+        IsTHEO _stheo,
         IStaking _staking,
         ITreasury _treasury
     ) FrontEndRewarder(_authority, _theo) {
-        gTHEO = _gtheo;
+        sTHEO = _stheo;
         staking = _staking;
         treasury = _treasury;
     }
@@ -62,7 +62,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         // the new note is pushed to the user's array
         notes[_user].push(
             Note({
-                payout: gTHEO.balanceTo(_payout),
+                payout: sTHEO.balanceTo(_payout),
                 created: uint48(block.timestamp),
                 matured: _expiry,
                 redeemed: 0,
@@ -84,15 +84,19 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
 
     /**
      * @notice             redeem notes for user
+     * @dev                adapted from Olympus V2. Olympus V2 either sends payout as gOHM
+     *                     or calls an `unwrap` function on the staking contract
+     *                     to convert the payout from gOHM into sOHM and then send as sOHM.
+     *                     This current contract sends payout as sTHEO if _sendStakedTHEO is true.
      * @param _user        the user to redeem for
      * @param _indexes     the note indexes to redeem
-     * @param _sendgTHEO    send payout as gTHEO or sTHEO
-     * @return payout_     sum of payout sent, in gTHEO
+     * @param _sendStakedTHEO    send payout as sTHEO
+     * @return payout_     sum of payout sent, in sTHEO
      */
     function redeem(
         address _user,
         uint256[] memory _indexes,
-        bool _sendgTHEO
+        bool _sendStakedTHEO
     ) public override returns (uint256 payout_) {
         uint48 time = uint48(block.timestamp);
 
@@ -105,10 +109,8 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
             }
         }
 
-        if (_sendgTHEO) {
-            gTHEO.transfer(_user, payout_); // send payout as gTHEO
-        } else {
-            staking.unwrap(_user, payout_); // unwrap and send payout as sTHEO
+        if (_sendStakedTHEO) {
+            sTHEO.transfer(_user, payout_); // send payout as sTHEO
         }
     }
 
@@ -116,11 +118,11 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
      * @notice             redeem all redeemable markets for user
      * @dev                if possible, query indexesFor() off-chain and input in redeem() to save gas
      * @param _user        user to redeem all notes for
-     * @param _sendgTHEO    send payout as gTHEO or sTHEO
-     * @return             sum of payout sent, in gTHEO
+     * @param _sendStakedTHEO    send payout as sTHEO
+     * @return             sum of payout sent, in sTHEO
      */
-    function redeemAll(address _user, bool _sendgTHEO) external override returns (uint256) {
-        return redeem(_user, indexesFor(_user), _sendgTHEO);
+    function redeemAll(address _user, bool _sendStakedTHEO) external override returns (uint256) {
+        return redeem(_user, indexesFor(_user), _sendStakedTHEO);
     }
 
     /* ========== TRANSFER ========== */
@@ -184,7 +186,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
      * @notice             calculate amount available for claim for a single note
      * @param _user        the user that the note belongs to
      * @param _index       the index of the note in the user's array
-     * @return payout_     the payout due, in gTHEO
+     * @return payout_     the payout due, in sTHEO
      * @return matured_    if the payout can be redeemed
      */
     function pendingFor(address _user, uint256 _index) public view override returns (uint256 payout_, bool matured_) {
