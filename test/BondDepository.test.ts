@@ -65,12 +65,6 @@ describe('Bond depository', function () {
   let users: any;
   let WETH9: any;
 
-  let gOhmFactory: any;
-
-  let gOHM: any;
-  let staking: any;
-  let treasury: any;
-
   beforeEach(async function () {
     ({
       BondDepository,
