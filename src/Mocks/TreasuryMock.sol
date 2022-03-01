@@ -9,7 +9,7 @@ contract TreasuryMock {
     ITHEO public immutable THEO;
 
     constructor(address _theo) {
-      THEO = ITHEO(_theo);
+        THEO = ITHEO(_theo);
     }
 
     function mint(address _recipient, uint256 _amount) external {

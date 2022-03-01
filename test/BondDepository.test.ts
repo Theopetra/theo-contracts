@@ -228,8 +228,9 @@ describe('Bond depository', function () {
       const [, , bob, carol] = users;
 
       await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
-      await expect(bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address))
-        .to.be.revertedWith('Depository: more than max price');
+      await expect(
+        bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address)
+      ).to.be.revertedWith('Depository: more than max price');
     });
 
     it('should revert if a user attempts to deposit an amount greater than max payout', async function () {
@@ -366,14 +367,14 @@ describe('Bond depository', function () {
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       // Second deposit
-      await bob.BondDepository.deposit(bid, depositAmount, (initialPrice * 1.01), bob.address, carol.address);
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice * 1.01, bob.address, carol.address);
 
       const [, firstMatured_] = await BondDepository.pendingFor(bob.address, 0);
       const [, secondMatured_] = await BondDepository.pendingFor(bob.address, 1);
 
       expect(firstMatured_).to.equal(true);
       expect(secondMatured_).to.equal(false);
-    })
+    });
   });
 
   describe('Redeem', function () {
