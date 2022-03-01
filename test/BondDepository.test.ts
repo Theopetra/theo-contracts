@@ -88,9 +88,9 @@ describe('Bond depository', function () {
     await TheopetraAuthority.pushVault(TreasuryMock.address, true);
 
     await TheopetraERC20Mock.mint(owner.address, '10000000000000'); // Set to be same as return value in Treasury Mock for baseSupply
-    
+
     // Mint enough to allow transfers when redeeming bonds
-    await sTheoMock.mint(BondDepository.address, "1000000000000000000000")
+    await sTheoMock.mint(BondDepository.address, '1000000000000000000000');
 
     await bob.UsdcTokenMock.approve(BondDepository.address, LARGE_APPROVAL);
     await bob.WETH9.approve(BondDepository.address, LARGE_APPROVAL);
@@ -112,9 +112,9 @@ describe('Bond depository', function () {
 
     it('bulk-approves an amount of 1e45 for the staking contract to spend', async function () {
       const stakingAllowance = await TheopetraERC20Mock.allowance(BondDepository.address, StakingMock.address);
-      const spendAmount = "1000000000000000000000000000000000000000000000" // 1e45
+      const spendAmount = '1000000000000000000000000000000000000000000000'; // 1e45
       expect(stakingAllowance).to.equal(spendAmount);
-    })
+    });
   });
 
   describe('Create market', function () {
@@ -217,10 +217,19 @@ describe('Bond depository', function () {
   describe('Deposit', function () {
     it('should allow a deposit', async function () {
       const [, , bob, carol] = users;
-      const amount = '10000';
 
-      await bob.BondDepository.deposit(bid, amount, initialPrice, bob.address, carol.address);
-      expect(Array(await BondDepository.indexesFor(bob.address)).length).to.equal(1);
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+
+      expect(bobNotesIndexes.length).to.equal(1);
+    });
+
+    it('should protect the user against price changes after entering the mempool', async function () {
+      const [, , bob, carol] = users;
+
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
+      await expect(bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address))
+        .to.be.revertedWith('Depository: more than max price');
     });
 
     it('should revert if a user attempts to deposit an amount greater than max payout', async function () {
@@ -248,7 +257,7 @@ describe('Bond depository', function () {
       const initialTotalTheoSupply = await TheopetraERC20Mock.totalSupply();
 
       await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
-      
+
       const newTotalTheoSupply = await TheopetraERC20Mock.totalSupply();
       const [payout_] = await BondDepository.pendingFor(bob.address, 0);
 
@@ -259,12 +268,11 @@ describe('Bond depository', function () {
       const [, , bob, carol] = users;
 
       const initialStakingTheoBalance = await TheopetraERC20Mock.balanceOf(StakingMock.address);
-      
+
       await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
 
       const newStakingTHEOBalance = await TheopetraERC20Mock.balanceOf(StakingMock.address);
       expect(Number(initialStakingTheoBalance)).to.be.lessThan(Number(newStakingTHEOBalance));
-
     });
   });
 
@@ -319,30 +327,53 @@ describe('Bond depository', function () {
       const [, , bob, carol] = users;
 
       await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
-      
+
       const latestBlock = await ethers.provider.getBlock('latest');
-      const newTimestampInSeconds = latestBlock.timestamp + (vesting / 2);
+      const newTimestampInSeconds = latestBlock.timestamp + vesting / 2;
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(matured_).to.equal(false);
     });
-    
+
     it('should show the Note as being matured after the vesting time has passed', async function () {
       const [, , bob, carol] = users;
 
       await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
-      expect(Array(await BondDepository.indexesFor(bob.address)).length).to.equal(1);
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+
+      expect(bobNotesIndexes.length).to.equal(1);
 
       const latestBlock = await ethers.provider.getBlock('latest');
-      const newTimestampInSeconds = latestBlock.timestamp + (vesting * 10);
+      const newTimestampInSeconds = latestBlock.timestamp + vesting * 10;
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(matured_).to.equal(true);
     });
+
+    it('should correctly show maturity of multiple notes', async function () {
+      const [, , bob, carol] = users;
+
+      // First deposit
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
+
+      // Move time forward
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const newTimestampInSeconds = latestBlock.timestamp + vesting * 10;
+      await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+
+      // Second deposit
+      await bob.BondDepository.deposit(bid, depositAmount, (initialPrice * 1.01), bob.address, carol.address);
+
+      const [, firstMatured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, secondMatured_] = await BondDepository.pendingFor(bob.address, 1);
+
+      expect(firstMatured_).to.equal(true);
+      expect(secondMatured_).to.equal(false);
+    })
   });
 
   describe('Redeem', function () {
@@ -351,10 +382,31 @@ describe('Bond depository', function () {
 
       const balance = await TheopetraERC20Mock.balanceOf(bob.address);
       await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
-      expect(Array(await BondDepository.indexesFor(bob.address)).length).to.equal(1);
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+
+      expect(bobNotesIndexes.length).to.equal(1);
       const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(matured_).to.equal(false);
+
+      await bob.BondDepository.redeemAll(bob.address, true);
+      expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(balance);
+    });
+
+    it('should not allow multiple Notes to be redeeemed before their vesting times have passed', async function () {
+      const [, , bob, carol] = users;
+
+      const balance = await TheopetraERC20Mock.balanceOf(bob.address);
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice * 1.01, bob.address, carol.address);
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+
+      expect(bobNotesIndexes.length).to.equal(2);
+      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, secondMatured_] = await BondDepository.pendingFor(bob.address, 1);
+
+      expect(matured_).to.equal(false);
+      expect(secondMatured_).to.equal(false);
 
       await bob.BondDepository.redeemAll(bob.address, true);
       expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(balance);
@@ -365,9 +417,9 @@ describe('Bond depository', function () {
 
       const balance = await TheopetraERC20Mock.balanceOf(bob.address);
       await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
-      
+
       const latestBlock = await ethers.provider.getBlock('latest');
-      const newTimestampInSeconds = latestBlock.timestamp + (vesting / 2);
+      const newTimestampInSeconds = latestBlock.timestamp + vesting / 2;
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
@@ -381,12 +433,20 @@ describe('Bond depository', function () {
     it('can be redeemed after the vesting time has passed', async function () {
       const [, , bob, carol] = users;
 
-      const [expectedPayout, ] = await bob.BondDepository.callStatic.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
+      const [expectedPayout] = await bob.BondDepository.callStatic.deposit(
+        bid,
+        depositAmount,
+        initialPrice,
+        bob.address,
+        carol.address
+      );
       await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
-      expect(Array(await BondDepository.indexesFor(bob.address)).length).to.equal(1);
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+
+      expect(bobNotesIndexes.length).to.equal(1);
 
       const latestBlock = await ethers.provider.getBlock('latest');
-      const newTimestampInSeconds = latestBlock.timestamp + (vesting * 2);
+      const newTimestampInSeconds = latestBlock.timestamp + vesting * 2;
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       await BondDepository.redeemAll(bob.address, true);
@@ -394,6 +454,45 @@ describe('Bond depository', function () {
 
       expect(bobBalance).to.greaterThanOrEqual(Number(await sTheoMock.balanceTo(expectedPayout)));
       expect(bobBalance).to.lessThan(Number(await sTheoMock.balanceTo(expectedPayout * 1.0001)));
+    });
+
+    it('allows redeeming of only matured Notes when a call is made to redeem multiple (all) Notes', async function () {
+      const [, , bob, carol] = users;
+
+      // First deposit
+      const [firstExpectedPayout] = await bob.BondDepository.callStatic.deposit(
+        bid,
+        depositAmount,
+        initialPrice,
+        bob.address,
+        carol.address
+      );
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
+
+      // Move time forward
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const newTimestampInSeconds = latestBlock.timestamp + vesting * 2;
+      await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+
+      // Second deposit
+      const [secondExpectedPayout] = await bob.BondDepository.callStatic.deposit(
+        bid,
+        depositAmount,
+        initialPrice * 1.01,
+        bob.address,
+        carol.address
+      );
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice * 1.01, bob.address, carol.address);
+
+      const totalExpectedPayoutsOverAllTime = firstExpectedPayout + secondExpectedPayout;
+
+      await BondDepository.redeemAll(bob.address, true);
+
+      const bobBalance = Number(await sTheoMock.balanceOf(bob.address));
+
+      expect(bobBalance).to.greaterThanOrEqual(Number(await sTheoMock.balanceTo(firstExpectedPayout)));
+      expect(bobBalance).to.lessThan(Number(await sTheoMock.balanceTo(firstExpectedPayout * 1.0001)));
+      expect(bobBalance).to.be.lessThan(Number(totalExpectedPayoutsOverAllTime));
     });
   });
 });

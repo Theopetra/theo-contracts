@@ -84,6 +84,10 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
 
     /**
      * @notice             redeem notes for user
+     * @dev                adapted from Olympus V2. Olympus V2 either sends payout as gOHM
+     *                     or calls an `unwrap` function on the staking contract
+     *                     to convert the payout from gOHM into sOHM and then send as sOHM. 
+     *                     This current contract sends payout as sTHEO if _sendStakedTHEO is true.
      * @param _user        the user to redeem for
      * @param _indexes     the note indexes to redeem
      * @param _sendStakedTHEO    send payout as sTHEO
@@ -107,8 +111,6 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
 
         if (_sendStakedTHEO) {
             sTHEO.transfer(_user, payout_); // send payout as sTHEO
-        } else {
-            staking.unwrap(_user, payout_); // unwrap and send payout as sTHEO
         }
     }
 
