@@ -24,11 +24,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     for (const key in MOCKSWITHARGS) {
       let args;
-
       if (key === 'treasuryMock' || key === 'stakingMock') {
         args = [namedMockAddresses.TheopetraERC20Mock];
       }
-
       const deployedMock: any = await deploy(MOCKSWITHARGS[key], {
         from: deployer,
         log: true,
