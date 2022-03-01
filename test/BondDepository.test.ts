@@ -394,6 +394,24 @@ describe('Bond depository', function () {
       expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(balance);
     });
 
+    it('should not be redeemable before the vesting time has passed', async function () {
+      const [, , bob, carol] = users;
+
+      const balance = await TheopetraERC20Mock.balanceOf(bob.address);
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
+
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const newTimestampInSeconds = latestBlock.timestamp + vesting / 2;
+      await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+
+      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
+
+      expect(matured_).to.equal(false);
+
+      await bob.BondDepository.redeemAll(bob.address, true);
+      expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(balance);
+    });
+
     it('should not allow multiple Notes to be redeeemed before their vesting times have passed', async function () {
       const [, , bob, carol] = users;
 
@@ -408,24 +426,6 @@ describe('Bond depository', function () {
 
       expect(matured_).to.equal(false);
       expect(secondMatured_).to.equal(false);
-
-      await bob.BondDepository.redeemAll(bob.address, true);
-      expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(balance);
-    });
-
-    it('should not be redeemable before the vesting time has passed', async function () {
-      const [, , bob, carol] = users;
-
-      const balance = await TheopetraERC20Mock.balanceOf(bob.address);
-      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
-
-      const latestBlock = await ethers.provider.getBlock('latest');
-      const newTimestampInSeconds = latestBlock.timestamp + vesting / 2;
-      await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
-
-      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
-
-      expect(matured_).to.equal(false);
 
       await bob.BondDepository.redeemAll(bob.address, true);
       expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(balance);
