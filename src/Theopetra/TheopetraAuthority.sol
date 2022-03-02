@@ -13,6 +13,8 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
 
     address public override policy;
 
+    address public override manager;
+
     address public override vault;
 
     address public newGovernor;
@@ -20,6 +22,8 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
     address public newGuardian;
 
     address public newPolicy;
+
+    address public newManager;
 
     address public newVault;
 
@@ -29,6 +33,7 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         address _governor,
         address _guardian,
         address _policy,
+        address _manager,
         address _vault
     ) TheopetraAccessControlled(ITheopetraAuthority(address(this))) {
         governor = _governor;
@@ -37,6 +42,8 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         emit GuardianPushed(address(0), guardian, true);
         policy = _policy;
         emit PolicyPushed(address(0), policy, true);
+        manager = _manager;
+        emit ManagerPushed(address(0), manager, true);
         vault = _vault;
         emit VaultPushed(address(0), vault, true);
     }
@@ -59,6 +66,12 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         if (_effectiveImmediately) policy = _newPolicy;
         newPolicy = _newPolicy;
         emit PolicyPushed(policy, newPolicy, _effectiveImmediately);
+    }
+
+    function pushManager(address _newManager, bool _effectiveImmediately) external onlyGovernor {
+        if (_effectiveImmediately) manager = _newManager;
+        newManager = _newManager;
+        emit ManagerPushed(manager, newManager, _effectiveImmediately);
     }
 
     function pushVault(address _newVault, bool _effectiveImmediately) external onlyGovernor {
@@ -85,6 +98,12 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         require(msg.sender == newPolicy, "!newPolicy");
         emit PolicyPulled(policy, newPolicy);
         policy = newPolicy;
+    }
+
+        function pullManager() external {
+        require(msg.sender == newManager, "!newManager");
+        emit ManagerPulled(manager, newManager);
+        manager = newManager;
     }
 
     function pullVault() external {
