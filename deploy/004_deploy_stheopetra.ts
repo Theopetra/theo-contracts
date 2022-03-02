@@ -11,9 +11,10 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   await deploy(CONTRACTS.sTheo, {
       from: deployer,
       log: true,
+      args: [deployer]
   });
 };
 
 export default func;
 func.tags = [CONTRACTS.sTheo];
-func.dependencies = [CONTRACTS.authority]
+func.dependencies = [CONTRACTS.authority];
