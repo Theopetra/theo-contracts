@@ -8,7 +8,7 @@ contract sTheopetra is ERC20Permit, TheopetraAccessControlled {
     using SafeMath for uint256;
 
     modifier onlyStakingContract() {
-        require(msg.sender == stakingContract);
+        require(msg.sender == stakingContract, "UNAUTHORIZED");
         _;
     }
 

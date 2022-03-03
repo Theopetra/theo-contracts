@@ -2,16 +2,17 @@ import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 
 import { setupUsers } from './utils';
-import { CONTRACTS } from '../utils/constants';
+import { CONTRACTS, MOCKSWITHARGS } from '../utils/constants';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.sTheo, CONTRACTS.authority]);
+  await deployments.fixture([CONTRACTS.sTheo, CONTRACTS.authority, MOCKSWITHARGS.stakingMock]);
   const { deployer: owner } = await getNamedAccounts();
 
   const contracts = {
     sTheopetra: await ethers.getContract(CONTRACTS.sTheo),
     TheopetraAuthority: await ethers.getContract(CONTRACTS.authority),
-  }
+    StakingMock: await ethers.getContract(MOCKSWITHARGS.stakingMock),
+  };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
@@ -19,6 +20,7 @@ const setup = deployments.createFixture(async () => {
     ...contracts,
     users,
     owner,
+    addressZero: '0x0000000000000000000000000000000000000000',
   };
 });
 
@@ -42,23 +44,40 @@ describe('sTheopetra', function () {
     });
   });
 
-  describe('Access control', async function () {
+  describe('initialize', function () {
+    it('initializes with the staking contract', async function () {
+      const { sTheopetra, StakingMock, addressZero } = await setup();
+      
+      expect(await sTheopetra.stakingContract()).to.equal(addressZero);
+      
+      await sTheopetra.initialize(StakingMock.address);
+      expect(await sTheopetra.stakingContract()).to.equal(StakingMock.address);
+    });
+  });
+
+  describe('Access control', function () {
     it('allows the manager (currently set as the deployer) to set the index', async function () {
-      // TODO: This test may be removed/updated in future (when modifying sTheo)
-      // It is included here as an initial test of access control
+      // This test may be removed/updated in future (when modifying sTheo)
+      // It is included here as an initial test of inclusion of TheopetraAccessControlled
       const { sTheopetra } = await setup();
 
       await sTheopetra.setIndex(10);
       expect(await sTheopetra.index()).to.equal(10);
-    })
+    });
 
     it('reverts if a user other than the manager makes a call to set the index', async function () {
-      // TODO: This test may be removed/updated in future (when modifying sTheo)
-      // It is included here as an initial test of access control
+      // This test may be removed/updated in future (when modifying sTheo)
+      // It is included here as an initial test of inclusion of TheopetraAccessControlled
       const { users } = await setup();
-      const [, alice, ] = users;
+      const [, alice] = users;
 
       await expect(alice.sTheopetra.setIndex(10)).to.be.revertedWith('UNAUTHORIZED');
+    });
+
+    it('reverts if a call to rebase is made from an account that is not the staking contract', async function () {
+      const { sTheopetra } = await setup();
+  
+      await expect(sTheopetra.rebase(50, 5)).to.be.revertedWith('UNAUTHORIZED');
     })
   });
-})
+});
