@@ -14,19 +14,19 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
     let epochLengthInBlocks;
     let firstEpochNumber;
-    let firstEpochTime;
+    let firstEpochBlock;
 
     // If on Hardhat network, use example values for testing
     if (chainId === '1337') {
-      epochLengthInBlocks = '1000';
-      firstEpochNumber = '800';
-      firstEpochTime = '1639430907';
+      epochLengthInBlocks = '2000';
+      firstEpochNumber = '1';
+      firstEpochBlock = '10';
     }
 
     await deploy(CONTRACTS.staking, {
       from: deployer,
       log: true,
-      args: [deployer, deployer, epochLengthInBlocks, firstEpochNumber, firstEpochTime, TheopetraAuthority.address],
+      args: [deployer, deployer, epochLengthInBlocks, firstEpochNumber, firstEpochBlock, TheopetraAuthority.address],
     });
   } catch (error) {
     console.log(error);

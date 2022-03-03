@@ -14,7 +14,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    address public immutable OHM;
+    address public immutable THEO;
     address public immutable sTHEO;
 
     struct Epoch {
@@ -34,16 +34,16 @@ contract TheopetraStaking is TheopetraAccessControlled {
     uint256 public warmupPeriod;
 
     constructor(
-        address _OHM,
+        address _THEO,
         address _sTHEO,
         uint256 _epochLength,
         uint256 _firstEpochNumber,
         uint256 _firstEpochBlock,
         address _authority
     ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {
-        require(_OHM != address(0));
-        OHM = _OHM;
-        require(_sTHEO != address(0));
+        require(_THEO != address(0), "Invalid address");
+        THEO = _THEO;
+        require(_sTHEO != address(0), "Invalid address");
         sTHEO = _sTHEO;
 
         epoch = Epoch({ length: _epochLength, number: _firstEpochNumber, endBlock: _firstEpochBlock, distribute: 0 });
@@ -58,14 +58,14 @@ contract TheopetraStaking is TheopetraAccessControlled {
     mapping(address => Claim) public warmupInfo;
 
     /**
-        @notice stake OHM to enter warmup
+        @notice stake THEO to enter warmup
         @param _amount uint
         @return bool
      */
     function stake(uint256 _amount, address _recipient) external returns (bool) {
         rebase();
 
-        IERC20(OHM).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20(THEO).safeTransferFrom(msg.sender, address(this), _amount);
 
         Claim memory info = warmupInfo[_recipient];
         require(!info.lock, "Deposits for account are locked");
@@ -94,14 +94,14 @@ contract TheopetraStaking is TheopetraAccessControlled {
     }
 
     /**
-        @notice forfeit sTHEO in warmup and retrieve OHM
+        @notice forfeit sTHEO in warmup and retrieve THEO
      */
     function forfeit() external {
         Claim memory info = warmupInfo[msg.sender];
         delete warmupInfo[msg.sender];
 
         IWarmup(warmupContract).retrieve(address(this), IsTHEO(sTHEO).balanceForGons(info.gons));
-        IERC20(OHM).safeTransfer(msg.sender, info.deposit);
+        IERC20(THEO).safeTransfer(msg.sender, info.deposit);
     }
 
     /**
@@ -112,7 +112,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
     }
 
     /**
-        @notice redeem sTHEO for OHM
+        @notice redeem sTHEO for THEO
         @param _amount uint
         @param _trigger bool
      */
@@ -121,7 +121,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
             rebase();
         }
         IERC20(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
-        IERC20(OHM).safeTransfer(msg.sender, _amount);
+        IERC20(THEO).safeTransfer(msg.sender, _amount);
     }
 
     /**
@@ -158,11 +158,11 @@ contract TheopetraStaking is TheopetraAccessControlled {
     }
 
     /**
-        @notice returns contract OHM holdings, including bonuses provided
+        @notice returns contract THEO holdings, including bonuses provided
         @return uint
      */
     function contractBalance() public view returns (uint256) {
-        return IERC20(OHM).balanceOf(address(this)).add(totalBonus);
+        return IERC20(THEO).balanceOf(address(this)).add(totalBonus);
     }
 
     /**
