@@ -6,14 +6,14 @@ import { CONTRACTS } from '../utils/constants';
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
-
-  const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
   const { deployer } = await getNamedAccounts();
 
+  const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
+
   await deploy(CONTRACTS.sTheo, {
-      from: deployer,
-      log: true,
-      args: [TheopetraAuthority.address]
+    from: deployer,
+    log: true,
+    args: [TheopetraAuthority.address],
   });
 };
 

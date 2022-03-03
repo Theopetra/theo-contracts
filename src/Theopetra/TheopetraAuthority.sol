@@ -100,7 +100,7 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         policy = newPolicy;
     }
 
-        function pullManager() external {
+    function pullManager() external {
         require(msg.sender == newManager, "!newManager");
         emit ManagerPulled(manager, newManager);
         manager = newManager;

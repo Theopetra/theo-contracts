@@ -47,9 +47,9 @@ describe('sTheopetra', function () {
   describe('initialize', function () {
     it('initializes with the staking contract', async function () {
       const { sTheopetra, StakingMock, addressZero } = await setup();
-      
+
       expect(await sTheopetra.stakingContract()).to.equal(addressZero);
-      
+
       await sTheopetra.initialize(StakingMock.address);
       expect(await sTheopetra.stakingContract()).to.equal(StakingMock.address);
     });
@@ -76,8 +76,8 @@ describe('sTheopetra', function () {
 
     it('reverts if a call to rebase is made from an account that is not the staking contract', async function () {
       const { sTheopetra } = await setup();
-  
+
       await expect(sTheopetra.rebase(50, 5)).to.be.revertedWith('UNAUTHORIZED');
-    })
+    });
   });
 });
