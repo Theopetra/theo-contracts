@@ -3,6 +3,7 @@ export const CONTRACTS: Record<string, string> = {
   theoToken: 'TheopetraERC20Token',
   bondDepo: 'TheopetraBondDepository',
   staking: 'TheopetraStaking',
+  sTheo: 'sTheopetra',
 };
 
 export const MOCKS: Record<string, string> = {
