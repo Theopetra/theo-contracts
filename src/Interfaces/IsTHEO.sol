@@ -4,15 +4,17 @@ pragma solidity >=0.7.5;
 import "./IERC20.sol";
 
 interface IsTHEO is IERC20 {
-    function mint(address _to, uint256 _amount) external;
+    function rebase(uint256 ohmProfit_, uint256 epoch_) external returns (uint256);
 
-    function burn(address _from, uint256 _amount) external;
+    function circulatingSupply() external view returns (uint256);
+
+    function balanceOf(address who) external view override returns (uint256);
+
+    function gonsForBalance(uint256 amount) external view returns (uint256);
+
+    function balanceForGons(uint256 gons) external view returns (uint256);
 
     function index() external view returns (uint256);
 
-    function balanceFrom(uint256 _amount) external view returns (uint256);
-
     function balanceTo(uint256 _amount) external view returns (uint256);
-
-    function migrate(address _staking, address _sTHEO) external;
 }

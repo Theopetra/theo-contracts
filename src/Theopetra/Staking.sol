@@ -7,7 +7,7 @@ import "../Libraries/SafeMath.sol";
 import "../Libraries/SafeERC20.sol";
 
 import "../Interfaces/IDistributor.sol";
-import "../Interfaces/IsTHEO1.sol";
+import "../Interfaces/IsTHEO.sol";
 import "../Interfaces/IWarmup.sol";
 
 contract TheopetraStaking is TheopetraAccessControlled {
