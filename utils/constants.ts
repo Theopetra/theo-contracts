@@ -2,6 +2,7 @@ export const CONTRACTS: Record<string, string> = {
   authority: 'TheopetraAuthority',
   theoToken: 'TheopetraERC20Token',
   bondDepo: 'TheopetraBondDepository',
+  sTheo: 'sTheopetra',
 };
 
 export const MOCKS: Record<string, string> = {

@@ -38,6 +38,11 @@ abstract contract TheopetraAccessControlled {
         _;
     }
 
+    modifier onlyManager() {
+        require(msg.sender == authority.manager(), UNAUTHORIZED);
+        _;
+    }
+
     modifier onlyVault() {
         require(msg.sender == authority.vault(), UNAUTHORIZED);
         _;
