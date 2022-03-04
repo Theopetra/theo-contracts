@@ -1,10 +1,9 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
-import { TheopetraStaking__factory } from '../../next-app/src/typechain';
 import { BigNumber } from 'ethers';
 
 import { setupUsers } from './utils';
-import { CONTRACTS, MOCKSWITHARGS } from '../utils/constants';
+import { CONTRACTS } from '../utils/constants';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture([CONTRACTS.staking, CONTRACTS.authority]);
