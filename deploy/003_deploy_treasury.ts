@@ -24,7 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     const { TheopetraERC20Mock } = namedMockAddresses;
-    args = [TheopetraERC20Mock, deployer];
+    args = [TheopetraERC20Mock, deployer, deployer];
   }
 
   await deploy('TheopetraTreasury', {

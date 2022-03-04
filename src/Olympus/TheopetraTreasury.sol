@@ -7,8 +7,9 @@ import "../Libraries/SafeERC20.sol";
 import "../Interfaces/IERC20Mintable.sol";
 import "../Interfaces/ITHEOERC20.sol";
 import "../Interfaces/IBondCalculator.sol";
+import '../Types/TheopetraAccessControlled.sol';
 
-contract TheopetraTreasury is Ownable {
+contract TheopetraTreasury is TheopetraAccessControlled {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -84,7 +85,7 @@ contract TheopetraTreasury is Ownable {
     uint256 public totalReserves; // Risk-free value of all assets
     uint256 public totalDebt;
 
-    constructor(address _THEO, uint256 _blocksNeededForQueue) {
+    constructor(address _THEO, uint256 _blocksNeededForQueue, ITheopetraAuthority _authority) TheopetraAccessControlled(_authority) {
         require(_THEO != address(0));
         THEO = _THEO;
 
@@ -252,7 +253,7 @@ contract TheopetraTreasury is Ownable {
         @notice takes inventory of all tracked assets
         @notice always consolidate to recognized reserves before audit
      */
-    function auditReserves() external onlyManager {
+    function auditReserves() external onlyGovernor {
         uint256 reserves;
         for (uint256 i = 0; i < reserveTokens.length; i++) {
             reserves = reserves.add(valueOf(reserveTokens[i], IERC20(reserveTokens[i]).balanceOf(address(this))));
@@ -286,7 +287,7 @@ contract TheopetraTreasury is Ownable {
         @param _address address
         @return bool
      */
-    function queue(MANAGING _managing, address _address) external onlyManager returns (bool) {
+    function queue(MANAGING _managing, address _address) external onlyGovernor returns (bool) {
         require(_address != address(0));
         if (_managing == MANAGING.RESERVEDEPOSITOR) {
             // 0
@@ -335,7 +336,7 @@ contract TheopetraTreasury is Ownable {
         MANAGING _managing,
         address _address,
         address _calculator
-    ) external onlyManager returns (bool) {
+    ) external onlyGovernor returns (bool) {
         require(_address != address(0));
         bool result;
         if (_managing == MANAGING.RESERVEDEPOSITOR) {
