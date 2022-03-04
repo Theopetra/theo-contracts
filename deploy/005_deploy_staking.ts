@@ -9,14 +9,14 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     const { deploy } = deployments;
     const { deployer } = await getNamedAccounts();
     const chainId = await getChainId();
-    
+
     const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
 
     let epochLengthInBlocks;
     let firstEpochNumber;
     let firstEpochBlock;
     let args: any = [];
-    
+
     // If on Hardhat network, use the following values for testing
     if (chainId === '1337') {
       epochLengthInBlocks = '2000';
