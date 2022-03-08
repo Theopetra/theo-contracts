@@ -87,16 +87,14 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
      * @dev                adapted from Olympus V2. Olympus V2 either sends payout as gOHM
      *                     or calls an `unwrap` function on the staking contract
      *                     to convert the payout from gOHM into sOHM and then send as sOHM.
-     *                     This current contract sends payout as sTHEO if _sendStakedTHEO is true.
+     *                     This current contract sends payout as sTHEO.
      * @param _user        the user to redeem for
      * @param _indexes     the note indexes to redeem
-     * @param _sendStakedTHEO    send payout as sTHEO
      * @return payout_     sum of payout sent, in sTHEO
      */
     function redeem(
         address _user,
-        uint256[] memory _indexes,
-        bool _sendStakedTHEO
+        uint256[] memory _indexes
     ) public override returns (uint256 payout_) {
         uint48 time = uint48(block.timestamp);
 
@@ -109,20 +107,18 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
             }
         }
 
-        if (_sendStakedTHEO) {
             sTHEO.transfer(_user, payout_); // send payout as sTHEO
-        }
+
     }
 
     /**
      * @notice             redeem all redeemable markets for user
      * @dev                if possible, query indexesFor() off-chain and input in redeem() to save gas
      * @param _user        user to redeem all notes for
-     * @param _sendStakedTHEO    send payout as sTHEO
      * @return             sum of payout sent, in sTHEO
      */
-    function redeemAll(address _user, bool _sendStakedTHEO) external override returns (uint256) {
-        return redeem(_user, indexesFor(_user), _sendStakedTHEO);
+    function redeemAll(address _user) external override returns (uint256) {
+        return redeem(_user, indexesFor(_user));
     }
 
     /* ========== TRANSFER ========== */

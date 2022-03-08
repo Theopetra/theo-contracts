@@ -390,7 +390,7 @@ describe('Bond depository', function () {
 
       expect(matured_).to.equal(false);
 
-      await bob.BondDepository.redeemAll(bob.address, true);
+      await bob.BondDepository.redeemAll(bob.address);
       expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(balance);
     });
 
@@ -408,7 +408,7 @@ describe('Bond depository', function () {
 
       expect(matured_).to.equal(false);
 
-      await bob.BondDepository.redeemAll(bob.address, true);
+      await bob.BondDepository.redeemAll(bob.address);
       expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(balance);
     });
 
@@ -427,7 +427,7 @@ describe('Bond depository', function () {
       expect(matured_).to.equal(false);
       expect(secondMatured_).to.equal(false);
 
-      await bob.BondDepository.redeemAll(bob.address, true);
+      await bob.BondDepository.redeemAll(bob.address);
       expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(balance);
     });
 
@@ -450,7 +450,7 @@ describe('Bond depository', function () {
       const newTimestampInSeconds = latestBlock.timestamp + vesting * 2;
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
-      await BondDepository.redeemAll(bob.address, true);
+      await BondDepository.redeemAll(bob.address);
       const bobBalance = Number(await sTheoMock.balanceOf(bob.address));
 
       expect(bobBalance).to.greaterThanOrEqual(Number(await sTheoMock.balanceTo(expectedPayout)));
@@ -487,7 +487,7 @@ describe('Bond depository', function () {
 
       const totalExpectedPayoutsOverAllTime = firstExpectedPayout + secondExpectedPayout;
 
-      await BondDepository.redeemAll(bob.address, true);
+      await BondDepository.redeemAll(bob.address);
 
       const bobBalance = Number(await sTheoMock.balanceOf(bob.address));
 
