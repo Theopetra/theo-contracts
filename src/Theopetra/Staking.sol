@@ -34,6 +34,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
     address public warmupContract;
     uint256 public warmupPeriod;
 
+    uint256 private gonsInWarmup;
+
     constructor(
         address _THEO,
         address _sTHEO,
@@ -87,6 +89,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 lock: info.lock
             });
 
+            gonsInWarmup = gonsInWarmup.add(IsTHEO(sTHEO).gonsForBalance(_amount));
+
             return _amount;
         }
     }
@@ -95,7 +99,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @notice retrieve sTHEO from warmup
         @param _recipient address
      */
-    function claim(address _recipient) public {
+    function claim(address _recipient) public returns (uint256) {
         Claim memory info = warmupInfo[_recipient];
 
         if (!info.lock) {
@@ -104,8 +108,14 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
         if (epoch.number >= info.expiry && info.expiry != 0) {
             delete warmupInfo[_recipient];
-            IWarmup(warmupContract).retrieve(_recipient, IsTHEO(sTHEO).balanceForGons(info.gons));
+
+            gonsInWarmup = gonsInWarmup.sub(info.gons);
+
+            // IWarmup(warmupContract).retrieve(_recipient, IsTHEO(sTHEO).balanceForGons(info.gons));
+            return _send(_recipient, IsTHEO(sTHEO).balanceForGons(info.gons));
         }
+
+        return 0;
     }
 
     /**
@@ -115,7 +125,9 @@ contract TheopetraStaking is TheopetraAccessControlled {
         Claim memory info = warmupInfo[msg.sender];
         delete warmupInfo[msg.sender];
 
-        IWarmup(warmupContract).retrieve(address(this), IsTHEO(sTHEO).balanceForGons(info.gons));
+        // IWarmup(warmupContract).retrieve(address(this), IsTHEO(sTHEO).balanceForGons(info.gons));
+        gonsInWarmup = gonsInWarmup.sub(info.gons);
+
         IERC20(THEO).safeTransfer(msg.sender, info.deposit);
     }
 
@@ -137,14 +149,6 @@ contract TheopetraStaking is TheopetraAccessControlled {
         }
         IERC20(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
         IERC20(THEO).safeTransfer(msg.sender, _amount);
-    }
-
-    /**
-        @notice returns the sTHEO index, which tracks rebase growth
-        @return uint
-     */
-    function index() public view returns (uint256) {
-        return IsTHEO(sTHEO).index();
     }
 
     /**
@@ -243,5 +247,22 @@ contract TheopetraStaking is TheopetraAccessControlled {
     function _send(address _recipient, uint256 _amount) internal returns (uint256) {
         IsTHEO(sTHEO).safeTransfer(_recipient, _amount);
         return _amount;
+    }
+
+    /* ========== VIEW FUNCTIONS ========== */
+
+    /**
+        @notice returns the sTHEO index, which tracks rebase growth
+        @return uint
+     */
+    function index() public view returns (uint256) {
+        return IsTHEO(sTHEO).index();
+    }
+
+    /**
+     * @notice total supply in warmup
+     */
+    function supplyInWarmup() public view returns (uint256) {
+        return IsTHEO(sTHEO).balanceForGons(gonsInWarmup);
     }
 }
