@@ -15,7 +15,7 @@ const setup = deployments.createFixture(async () => {
     ...contracts,
     users,
     owner,
-    addressZero: '0x0000000000000000000000000000000000000000',
+    addressZero: ethers.utils.getAddress('0x0000000000000000000000000000000000000000'),
   };
 });
 

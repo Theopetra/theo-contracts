@@ -62,7 +62,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         // the new note is pushed to the user's array
         notes[_user].push(
             Note({
-                payout: sTHEO.balanceTo(_payout),
+                payout: _payout,
                 created: uint48(block.timestamp),
                 matured: _expiry,
                 redeemed: 0,
