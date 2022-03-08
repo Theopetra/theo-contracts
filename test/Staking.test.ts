@@ -166,7 +166,7 @@ describe('Staking', function () {
       const claim = true;
 
       // Mint enough to allow transfers when claiming staked THEO
-      // await sTheoMock.mint(Staking.address, '1000000000000000000000');
+      await sTheoMock.mint(Staking.address, '1000000000000000000000');
       await bob.Staking.stake(amountToStake, bob.address, claim);
       
     })

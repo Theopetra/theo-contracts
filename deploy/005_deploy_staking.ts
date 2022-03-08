@@ -21,7 +21,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     if (chainId === '1337') {
       epochLengthInBlocks = '2000';
       firstEpochNumber = '1';
-      firstEpochBlock = '10'; // Sets the rebase far enough in the future to not hit it in tests
+      firstEpochBlock = '10000'; // Sets the rebase far enough in the future to not hit it in tests
 
       // Update args with addresses of already-deployed mocks
       const namedMockAddresses: Record<any, any> = {};
