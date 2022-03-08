@@ -453,8 +453,8 @@ describe('Bond depository', function () {
       await BondDepository.redeemAll(bob.address, true);
       const bobBalance = Number(await sTheoMock.balanceOf(bob.address));
 
-      expect(bobBalance).to.greaterThanOrEqual(Number(await sTheoMock.balanceTo(expectedPayout)));
-      expect(bobBalance).to.lessThan(Number(await sTheoMock.balanceTo(expectedPayout * 1.0001)));
+      expect(bobBalance).to.greaterThanOrEqual(Number(expectedPayout));
+      expect(bobBalance).to.lessThan(Number(expectedPayout) * 1.0001);
     });
 
     it('allows redeeming of only matured Notes when a call is made to redeem multiple (all) Notes', async function () {
@@ -491,8 +491,8 @@ describe('Bond depository', function () {
 
       const bobBalance = Number(await sTheoMock.balanceOf(bob.address));
 
-      expect(bobBalance).to.greaterThanOrEqual(Number(await sTheoMock.balanceTo(firstExpectedPayout)));
-      expect(bobBalance).to.lessThan(Number(await sTheoMock.balanceTo(firstExpectedPayout * 1.0001)));
+      expect(bobBalance).to.greaterThanOrEqual(Number(firstExpectedPayout));
+      expect(bobBalance).to.lessThan(Number(firstExpectedPayout * 1.0001));
       expect(bobBalance).to.be.lessThan(Number(totalExpectedPayoutsOverAllTime));
     });
   });

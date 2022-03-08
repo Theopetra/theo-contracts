@@ -15,6 +15,4 @@ interface IsTHEO is IERC20 {
     function balanceForGons(uint256 gons) external view returns (uint256);
 
     function index() external view returns (uint256);
-
-    function balanceTo(uint256 _amount) external view returns (uint256);
 }
