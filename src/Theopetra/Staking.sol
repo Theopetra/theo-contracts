@@ -13,6 +13,7 @@ import "../Interfaces/IWarmup.sol";
 contract TheopetraStaking is TheopetraAccessControlled {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
+    using SafeERC20 for IsTHEO;
 
     address public immutable THEO;
     address public immutable sTHEO;
@@ -60,25 +61,34 @@ contract TheopetraStaking is TheopetraAccessControlled {
     /**
         @notice stake THEO to enter warmup
         @param _amount uint
-        @return bool
+        @param _claim bool
+        @return uint256
      */
-    function stake(uint256 _amount, address _recipient) external returns (bool) {
+    function stake(
+        uint256 _amount,
+        address _recipient,
+        bool _claim
+    ) external returns (uint256) {
         rebase();
 
         IERC20(THEO).safeTransferFrom(msg.sender, address(this), _amount);
 
-        Claim memory info = warmupInfo[_recipient];
-        require(!info.lock, "Deposits for account are locked");
+        if (_claim && warmupPeriod == 0) {
+            return _send(_recipient, _amount);
+        } else {
+            Claim memory info = warmupInfo[_recipient];
+            if (!info.lock) {
+                require(_recipient == msg.sender, "External deposits for account are locked");
+            }
+            warmupInfo[_recipient] = Claim({
+                deposit: info.deposit.add(_amount),
+                gons: info.gons.add(IsTHEO(sTHEO).gonsForBalance(_amount)),
+                expiry: epoch.number.add(warmupPeriod),
+                lock: info.lock
+            });
 
-        warmupInfo[_recipient] = Claim({
-            deposit: info.deposit.add(_amount),
-            gons: info.gons.add(IsTHEO(sTHEO).gonsForBalance(_amount)),
-            expiry: epoch.number.add(warmupPeriod),
-            lock: false
-        });
-
-        IERC20(sTHEO).safeTransfer(warmupContract, _amount);
-        return true;
+            return _amount;
+        }
     }
 
     /**
@@ -87,6 +97,11 @@ contract TheopetraStaking is TheopetraAccessControlled {
      */
     function claim(address _recipient) public {
         Claim memory info = warmupInfo[_recipient];
+
+        if (!info.lock) {
+            require(_recipient == msg.sender, "External claims for account are locked");
+        }
+
         if (epoch.number >= info.expiry && info.expiry != 0) {
             delete warmupInfo[_recipient];
             IWarmup(warmupContract).retrieve(_recipient, IsTHEO(sTHEO).balanceForGons(info.gons));
@@ -216,5 +231,17 @@ contract TheopetraStaking is TheopetraAccessControlled {
      */
     function setWarmup(uint256 _warmupPeriod) external onlyManager {
         warmupPeriod = _warmupPeriod;
+    }
+
+    /* ========== INTERNAL FUNCTIONS ========== */
+
+    /**
+     * @notice send staker their amount as sTHEO (equal unit as THEO)
+     * @param _recipient address
+     * @param _amount uint
+     */
+    function _send(address _recipient, uint256 _amount) internal returns (uint256) {
+        IsTHEO(sTHEO).safeTransfer(_recipient, _amount);
+        return _amount;
     }
 }
