@@ -15,5 +15,6 @@ export const MOCKS: Record<string, string> = {
 
 export const MOCKSWITHARGS: Record<string, string> = {
   treasuryMock: 'TreasuryMock',
+  bondDepoMock: 'TheopetraBondDepositoryMock',
   stakingMock: 'StakingMock',
 };

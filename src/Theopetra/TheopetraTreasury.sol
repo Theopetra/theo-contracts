@@ -70,7 +70,6 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     uint256 public totalReserves;
     uint256 public totalDebt;
     uint256 public theoDebt;
-
     Queue[] public permissionQueue;
     uint256 public immutable blocksNeededForQueue;
 
@@ -78,22 +77,27 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     bool public initialized;
 
     uint256 public onChainGovernanceTimelock;
+    bytes32 public constant BOND_ROLE = keccak256("BOND_ROLE");
 
     string internal notAccepted = "Treasury: not accepted";
     string internal notApproved = "Treasury: not approved";
     string internal invalidToken = "Treasury: invalid token";
     string internal insufficientReserves = "Treasury: insufficient reserves";
 
+    address internal bondDepo;
+
     /* ========== CONSTRUCTOR ========== */
 
     constructor(
         address _theo,
         uint256 _timelock,
-        address _authority
+        address _authority,
+        address _bondDepo
     ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {
         require(_theo != address(0), "Zero address: THEO");
         THEO = ITHEO(_theo);
 
+        bondDepo = _bondDepo;
         timelockEnabled = false;
         initialized = false;
         blocksNeededForQueue = _timelock;
@@ -178,7 +182,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      * @param _amount uint256
      */
     function mint(address _recipient, uint256 _amount) external override {
-        require(permissions[STATUS.REWARDMANAGER][msg.sender], notApproved);
+        require(msg.sender == bondDepo, "Caller is not a BondDepo");
         require(_amount <= excessReserves(), insufficientReserves);
         THEO.mint(_recipient, _amount);
         emit Minted(msg.sender, _recipient, _amount);
