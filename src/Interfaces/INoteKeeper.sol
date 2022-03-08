@@ -11,10 +11,7 @@ interface INoteKeeper {
         uint48 marketID; // market ID of deposit. uint48 to avoid adding a slot.
     }
 
-    function redeem(
-        address _user,
-        uint256[] memory _indexes
-    ) external returns (uint256);
+    function redeem(address _user, uint256[] memory _indexes) external returns (uint256);
 
     function redeemAll(address _user) external returns (uint256);
 
