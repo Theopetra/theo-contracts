@@ -297,11 +297,22 @@ describe('Staking', function () {
       expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
     });
 
-    it.only('does nothing when there is nothing to claim', async function () {
+    it('does not transfer any sTHEO when there is no claim', async function () {
       const [, bob] = users;
 
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
       await bob.Staking.claim(bob.address);
-      
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
     });
+
+    it('does not transfer any sTHEO while the claim is still in warmup', async function () {
+      const [, bob] = users;
+      await Staking.setWarmup(2);
+      await createClaim();
+
+      await bob.Staking.claim(bob.address);
+      expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
+    })
   })
 });

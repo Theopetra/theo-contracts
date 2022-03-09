@@ -114,7 +114,6 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
             gonsInWarmup = gonsInWarmup.sub(info.gons);
 
-            // IWarmup(warmupContract).retrieve(_recipient, IsTHEO(sTHEO).balanceForGons(info.gons));
             return _send(_recipient, IsTHEO(sTHEO).balanceForGons(info.gons));
         }
 
