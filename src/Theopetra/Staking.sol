@@ -8,11 +8,13 @@ import "../Libraries/SafeERC20.sol";
 
 import "../Interfaces/IDistributor.sol";
 import "../Interfaces/IsTHEO.sol";
+import "../Interfaces/ITHEO.sol";
 
 contract TheopetraStaking is TheopetraAccessControlled {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using SafeERC20 for IsTHEO;
+    using SafeERC20 for ITHEO;
 
     address public immutable THEO;
     address public immutable sTHEO;
@@ -139,23 +141,52 @@ contract TheopetraStaking is TheopetraAccessControlled {
         warmupInfo[msg.sender].lock = !warmupInfo[msg.sender].lock;
     }
 
+    // /**
+    //     @notice redeem sTHEO for THEO
+    //     @param _amount uint
+    //     @param _trigger bool
+    //  */
+    // function unstake(address recipient, uint256 _amount, bool _trigger) external {
+    //     if (_trigger) {
+    //         rebase();
+    //     }
+    //     IERC20(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
+
+    //     require(_amount <= THEO.balanceOf(address(this)), "Insufficient THEO balance in contract");
+    //     IERC20(THEO).safeTransfer(msg.sender, _amount);
+    // }
+
     /**
-        @notice redeem sTHEO for THEO
-        @param _amount uint
-        @param _trigger bool
+     * @notice redeem sTHEO for THEO
+     * @param _to address
+     * @param _amount uint
+     * @param _trigger bool
+     * @return amount_ uint
      */
-    function unstake(uint256 _amount, bool _trigger) external {
+    function unstake(
+        address _to,
+        uint256 _amount,
+        bool _trigger
+    ) external returns (uint256 amount_) {
+        amount_ = _amount;
+        uint256 bounty;
         if (_trigger) {
-            rebase();
+            bounty = rebase();
         }
-        IERC20(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
-        IERC20(THEO).safeTransfer(msg.sender, _amount);
+
+        IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
+        amount_ = amount_.add(bounty);
+
+        require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
+        ITHEO(THEO).safeTransfer(_to, amount_);
     }
 
     /**
         @notice trigger rebase if epoch over
+        @return uint256
      */
-    function rebase() public {
+    function rebase() public returns (uint256) {
+        uint256 bounty;
         if (epoch.endBlock <= block.number) {
             IsTHEO(sTHEO).rebase(epoch.distribute, epoch.number);
 
@@ -164,17 +195,19 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
             if (distributor != address(0)) {
                 IDistributor(distributor).distribute();
+                bounty = IDistributor(distributor).retrieveBounty(); // Will mint ohm for this contract if there exists a bounty
             }
 
             uint256 balance = contractBalance();
             uint256 staked = IsTHEO(sTHEO).circulatingSupply();
 
-            if (balance <= staked) {
+            if (balance <= staked.add(bounty)) {
                 epoch.distribute = 0;
             } else {
-                epoch.distribute = balance.sub(staked);
+                epoch.distribute = balance.sub(staked).sub(bounty);
             }
         }
+        return bounty;
     }
 
     /**

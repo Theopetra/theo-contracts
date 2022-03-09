@@ -235,7 +235,21 @@ describe('Staking', function () {
 
   describe('Unstake', function () {
     it('allows a staker to redeem their sTHEO for THEO', async function () {
-      
+      const [, bob] = users;
+      const claim = true;
+
+      const bobStartingTheoBalance = Number(await TheopetraERC20Mock.balanceOf(bob.address));
+
+      await bob.Staking.stake(amountToStake, bob.address, claim);
+
+      expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(bobStartingTheoBalance - amountToStake);
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+
+      await bob.sTheoMock.approve(Staking.address, amountToStake);
+      await bob.Staking.unstake(bob.address, amountToStake, false);
+
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
+      expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(bobStartingTheoBalance);
     });
   })
 });
