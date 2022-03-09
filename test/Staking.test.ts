@@ -27,6 +27,30 @@ const setup = deployments.createFixture(async () => {
 });
 
 describe('Staking', function () {
+  const amountToStake = 1000;
+  const LARGE_APPROVAL = '100000000000000000000000000000000';
+
+  let Staking: any;
+  let sTheoMock: any;
+  let TheopetraAuthority: any;
+  let TheopetraERC20Mock: any;
+  let users: any;
+  let owner: any;
+  let addressZero: any;
+
+  beforeEach(async function () {
+    ({ Staking, sTheoMock, TheopetraAuthority, TheopetraERC20Mock, users, owner, addressZero } = await setup());
+
+    const [, bob, carol] = users;
+
+    await TheopetraERC20Mock.mint(bob.address, '10000000000000');
+    await bob.TheopetraERC20Mock.approve(Staking.address, LARGE_APPROVAL);
+    await carol.TheopetraERC20Mock.approve(Staking.address, LARGE_APPROVAL);
+
+    // Mint enough to allow transfers when claiming staked THEO
+    await sTheoMock.mint(Staking.address, '1000000000000000000000');
+  });
+  
   describe('Deployment', function () {
     const epochLengthInBlocks = 2000; // Same value as used in deployment script for Hardhat network deployment
     const firstEpochNumber = 1; // Same value as used in deployment script for Hardhat network deployment
@@ -37,10 +61,8 @@ describe('Staking', function () {
     });
 
     it('is deployed with the correct constructor arguments', async function () {
-      const { Staking, sTheoMock, TheopetraAuthority, TheopetraERC20Mock, owner } = await setup();
-
-      expect(await Staking.THEO()).to.equal(TheopetraERC20Mock.address); // Just using owner address for now, rather than a mock
-      expect(await Staking.sTHEO()).to.equal(sTheoMock.address); // Just using owner address for now, rather than a mock
+      expect(await Staking.THEO()).to.equal(TheopetraERC20Mock.address);
+      expect(await Staking.sTHEO()).to.equal(sTheoMock.address);
 
       const epoch = await Staking.epoch();
 
@@ -52,8 +74,6 @@ describe('Staking', function () {
     });
 
     it('will revert if deployment is attempted with a zero address for THEO', async function () {
-      const { addressZero, TheopetraAuthority, owner } = await setup();
-
       await expect(
         deployments.deploy(CONTRACTS.staking, {
           from: owner,
@@ -70,8 +90,6 @@ describe('Staking', function () {
     });
 
     it('will revert if deployment is attempted with a zero address for sTHEO', async function () {
-      const { addressZero, TheopetraAuthority, owner } = await setup();
-
       await expect(
         deployments.deploy(CONTRACTS.staking, {
           from: owner,
@@ -90,14 +108,12 @@ describe('Staking', function () {
 
   describe('setContract', function () {
     it('should allw the manager to set a contract address for LP staking', async function () {
-      const { Staking, users } = await setup();
       const [, alice] = users;
       await Staking.setContract(0, alice.address); // set distributor
       expect(await Staking.distributor()).to.equal(alice.address);
     });
 
     it('should revert if called by an address other than the manager', async function () {
-      const { users } = await setup();
       const [, alice] = users;
       await expect(alice.Staking.setContract(0, alice.address)).to.be.revertedWith('UNAUTHORIZED');
     });
@@ -105,47 +121,22 @@ describe('Staking', function () {
 
   describe('Warmup', function () {
     it('should have a warmup period of zero when the contract is initialized', async function () {
-      const { Staking } = await setup();
-
       expect(await Staking.warmupPeriod()).to.equal(0);
     });
 
     it('setWarmup, should allow the manager to set a warmup period for new stakers', async function () {
-      const { Staking } = await setup();
       expect(await Staking.warmupPeriod()).to.equal(0);
       await Staking.setWarmup(5);
       expect(await Staking.warmupPeriod()).to.equal(5);
     });
 
     it('setWarmup, should revert if called by an address other than the manager', async function () {
-      const { users } = await setup();
       const [, alice] = users;
       await expect(alice.Staking.setWarmup(1)).to.be.revertedWith('UNAUTHORIZED');
     });
   });
 
   describe('stake', function () {
-    const amountToStake = 1000;
-    const LARGE_APPROVAL = '100000000000000000000000000000000';
-
-    let Staking: any;
-    let sTheoMock: any;
-    let TheopetraERC20Mock: any;
-    let users: any;
-
-    beforeEach(async function () {
-      ({ Staking, sTheoMock, TheopetraERC20Mock, users } = await setup());
-
-      const [, bob, carol] = users;
-
-      await TheopetraERC20Mock.mint(bob.address, '10000000000000');
-      await bob.TheopetraERC20Mock.approve(Staking.address, LARGE_APPROVAL);
-      await carol.TheopetraERC20Mock.approve(Staking.address, LARGE_APPROVAL);
-
-      // Mint enough to allow transfers when claiming staked THEO
-      await sTheoMock.mint(Staking.address, '1000000000000000000000');
-    });
-
     it('adds a Claim for the staked _amount to the warmup when _claim is false and warmupPeriod is zero', async function () {
       const [, bob] = users;
       const claim = false;
@@ -204,7 +195,6 @@ describe('Staking', function () {
 
     it('includes a toggle for locking external deposits', async function () {
       const [, bob] = users;
-      const claim = false;
 
       await bob.Staking.toggleDepositLock();
       const warmupInfo = await Staking.warmupInfo(bob.address);
@@ -241,7 +231,11 @@ describe('Staking', function () {
 
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
     });
-
-    
   });
+
+  describe('Unstake', function () {
+    it('allows a staker to redeem their sTHEO for THEO', async function () {
+      
+    });
+  })
 });
