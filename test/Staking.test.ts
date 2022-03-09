@@ -137,7 +137,7 @@ describe('Staking', function () {
   });
 
   describe('stake', function () {
-    it('adds a Claim for the staked _amount to the warmup when _claim is false and warmupPeriod is zero', async function () {
+    it('adds a Claim for the staked _amount to the warmup when `_claim` is false and `warmupPeriod` is zero', async function () {
       const [, bob] = users;
       const claim = false;
 
@@ -161,7 +161,7 @@ describe('Staking', function () {
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake); // sTheoMock.gonsForBalance(amount) returns amount
     });
 
-    it('allows the staker to claim sTHEO immediately if _claim is true and warmup is zero', async function () {
+    it('allows the staker to claim sTHEO immediately if `_claim` is true and warmup is zero', async function () {
       const [, bob] = users;
       const claim = true;
 
