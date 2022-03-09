@@ -50,7 +50,7 @@ describe('Staking', function () {
     // Mint enough to allow transfers when claiming staked THEO
     await sTheoMock.mint(Staking.address, '1000000000000000000000');
   });
-  
+
   describe('Deployment', function () {
     const epochLengthInBlocks = 2000; // Same value as used in deployment script for Hardhat network deployment
     const firstEpochNumber = 1; // Same value as used in deployment script for Hardhat network deployment
@@ -192,7 +192,6 @@ describe('Staking', function () {
       expect(warmupInfo.expiry).to.equal(Number(epochInfo.number) + warmupPeriod);
     });
 
-
     it('includes a toggle for locking Claims (to prevent new deposits or claims to/from external address)', async function () {
       const [, bob] = users;
 
@@ -205,7 +204,9 @@ describe('Staking', function () {
       const [, bob, carol] = users;
       const claim = false;
 
-      await expect(bob.Staking.stake(amountToStake, carol.address, claim)).to.be.revertedWith("External deposits for account are locked");
+      await expect(bob.Staking.stake(amountToStake, carol.address, claim)).to.be.revertedWith(
+        'External deposits for account are locked'
+      );
     });
 
     it('allows an external deposit when recipient toggles their Claim lock', async function () {
@@ -220,13 +221,15 @@ describe('Staking', function () {
 
       const warmupInfo = await Staking.warmupInfo(carol.address);
       expect(warmupInfo.deposit).to.equal(amountToStake);
-    })
+    });
 
     it('allows self-deposits (while preventing external deposits by default)', async function () {
       const [, bob, carol] = users;
       const claim = false;
 
-      await expect(bob.Staking.stake(amountToStake, carol.address, claim)).to.be.revertedWith("External deposits for account are locked");
+      await expect(bob.Staking.stake(amountToStake, carol.address, claim)).to.be.revertedWith(
+        'External deposits for account are locked'
+      );
       await bob.Staking.stake(amountToStake, bob.address, claim);
 
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
@@ -253,7 +256,7 @@ describe('Staking', function () {
     });
   });
 
-  describe('claim', function() {
+  describe('claim', function () {
     async function createClaim() {
       const [, bob] = users;
       const claim = false;
@@ -270,7 +273,7 @@ describe('Staking', function () {
       expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
     });
 
-    it('prevents an external claim by default', async function() {
+    it('prevents an external claim by default', async function () {
       const [, bob, carol] = users;
       await createClaim();
 
@@ -313,6 +316,6 @@ describe('Staking', function () {
       await bob.Staking.claim(bob.address);
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
       expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
-    })
-  })
+    });
+  });
 });

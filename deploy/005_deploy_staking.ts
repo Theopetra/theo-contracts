@@ -32,8 +32,15 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
           console.log(error);
         }
       }
-      const { TheopetraERC20Mock, sTheoMock} = namedMockAddresses;
-      args = [TheopetraERC20Mock, sTheoMock, epochLengthInBlocks, firstEpochNumber, firstEpochBlock, TheopetraAuthority.address];
+      const { TheopetraERC20Mock, sTheoMock } = namedMockAddresses;
+      args = [
+        TheopetraERC20Mock,
+        sTheoMock,
+        epochLengthInBlocks,
+        firstEpochNumber,
+        firstEpochBlock,
+        TheopetraAuthority.address,
+      ];
     }
 
     await deploy(CONTRACTS.staking, {
