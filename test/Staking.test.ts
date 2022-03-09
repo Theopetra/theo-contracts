@@ -108,7 +108,7 @@ describe('Staking', function () {
       const { Staking } = await setup();
 
       expect(await Staking.warmupPeriod()).to.equal(0);
-    })
+    });
 
     it('setWarmup, should allow the manager to set a warmup period for new stakers', async function () {
       const { Staking } = await setup();
@@ -126,7 +126,6 @@ describe('Staking', function () {
 
   describe('stake', function () {
     const amountToStake = 1000;
-    const claim = false;
     const LARGE_APPROVAL = '100000000000000000000000000000000';
 
     let Staking: any;
@@ -134,22 +133,22 @@ describe('Staking', function () {
     let TheopetraERC20Mock: any;
     let users: any;
 
-    beforeEach(async function() {
-      ({
-        Staking,
-        sTheoMock,
-        TheopetraERC20Mock,
-        users,
-      } = await setup());
+    beforeEach(async function () {
+      ({ Staking, sTheoMock, TheopetraERC20Mock, users } = await setup());
 
-      const [,bob] = users; 
+      const [, bob, carol] = users;
 
       await TheopetraERC20Mock.mint(bob.address, '10000000000000');
       await bob.TheopetraERC20Mock.approve(Staking.address, LARGE_APPROVAL);
-    })
+      await carol.TheopetraERC20Mock.approve(Staking.address, LARGE_APPROVAL);
+
+      // Mint enough to allow transfers when claiming staked THEO
+      await sTheoMock.mint(Staking.address, '1000000000000000000000');
+    });
 
     it('adds a Claim for the staked _amount to the warmup when _claim is false and warmupPeriod is zero', async function () {
-      const [,bob] = users;
+      const [, bob] = users;
+      const claim = false;
 
       await bob.Staking.stake(amountToStake, bob.address, claim);
 
@@ -161,14 +160,88 @@ describe('Staking', function () {
       expect(warmupInfo.lock).to.equal(false);
     });
 
-    it.only('allows the staker to claim sTHEO immediately if _claim is true and warmup is zero', async function () {
-      const [,bob] = users;
+    it('adds to the `total supply in warmup`, which represents the total amount of sTHEO currently in warmup', async function () {
+      const [, bob] = users;
+      const claim = false;
+
+      expect(await Staking.supplyInWarmup()).to.equal(0);
+
+      await bob.Staking.stake(amountToStake, bob.address, claim);
+      expect(await Staking.supplyInWarmup()).to.equal(amountToStake); // sTheoMock.gonsForBalance(amount) returns amount
+    });
+
+    it('allows the staker to claim sTHEO immediately if _claim is true and warmup is zero', async function () {
+      const [, bob] = users;
       const claim = true;
 
-      // Mint enough to allow transfers when claiming staked THEO
-      await sTheoMock.mint(Staking.address, '1000000000000000000000');
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
+
       await bob.Staking.stake(amountToStake, bob.address, claim);
-      
+
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+      expect(await Staking.supplyInWarmup()).to.equal(0);
+    });
+
+    it('adds a Claim in warmup, with the correct deposit and expiry, when `_claim` is true and the warmup period is greater than 0', async function () {
+      const [, bob] = users;
+      const claim = true;
+      const warmupPeriod = 5;
+
+      await Staking.setWarmup(warmupPeriod);
+      expect(await Staking.warmupPeriod()).to.equal(5);
+
+      await bob.Staking.stake(amountToStake, bob.address, claim);
+
+      expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
+
+      const warmupInfo = await Staking.warmupInfo(bob.address);
+      const epochInfo = await Staking.epoch();
+
+      expect(warmupInfo.deposit).to.equal(amountToStake);
+      expect(warmupInfo.expiry).to.equal(Number(epochInfo.number) + warmupPeriod);
+    });
+
+
+    it('includes a toggle for locking external deposits', async function () {
+      const [, bob] = users;
+      const claim = false;
+
+      await bob.Staking.toggleDepositLock();
+      const warmupInfo = await Staking.warmupInfo(bob.address);
+      expect(warmupInfo.lock).to.equal(true);
+    });
+
+    it('prevents external deposits by default', async function () {
+      const [, bob, carol] = users;
+      const claim = false;
+
+      await expect(bob.Staking.stake(amountToStake, carol.address, claim)).to.be.revertedWith("External deposits for account are locked");
+    });
+
+    it('allows external deposits when recipient toggles their deposit lock', async function () {
+      const [, bob, carol] = users;
+      const claim = false;
+
+      await carol.Staking.toggleDepositLock();
+
+      await bob.Staking.stake(amountToStake, carol.address, claim);
+
+      expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
+
+      const warmupInfo = await Staking.warmupInfo(carol.address);
+      expect(warmupInfo.deposit).to.equal(amountToStake);
     })
+
+    it('allows self-deposits (while preventing external deposits by default)', async function () {
+      const [, bob, carol] = users;
+      const claim = false;
+
+      await expect(bob.Staking.stake(amountToStake, carol.address, claim)).to.be.revertedWith("External deposits for account are locked");
+      await bob.Staking.stake(amountToStake, bob.address, claim);
+
+      expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
+    });
+
+    
   });
 });

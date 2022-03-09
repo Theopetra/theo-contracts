@@ -78,9 +78,11 @@ contract TheopetraStaking is TheopetraAccessControlled {
             return _send(_recipient, _amount);
         } else {
             Claim memory info = warmupInfo[_recipient];
+
             if (!info.lock) {
                 require(_recipient == msg.sender, "External deposits for account are locked");
             }
+
             warmupInfo[_recipient] = Claim({
                 deposit: info.deposit.add(_amount),
                 gons: info.gons.add(IsTHEO(sTHEO).gonsForBalance(_amount)),
