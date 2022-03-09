@@ -8,7 +8,6 @@ import "../Libraries/SafeERC20.sol";
 
 import "../Interfaces/IDistributor.sol";
 import "../Interfaces/IsTHEO.sol";
-import "../Interfaces/IWarmup.sol";
 
 contract TheopetraStaking is TheopetraAccessControlled {
     using SafeMath for uint256;
