@@ -141,7 +141,7 @@ describe('Staking', function () {
       const [, bob] = users;
       const claim = false;
 
-      await bob.Staking.stake(amountToStake, bob.address, claim);
+      await bob.Staking.stake(bob.address, amountToStake, claim);
 
       const warmupInfo = await Staking.warmupInfo(bob.address);
       const epochInfo = await Staking.epoch();
@@ -157,7 +157,7 @@ describe('Staking', function () {
 
       expect(await Staking.supplyInWarmup()).to.equal(0);
 
-      await bob.Staking.stake(amountToStake, bob.address, claim);
+      await bob.Staking.stake(bob.address, amountToStake, claim);
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake); // sTheoMock.gonsForBalance(amount) returns amount
     });
 
@@ -167,7 +167,7 @@ describe('Staking', function () {
 
       expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
 
-      await bob.Staking.stake(amountToStake, bob.address, claim);
+      await bob.Staking.stake(bob.address, amountToStake, claim);
 
       expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
       expect(await Staking.supplyInWarmup()).to.equal(0);
@@ -181,7 +181,7 @@ describe('Staking', function () {
       await Staking.setWarmup(warmupPeriod);
       expect(await Staking.warmupPeriod()).to.equal(5);
 
-      await bob.Staking.stake(amountToStake, bob.address, claim);
+      await bob.Staking.stake(bob.address, amountToStake, claim);
 
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
 
@@ -204,7 +204,7 @@ describe('Staking', function () {
       const [, bob, carol] = users;
       const claim = false;
 
-      await expect(bob.Staking.stake(amountToStake, carol.address, claim)).to.be.revertedWith(
+      await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.be.revertedWith(
         'External deposits for account are locked'
       );
     });
@@ -215,7 +215,7 @@ describe('Staking', function () {
 
       await carol.Staking.toggleLock();
 
-      await bob.Staking.stake(amountToStake, carol.address, claim);
+      await bob.Staking.stake(carol.address, amountToStake, claim);
 
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
 
@@ -227,10 +227,10 @@ describe('Staking', function () {
       const [, bob, carol] = users;
       const claim = false;
 
-      await expect(bob.Staking.stake(amountToStake, carol.address, claim)).to.be.revertedWith(
+      await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.be.revertedWith(
         'External deposits for account are locked'
       );
-      await bob.Staking.stake(amountToStake, bob.address, claim);
+      await bob.Staking.stake(bob.address, amountToStake, claim);
 
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
     });
@@ -243,7 +243,7 @@ describe('Staking', function () {
 
       const bobStartingTheoBalance = Number(await TheopetraERC20Mock.balanceOf(bob.address));
 
-      await bob.Staking.stake(amountToStake, bob.address, claim);
+      await bob.Staking.stake(bob.address, amountToStake, claim);
 
       expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(bobStartingTheoBalance - amountToStake);
       expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
@@ -261,7 +261,7 @@ describe('Staking', function () {
       const [, bob] = users;
       const claim = false;
 
-      await bob.Staking.stake(amountToStake, bob.address, claim);
+      await bob.Staking.stake(bob.address, amountToStake, claim);
     }
 
     it('allows a recipient to claim sTHEO from warmup', async function () {

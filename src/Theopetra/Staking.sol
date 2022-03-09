@@ -68,8 +68,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @return uint256
      */
     function stake(
-        uint256 _amount,
         address _recipient,
+        uint256 _amount,
         bool _claim
     ) external returns (uint256) {
         rebase();

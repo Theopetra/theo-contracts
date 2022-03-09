@@ -77,7 +77,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         treasury.mint(address(this), _payout + rewards);
 
         // note that only the payout gets staked (front end rewards are in THEO)
-        staking.stake(address(this), _payout, false, true);
+        staking.stake(address(this), _payout, true);
     }
 
     /* ========== REDEEM ========== */
