@@ -127,7 +127,6 @@ contract TheopetraStaking is TheopetraAccessControlled {
         Claim memory info = warmupInfo[msg.sender];
         delete warmupInfo[msg.sender];
 
-        // IWarmup(warmupContract).retrieve(address(this), IsTHEO(sTHEO).balanceForGons(info.gons));
         gonsInWarmup = gonsInWarmup.sub(info.gons);
 
         IERC20(THEO).safeTransfer(msg.sender, info.deposit);
