@@ -193,26 +193,26 @@ describe('Staking', function () {
     });
 
 
-    it('includes a toggle for locking external deposits', async function () {
+    it('includes a toggle for locking Claims (to prevent new deposits or claims to/from external address)', async function () {
       const [, bob] = users;
 
-      await bob.Staking.toggleDepositLock();
+      await bob.Staking.toggleLock();
       const warmupInfo = await Staking.warmupInfo(bob.address);
       expect(warmupInfo.lock).to.equal(true);
     });
 
-    it('prevents external deposits by default', async function () {
+    it('prevents an external deposit by default', async function () {
       const [, bob, carol] = users;
       const claim = false;
 
       await expect(bob.Staking.stake(amountToStake, carol.address, claim)).to.be.revertedWith("External deposits for account are locked");
     });
 
-    it('allows external deposits when recipient toggles their deposit lock', async function () {
+    it('allows an external deposit when recipient toggles their Claim lock', async function () {
       const [, bob, carol] = users;
       const claim = false;
 
-      await carol.Staking.toggleDepositLock();
+      await carol.Staking.toggleLock();
 
       await bob.Staking.stake(amountToStake, carol.address, claim);
 
@@ -250,6 +250,58 @@ describe('Staking', function () {
 
       expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
       expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(bobStartingTheoBalance);
+    });
+  });
+
+  describe('claim', function() {
+    async function createClaim() {
+      const [, bob] = users;
+      const claim = false;
+
+      await bob.Staking.stake(amountToStake, bob.address, claim);
+    }
+
+    it('allows a recipient to claim sTHEO from warmup', async function () {
+      const [, bob] = users;
+      await createClaim();
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
+
+      await bob.Staking.claim(bob.address);
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+    });
+
+    it('prevents an external claim by default', async function() {
+      const [, bob, carol] = users;
+      await createClaim();
+
+      await expect(carol.Staking.claim(bob.address)).to.be.revertedWith('External claims for account are locked');
+    });
+
+    it('allows an external claim to be made for sTHEO, if the receipient has toggled their Claim lock', async function () {
+      const [, bob, carol] = users;
+      await createClaim();
+
+      await bob.Staking.toggleLock();
+
+      await carol.Staking.claim(bob.address);
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+    });
+
+    it('allows an internal claim after the recipient has toggled the Claim lock', async function () {
+      const [, bob] = users;
+      await createClaim();
+
+      await bob.Staking.toggleLock();
+
+      await bob.Staking.claim(bob.address);
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+    });
+
+    it.only('does nothing when there is nothing to claim', async function () {
+      const [, bob] = users;
+
+      await bob.Staking.claim(bob.address);
+      
     });
   })
 });

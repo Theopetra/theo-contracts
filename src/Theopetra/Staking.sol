@@ -135,26 +135,11 @@ contract TheopetraStaking is TheopetraAccessControlled {
     }
 
     /**
-        @notice prevent new deposits to address (protection from malicious activity)
+        @notice prevent new deposits or claims to/from external address (protection from malicious activity)
      */
-    function toggleDepositLock() external {
+    function toggleLock() external {
         warmupInfo[msg.sender].lock = !warmupInfo[msg.sender].lock;
     }
-
-    // /**
-    //     @notice redeem sTHEO for THEO
-    //     @param _amount uint
-    //     @param _trigger bool
-    //  */
-    // function unstake(address recipient, uint256 _amount, bool _trigger) external {
-    //     if (_trigger) {
-    //         rebase();
-    //     }
-    //     IERC20(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
-
-    //     require(_amount <= THEO.balanceOf(address(this)), "Insufficient THEO balance in contract");
-    //     IERC20(THEO).safeTransfer(msg.sender, _amount);
-    // }
 
     /**
      * @notice redeem sTHEO for THEO
