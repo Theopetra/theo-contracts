@@ -84,20 +84,16 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     string internal invalidToken = "Treasury: invalid token";
     string internal insufficientReserves = "Treasury: insufficient reserves";
 
-    address internal bondDepo;
-
     /* ========== CONSTRUCTOR ========== */
 
     constructor(
         address _theo,
         uint256 _timelock,
-        address _authority,
-        address _bondDepo
+        address _authority
     ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {
         require(_theo != address(0), "Zero address: THEO");
         THEO = ITHEO(_theo);
 
-        bondDepo = _bondDepo;
         timelockEnabled = false;
         initialized = false;
         blocksNeededForQueue = _timelock;
@@ -182,8 +178,9 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      * @param _amount uint256
      */
     function mint(address _recipient, uint256 _amount) external override {
-        require(msg.sender == bondDepo, "Caller is not a BondDepo");
+        require(permissions[STATUS.REWARDMANAGER][msg.sender], "Caller is not a Reward manager");
         require(_amount <= excessReserves(), insufficientReserves);
+
         THEO.mint(_recipient, _amount);
         emit Minted(msg.sender, _recipient, _amount);
     }

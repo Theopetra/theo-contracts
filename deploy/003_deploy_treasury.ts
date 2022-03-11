@@ -2,11 +2,13 @@ import hre from 'hardhat';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
-import { MOCKSWITHARGS, MOCKS } from '../utils/constants';
+import { CONTRACTS, MOCKS } from '../utils/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
   const { deploy } = deployments;
+
+  const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
 
   const { deployer } = await getNamedAccounts();
   const chainId = await getChainId();
@@ -24,21 +26,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       }
     }
 
-    for (const key in MOCKSWITHARGS) {
-      let args;
-      if (key === 'treasuryMock' || key === 'stakingMock') {
-        args = [namedMockAddresses.TheopetraERC20Mock];
-      }
-      const deployedMock: any = await deploy(MOCKSWITHARGS[key], {
-        from: deployer,
-        log: true,
-        args,
-      });
-      namedMockAddresses[deployedMock.contractName] = deployedMock.address;
-    }
-
-    const { TheopetraERC20Mock, BondDepoMock } = namedMockAddresses;
-    args = [TheopetraERC20Mock, deployer, deployer];
+    // make sure bond depo is predecesor of treasury
+    const { TheopetraERC20Mock } = namedMockAddresses;
+    args = [TheopetraERC20Mock, deployer, TheopetraAuthority.address];
   }
 
   await deploy('TheopetraTreasury', {
@@ -50,4 +40,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ['TheopetraTreasury'];
-func.dependencies = hre?.network?.config?.chainId === 1337 ? ['Mocks'] : [];
+func.dependencies = hre?.network?.config?.chainId === 1337 ? [CONTRACTS.Authority, 'Mocks'] : [];
