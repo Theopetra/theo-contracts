@@ -16,8 +16,9 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     /* ====== VARIABLES ====== */
 
-    address public immutable THEO;
-    address public immutable treasury;
+    IERC20 private immutable THEO;
+    ITreasury private immutable treasury;
+    address private immutable staking;
 
     uint256 public immutable epochLength;
     uint256 public nextEpochBlock;
@@ -45,12 +46,15 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         address _theo,
         uint256 _epochLength,
         uint256 _nextEpochBlock,
-        ITheopetraAuthority _authority
+        ITheopetraAuthority _authority,
+        address _staking
     ) TheopetraAccessControlled(_authority) {
-        require(_treasury != address(0));
-        treasury = _treasury;
-        require(_theo != address(0));
-        THEO = _theo;
+        require(_treasury != address(0), "Zero address: Treasury");
+        treasury = ITreasury(_treasury);
+        require(_theo != address(0), "Zero address: THEO");
+        THEO = IERC20(_theo);
+        require(_staking != address(0), "Zero address: Staking");
+        staking = _staking;
         epochLength = _epochLength;
         nextEpochBlock = _nextEpochBlock;
     }

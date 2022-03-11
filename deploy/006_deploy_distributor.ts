@@ -2,7 +2,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
 import getNamedMockAddresses from './mocks/helpers';
-import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
+import { CONTRACTS } from '../utils/constants';
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   try {
@@ -22,8 +22,8 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       epochLengthInBlocks = '2000';
       nextEpochBlock = '10';
 
-      const { TheopetraERC20Mock, TreasuryMock } = await getNamedMockAddresses(hre);
-      args = [TreasuryMock, TheopetraERC20Mock, epochLengthInBlocks, nextEpochBlock, TheopetraAuthority.address];
+      const { TheopetraERC20Mock, TreasuryMock, StakingMock } = await getNamedMockAddresses(hre);
+      args = [TreasuryMock, TheopetraERC20Mock, epochLengthInBlocks, nextEpochBlock, TheopetraAuthority.address, StakingMock];
     }
 
     await deploy(CONTRACTS.distributor, {
