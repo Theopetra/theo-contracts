@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
-import { MOCKS } from '../../utils/constants';
+import { MOCKS, MOCKSWITHARGS } from '../../utils/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
@@ -12,10 +12,25 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // If on Hardhat network, deploy mocks
   if (chainId === '1337') {
+
+    const namedMockAddresses: Record<any, any> = {};
     for (const key in MOCKS) {
-      await deploy(MOCKS[key], {
+      const deployedMock: any = await deploy(MOCKS[key], {
         from: deployer,
         log: true,
+      });
+      namedMockAddresses[deployedMock.contractName] = deployedMock.address;
+    }
+
+    for (const key in MOCKSWITHARGS) {
+      let args;
+      if (key === 'treasuryMock' || key === 'stakingMock') {
+        args = [namedMockAddresses.TheopetraERC20Mock];
+      }
+      await deploy(MOCKSWITHARGS[key], {
+        from: deployer,
+        log: true,
+        args,
       });
     }
   }

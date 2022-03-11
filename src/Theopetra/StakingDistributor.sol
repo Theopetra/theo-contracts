@@ -10,7 +10,7 @@ import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IERC20.sol";
 import "../Interfaces/IDistributor.sol";
 
-contract Distributor is IDistributor, TheopetraAccessControlled {
+contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
 
