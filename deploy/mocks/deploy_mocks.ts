@@ -12,7 +12,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // If on Hardhat network, deploy mocks
   if (chainId === '1337') {
-
     const namedMockAddresses: Record<any, any> = {};
     for (const key in MOCKS) {
       const deployedMock: any = await deploy(MOCKS[key], {

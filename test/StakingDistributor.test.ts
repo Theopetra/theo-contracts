@@ -25,8 +25,8 @@ const setup = deployments.createFixture(async () => {
 
 describe('Distributor', function () {
   describe('Deployment', function () {
-    it ('can be deployed', async function () {
+    it('can be deployed', async function () {
       await setup();
-    })
-  })
-})
+    });
+  });
+});

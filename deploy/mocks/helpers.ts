@@ -1,18 +1,18 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 
-import {MOCKS, MOCKSWITHARGS} from '../../utils/constants';
+import { MOCKS, MOCKSWITHARGS } from '../../utils/constants';
 
 interface NamedMockAddresses {
   [key: string]: string;
 }
 
-const getNamedMockAddresses = async (hre: HardhatRuntimeEnvironment): Promise<NamedMockAddresses> =>  {
+const getNamedMockAddresses = async (hre: HardhatRuntimeEnvironment): Promise<NamedMockAddresses> => {
   try {
     const { deployments } = hre;
 
     const namedMockAddresses: Record<any, any> = {};
     for (const key in MOCKS) {
-        namedMockAddresses[MOCKS[key]] = (await deployments.get(MOCKS[key])).address;
+      namedMockAddresses[MOCKS[key]] = (await deployments.get(MOCKS[key])).address;
     }
 
     for (const key in MOCKSWITHARGS) {
@@ -22,8 +22,8 @@ const getNamedMockAddresses = async (hre: HardhatRuntimeEnvironment): Promise<Na
     return namedMockAddresses;
   } catch (error) {
     console.log(error);
-    throw(error);
+    throw error;
   }
-}
+};
 
 export default getNamedMockAddresses;
