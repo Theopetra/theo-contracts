@@ -161,6 +161,27 @@ describe('Distributor', function () {
       await expect(Distributor.addRecipient(alice.address, 1000001)).to.be.revertedWith('Rate cannot exceed denominator');
     });
 
+    it('prevents the guardian from adjusting the reward rate of a collector by more than 2.5% at any given time', async function(){
+      const { Distributor, TheopetraAuthority, users }: any = await setup();
+      const [, alice, bob] = users
+      const initialRate = 2000;
+      const adjustmentLimit = initialRate * 0.025;
 
+      await TheopetraAuthority.pushGuardian(bob.address, true);
+
+      await Distributor.addRecipient(alice.address, initialRate)
+      await expect(bob.Distributor.setAdjustment(0, true, adjustmentLimit+1, 2000)).to.be.revertedWith('Limiter: cannot adjust by >2.5%');
+    });
+
+    it('will revert if a call to reduce the reward rate for a collector is made using a value greater than the existing reward rate', async function () {
+      const { Distributor, TheopetraAuthority, users }: any = await setup();
+      const [, alice, bob] = users
+      const initialRate = 2000;
+
+      await TheopetraAuthority.pushGuardian(bob.address, true);
+
+      await Distributor.addRecipient(alice.address, initialRate)
+      await expect(Distributor.setAdjustment(0, false, initialRate+1, 2000)).to.be.revertedWith('Cannot decrease rate by more than it already is');
+    })
   });
 });
