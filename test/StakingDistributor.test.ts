@@ -14,7 +14,11 @@ import { setupUsers } from './utils';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
 import { Contract } from 'ethers';
 
-const getContracts = async (): Promise<{ [key: string]: Contract }> => {
+interface TheoContracts {
+  [key: string]: Contract
+};
+
+const getContracts = async (): Promise<TheoContracts> => {
   await deployments.fixture([
     CONTRACTS.distributor,
     CONTRACTS.authority,
@@ -90,7 +94,7 @@ describe('Distributor', function () {
 
     it('will revert if address zero is used as the Staking address', async function () {
       const [owner] = await ethers.getSigners();
-      const { TreasuryMock, TheopetraERC20Mock, TheopetraAuthority, StakingMock } = await getContracts();
+      const { TreasuryMock, TheopetraERC20Mock, TheopetraAuthority } = await getContracts();
       const epochLength = 2000;
       const nextEpochBlock = 10;
 
@@ -106,4 +110,18 @@ describe('Distributor', function () {
       ).to.be.revertedWith('Zero address: Staking');
     });
   });
+
+  describe('access control', function (){
+    it('will revert if distribute is called from an account other than the staking contract', async function (){
+      const {Distributor} : any = await setup();
+      await expect(Distributor.distribute()).to.be.revertedWith('Only staking');
+    });
+
+    it('will revert if a call to retrieve bounty is made from an account other than the staking contract', async function (){
+      const {Distributor} : any = await setup();
+      await expect(Distributor.retrieveBounty()).to.be.revertedWith('Only staking');
+    });
+
+
+  })
 });

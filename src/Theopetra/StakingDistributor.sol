@@ -24,6 +24,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     uint256 public nextEpochBlock;
 
     mapping(uint256 => Adjust) public adjustments;
+    uint256 public override bounty;
 
     /* ====== STRUCTS ====== */
 
@@ -65,6 +66,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @notice send epoch reward to staking contract
      */
     function distribute() external override returns (bool) {
+        require(msg.sender == staking, "Only staking");
         if (nextEpochBlock <= block.number) {
             nextEpochBlock = nextEpochBlock.add(epochLength); // set next epoch block
 
@@ -79,6 +81,16 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         } else {
             return false;
         }
+    }
+
+    function retrieveBounty() external override returns (uint256) {
+        require(msg.sender == staking, "Only staking");
+        // If the distributor bounty is > 0, mint it for the staking contract.
+        if (bounty > 0) {
+            treasury.mint(address(staking), bounty);
+        }
+
+        return bounty;
     }
 
     /* ====== INTERNAL FUNCTIONS ====== */
@@ -134,6 +146,15 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     }
 
     /* ====== POLICY FUNCTIONS ====== */
+
+    /**
+     * @notice set bounty to incentivize keepers
+     * @param _bounty uint256
+     */
+    function setBounty(uint256 _bounty) external override onlyGovernor {
+        require(_bounty <= 2e9, "Too much");
+        bounty = _bounty;
+    }
 
     /**
         @notice adds recipient for distributions
