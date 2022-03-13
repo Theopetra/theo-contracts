@@ -26,6 +26,8 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     mapping(uint256 => Adjust) public adjustments;
     uint256 public override bounty;
 
+    uint256 private immutable rateDenominator = 1_000_000;
+
     /* ====== STRUCTS ====== */
 
     struct Info {
@@ -127,7 +129,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @return uint
      */
     function nextRewardAt(uint256 _rate) public view override returns (uint256) {
-        return IERC20(THEO).totalSupply().mul(_rate).div(1000000);
+        return IERC20(THEO).totalSupply().mul(_rate).div(rateDenominator);
     }
 
     /**
@@ -161,18 +163,22 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @param _recipient address
         @param _rewardRate uint
      */
-    function addRecipient(address _recipient, uint256 _rewardRate) external override onlyPolicy {
+    function addRecipient(address _recipient, uint256 _rewardRate) external override onlyGovernor {
         require(_recipient != address(0));
+        require(_rewardRate <= rateDenominator, "Rate cannot exceed denominator");
         info.push(Info({ recipient: _recipient, rate: _rewardRate }));
     }
 
     /**
         @notice removes recipient for distributions
         @param _index uint
-        @param _recipient address
      */
-    function removeRecipient(uint256 _index, address _recipient) external override onlyPolicy {
-        require(_recipient == info[_index].recipient);
+    function removeRecipient(uint256 _index) external override {
+        require(
+            msg.sender == authority.governor() || msg.sender == authority.guardian(),
+            "Caller is not governor or guardian"
+        );
+        require(info[_index].recipient != address(0), "Recipient does not exist");
         info[_index].recipient = address(0);
         info[_index].rate = 0;
     }
@@ -189,7 +195,21 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         bool _add,
         uint256 _rate,
         uint256 _target
-    ) external override onlyPolicy {
+    ) external override {
+        require(
+            msg.sender == authority.governor() || msg.sender == authority.guardian(),
+            "Caller is not governor or guardian"
+        );
+        require(info[_index].recipient != address(0), "Recipient does not exist");
+
+        if (msg.sender == authority.guardian()) {
+            require(_rate <= info[_index].rate.mul(25).div(1000), "Limiter: cannot adjust by >2.5%");
+        }
+
+        if (!_add) {
+            require(_rate <= info[_index].rate, "Cannot decrease rate by more than it already is");
+        }
+
         adjustments[_index] = Adjust({ add: _add, rate: _rate, target: _target });
     }
 }

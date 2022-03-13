@@ -16,7 +16,7 @@ interface IDistributor {
 
     function addRecipient(address _recipient, uint256 _rewardRate) external;
 
-    function removeRecipient(uint256 _index, address _recipient) external;
+    function removeRecipient(uint256 _index) external;
 
     function setAdjustment(
         uint256 _index,
