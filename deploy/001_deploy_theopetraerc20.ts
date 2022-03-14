@@ -14,7 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await deploy(CONTRACTS.theoToken, {
       from: deployer,
       log: true,
-      args: [TheopetraAuthority.address]
+      args: [TheopetraAuthority.address],
     });
   } catch (error) {
     console.log(error);

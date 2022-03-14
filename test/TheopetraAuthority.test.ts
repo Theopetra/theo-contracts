@@ -19,7 +19,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe('TheopetraAuthority', function() {
+describe('TheopetraAuthority', function () {
   it('is deployed with a correctly-set vault address', async function () {
     const { TheopetraAuthority, owner } = await setup();
 
@@ -37,8 +37,6 @@ describe('TheopetraAuthority', function() {
   it('should revert if a user other than the governor makes a call to set the vault address', async function () {
     const { TheopetraAuthority, users } = await setup();
     const [, alice] = users;
-    await expect(alice.TheopetraAuthority.pushVault(alice.address, true)).to.be.revertedWith(
-      'UNAUTHORIZED'
-    );
+    await expect(alice.TheopetraAuthority.pushVault(alice.address, true)).to.be.revertedWith('UNAUTHORIZED');
   });
 });

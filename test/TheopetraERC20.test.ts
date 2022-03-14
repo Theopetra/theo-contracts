@@ -25,13 +25,8 @@ describe('TheopetraERC20', function () {
   let TheopetraERC20Token: any;
   let users: any;
 
-
   beforeEach(async function () {
-    ({
-      TheopetraAuthority,
-      TheopetraERC20Token,
-      users,
-    } = await setup());
+    ({ TheopetraAuthority, TheopetraERC20Token, users } = await setup());
 
     const [, vault] = users;
 
