@@ -53,7 +53,7 @@ describe.only('TheopetraTreasury', () => {
   describe('Mint', () => {
     it('should fail when not REWARDSMANAGER', async () => {
       const { users } = await setup();
-      await expect(users[1].Treasury.mint(users[1].address, ethers.utils.parseEther('1'))).to.be.reverted;
+      await expect(users[1].Treasury.mint(users[1].address, ethers.utils.parseEther('1'))).to.be.revertedWith("Caller is not a Reward manager");
     });
   });
 });
