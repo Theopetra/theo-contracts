@@ -11,6 +11,8 @@ import "../Interfaces/IERC20.sol";
 import "../Interfaces/IDistributor.sol";
 
 contract StakingDistributor is IDistributor, TheopetraAccessControlled {
+    /* ========== DEPENDENCIES ========== */
+
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -51,7 +53,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         uint256 _nextEpochBlock,
         ITheopetraAuthority _authority,
         address _staking
-    ) TheopetraAccessControlled(_authority) {
+    ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {
         require(_treasury != address(0), "Zero address: Treasury");
         treasury = ITreasury(_treasury);
         require(_theo != address(0), "Zero address: THEO");
@@ -100,7 +102,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     /**
         @notice increment reward rate for collector
      */
-    function adjust(uint256 _index) internal {
+  function adjust(uint256 _index) internal {
         Adjust memory adjustment = adjustments[_index];
         if (adjustment.rate != 0) {
             if (adjustment.add) {
@@ -109,13 +111,21 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
                 if (info[_index].rate >= adjustment.target) {
                     // if target met
                     adjustments[_index].rate = 0; // turn off adjustment
+                    info[_index].rate = adjustment.target; // set to target
                 }
             } else {
                 // if rate should decrease
-                info[_index].rate = info[_index].rate.sub(adjustment.rate); // lower rate
+                if (info[_index].rate > adjustment.rate) {
+                    // protect from underflow
+                    info[_index].rate = info[_index].rate.sub(adjustment.rate); // lower rate
+                } else {
+                    info[_index].rate = 0;
+                }
+
                 if (info[_index].rate <= adjustment.target) {
                     // if target met
                     adjustments[_index].rate = 0; // turn off adjustment
+                    info[_index].rate = adjustment.target; // set to target
                 }
             }
         }

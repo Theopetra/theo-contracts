@@ -111,7 +111,7 @@ describe('Distributor', function () {
     });
   });
 
-  describe('access control and limiters', function () {
+  describe('access control', function () {
     it('will revert if distribute is called from an account other than the staking contract', async function () {
       const { Distributor }: any = await setup();
 
