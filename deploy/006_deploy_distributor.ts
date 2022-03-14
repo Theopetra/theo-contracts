@@ -23,7 +23,14 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       nextEpochBlock = '10';
 
       const { TheopetraERC20Mock, TreasuryMock, StakingMock } = await getNamedMockAddresses(hre);
-      args = [TreasuryMock, TheopetraERC20Mock, epochLengthInBlocks, nextEpochBlock, TheopetraAuthority.address, StakingMock];
+      args = [
+        TreasuryMock,
+        TheopetraERC20Mock,
+        epochLengthInBlocks,
+        nextEpochBlock,
+        TheopetraAuthority.address,
+        StakingMock,
+      ];
     }
 
     await deploy(CONTRACTS.distributor, {
