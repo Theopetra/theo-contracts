@@ -2,16 +2,20 @@
 pragma solidity 0.7.5;
 
 import "../Types/ERC20Permit.sol";
-import "../Types/VaultOwned.sol";
 import "../Types/ERC20.sol";
+import "../Types/TheopetraAccessControlled.sol";
+
 import "../Libraries/SafeMath.sol";
 
-contract TheopetraERC20Token is ERC20Permit, VaultOwned {
+contract TheopetraERC20Token is ERC20Permit, TheopetraAccessControlled {
     using SafeMath for uint256;
 
     uint256 private _initialSupply;
 
-    constructor() ERC20("Theopetra", "THEO", 9) {}
+    constructor(address _authority)
+        ERC20("Theopetra", "THEO", 9)
+        TheopetraAccessControlled(ITheopetraAuthority(_authority))
+    {}
 
     function getInitialSupply() public view returns (uint256) {
         return _initialSupply;
