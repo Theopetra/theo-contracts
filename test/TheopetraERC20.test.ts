@@ -108,7 +108,6 @@ describe('TheopetraERC20', function () {
     it('should revert if an address other than the vault owner makes a call to mint tokens', async function () {
       const [, vault, tokenBeneficiary, user3] = users;
       const amountToMint = 5000;
-      await TheopetraAuthority.pushVault(vault.address, true);
 
       await expect(user3.TheopetraERC20Token.mint(tokenBeneficiary.address, amountToMint)).to.be.revertedWith(
         'UNAUTHORIZED'
