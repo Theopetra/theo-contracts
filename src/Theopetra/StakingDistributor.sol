@@ -102,7 +102,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     /**
         @notice increment reward rate for collector
      */
-  function adjust(uint256 _index) internal {
+    function adjust(uint256 _index) internal {
         Adjust memory adjustment = adjustments[_index];
         if (adjustment.rate != 0) {
             if (adjustment.add) {
