@@ -122,7 +122,7 @@ const config: HardhatUserConfig = {
     maxMethodDiff: 10,
   },
   typechain: {
-    outDir: '../next-app/src/typechain',
+    outDir: './typechain-types',
     target: 'ethers-v5',
   },
   mocha: {
