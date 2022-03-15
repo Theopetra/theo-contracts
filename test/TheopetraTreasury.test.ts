@@ -4,7 +4,7 @@ import { CONTRACTS, MOCKS } from '../utils/constants';
 import { setupUsers } from './utils';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.authority, MOCKS.usdcTokenMock, CONTRACTS.treasury, MOCKS.theoTokenMock]);
+  await deployments.fixture([CONTRACTS.authority, CONTRACTS.treasury]);
   const addressZero = '0x0000000000000000000000000000000000000000';
   const { deployer: owner } = await getNamedAccounts();
   const contracts = {
@@ -54,6 +54,19 @@ describe.only('TheopetraTreasury', () => {
     it('should fail when not REWARDSMANAGER', async () => {
       const { users } = await setup();
       await expect(users[1].Treasury.mint(users[1].address, ethers.utils.parseEther('1'))).to.be.revertedWith(
+        'Caller is not a Reward manager'
+      );
+    });
+
+    it('should succeed when REWARDSMANAGER', async () => {
+      const { Treasury, owner, users, UsdcTokenMock } = await setup();
+      // approve the treasury to spend our token and deposit
+      await users[0].UsdcTokenMock.approve(Treasury.address, 100);
+      await users[0].Treasury.deposit(100, UsdcTokenMock.address, 0);
+
+      // enable the rewards manager
+      await Treasury.enable(8, users[1].address, owner);
+      await expect(users[1].Treasury.mint(users[1].address, ethers.utils.parseEther('1'))).to.not.be.revertedWith(
         'Caller is not a Reward manager'
       );
     });
