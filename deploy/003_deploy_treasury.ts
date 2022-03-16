@@ -15,10 +15,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await deploy(CONTRACTS.treasury, {
     from: deployer,
     log: true,
-    args: [Theo.address, deployer, TheopetraAuthority.address],
+    args: [Theo.address, 0, TheopetraAuthority.address],
   });
 };
 
 export default func;
 func.tags = [CONTRACTS.treasury];
-func.dependencies = hre?.network?.config?.chainId === 1337 ? [CONTRACTS.Authority, CONTRACTS.theoToken] : [];
+func.dependencies = [CONTRACTS.Authority, CONTRACTS.theoToken];

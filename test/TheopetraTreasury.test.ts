@@ -32,7 +32,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe.only('TheopetraTreasury', () => {
+describe('TheopetraTreasury', () => {
   describe('Deployment', () => {
     it('deploys as expected', async () => {
       await setup();
@@ -60,15 +60,20 @@ describe.only('TheopetraTreasury', () => {
 
     it('should succeed when REWARDSMANAGER', async () => {
       const { Treasury, owner, users, UsdcTokenMock } = await setup();
-      // approve the treasury to spend our token and deposit
-      await users[0].UsdcTokenMock.approve(Treasury.address, 100);
-      await users[0].Treasury.deposit(100, UsdcTokenMock.address, 0);
-
       // enable the rewards manager
       await Treasury.enable(8, users[1].address, owner);
       await expect(users[1].Treasury.mint(users[1].address, ethers.utils.parseEther('1'))).to.not.be.revertedWith(
         'Caller is not a Reward manager'
       );
+    });
+  });
+
+  describe('Access control', function () {
+    it('reverts if a call to `enable` is made by an address that is not the Governor', async function () {
+      const { users, owner, Treasury } = await setup();
+
+      // enable the rewards manager
+      await expect(users[1].Treasury.enable(8, users[1].address, users[0].address)).to.be.revertedWith('UNAUTHORIZED');
     });
   });
 });
