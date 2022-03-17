@@ -1,6 +1,6 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } from 'hardhat';
-// import { TheopetraBondDepository } from '../../next-app/src/typechain';
+import { TheopetraBondDepository } from '../typechain-types';
 import { setupUsers } from './utils';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
 
@@ -20,7 +20,7 @@ const setup = deployments.createFixture(async function () {
 
   const contracts = {
     TheopetraAuthority: await ethers.getContract(CONTRACTS.authority),
-    BondDepository: await ethers.getContract(CONTRACTS.bondDepo),
+    BondDepository: <TheopetraBondDepository>await ethers.getContract(CONTRACTS.bondDepo),
     sTheoMock: await ethers.getContract(MOCKS.sTheoMock),
     StakingMock: await ethers.getContract(MOCKSWITHARGS.stakingMock),
     TheopetraERC20Mock: await ethers.getContract(MOCKS.theoTokenMock),

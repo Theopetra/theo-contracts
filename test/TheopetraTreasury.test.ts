@@ -11,6 +11,7 @@ const setup = deployments.createFixture(async () => {
     UsdcTokenMock: await ethers.getContract(MOCKS.usdcTokenMock),
     Treasury: await ethers.getContract(CONTRACTS.treasury),
     Theo: await ethers.getContract(CONTRACTS.theoToken),
+    TheopetraAuthority: await ethers.getContract(CONTRACTS.authority),
   };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
@@ -20,7 +21,7 @@ const setup = deployments.createFixture(async () => {
   // set user[0] as reserve depositor
   await contracts.Treasury.enable(0, users[0].address, addressZero);
   // ensure the vault is correctly set on THEO (WILL NEED UPDATED)
-  await contracts.Theo.setVault(contracts.Treasury.address);
+  await contracts.TheopetraAuthority.pushVault(contracts.Treasury.address, true);
   // Mint some of our mock token so we have a supply to work with
   await contracts.UsdcTokenMock.mint(users[0].address, 1000 * 100);
 
