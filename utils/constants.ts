@@ -5,6 +5,7 @@ export const CONTRACTS: Record<string, string> = {
   staking: 'TheopetraStaking',
   sTheo: 'sTheopetra',
   distributor: 'StakingDistributor',
+  treasury: 'TheopetraTreasury',
 };
 
 export const MOCKS: Record<string, string> = {
