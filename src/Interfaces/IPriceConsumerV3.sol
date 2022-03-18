@@ -2,5 +2,5 @@
 pragma solidity ^0.8.9;
 
 interface IPriceConsumerV3 {
-    function getLatestPrice() external returns (int, uint8);
+    function getLatestPrice(address priceFeedAddress) external returns (int, uint8);
 }

@@ -37,6 +37,8 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
     // Queries
     mapping(address => uint256[]) public marketsForQuote; // market IDs for quote token
 
+    IPriceConsumerV3 internal priceConsumerV3;
+
     /* ======== CONSTRUCTOR ======== */
 
     constructor(
@@ -44,11 +46,15 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         IERC20 _theo,
         IsTHEO _stheo,
         IStaking _staking,
-        ITreasury _treasury
+        ITreasury _treasury,
+        IPriceConsumerV3 _priceConsumerV3
     ) NoteKeeper(_authority, _theo, _stheo, _staking, _treasury) {
+        priceConsumerV3 = _priceConsumerV3;
         // save gas for users by bulk approving stake() transactions
         _theo.approve(address(_staking), 1e45);
     }
+
+    /* ======== STRUCTS ======== */
 
     struct PriceInfo {
         uint256 price;
@@ -97,9 +103,8 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         _decay(_id, currentTime);
 
         PriceInfo memory priceInfo;
-        (priceInfo.priceConsumerPrice, priceInfo.priceConsumerDecimals) = IPriceConsumerV3(market.priceConsumerV3).getLatestPrice();
+        (priceInfo.priceConsumerPrice, priceInfo.priceConsumerDecimals) = IPriceConsumerV3(priceConsumerV3).getLatestPrice(market.priceFeed);
         priceInfo.quoteTokenAmountInUSD = (_amount * uint256(priceInfo.priceConsumerPrice)) / 10**metadata[_id].quoteDecimals; // with decimals of priceInfo.priceConsumerDecimals
-
         // Users input a maximum price, which protects them from price changes after
         // entering the mempool. max price is a slippage mitigation measure
         priceInfo.price = _marketPrice(_id);
@@ -286,12 +291,12 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
      * @param _booleans    [capacity in quote, fixed term]
      * @param _terms       [vesting length (if fixed term) or vested timestamp, conclusion timestamp]
      * @param _intervals   [deposit interval (seconds), tune interval (seconds)]
-     * @param _priceConsumerV3 address of the price consumer, to return the USD value for the quote token when deposits are made
+     * @param _priceFeed   address of the price consumer, to return the USD value for the quote token when deposits are made
      * @return id_         ID of new bond market
      */
     function create(
         IERC20 _quoteToken,
-        IPriceConsumerV3 _priceConsumerV3,
+        address _priceFeed,
         uint256[3] memory _market,
         bool[2] memory _booleans,
         uint256[2] memory _terms,
@@ -346,7 +351,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         markets.push(
             Market({
                 quoteToken: _quoteToken,
-                priceConsumerV3: _priceConsumerV3,
+                priceFeed: _priceFeed,
                 capacityInQuote: _booleans[0],
                 capacity: _market[0],
                 totalDebt: targetDebt,

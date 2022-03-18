@@ -1,6 +1,6 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
-import { WhitelistTheopetraBondDepository, WETH9, PriceConsumerV3MockETH } from '../typechain-types';
+import { WhitelistTheopetraBondDepository, WETH9, PriceConsumerV3Mock } from '../typechain-types';
 import { setupUsers } from './utils';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
 
@@ -14,7 +14,7 @@ const setup = deployments.createFixture(async function () {
     MOCKSWITHARGS.stakingMock,
     MOCKSWITHARGS.treasuryMock,
     MOCKS.WETH9,
-    MOCKSWITHARGS.priceConsumerV3MockETH,
+    MOCKS.priceConsumerV3Mock,
   ]);
 
   const { deployer: owner } = await getNamedAccounts();
@@ -28,7 +28,7 @@ const setup = deployments.createFixture(async function () {
     TreasuryMock: await ethers.getContract(MOCKSWITHARGS.treasuryMock),
     UsdcTokenMock: await ethers.getContract(MOCKS.usdcTokenMock),
     WETH9: <WETH9>await ethers.getContract(MOCKS.WETH9),
-    PriceConsumerV3MockETH: <PriceConsumerV3MockETH>await ethers.getContract(MOCKSWITHARGS.priceConsumerV3MockETH),
+    PriceConsumerV3Mock: <PriceConsumerV3Mock>await ethers.getContract(MOCKS.priceConsumerV3Mock),
   };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
@@ -43,6 +43,7 @@ const setup = deployments.createFixture(async function () {
 describe.only('Whitelist Bond depository', function () {
   const LARGE_APPROVAL = '100000000000000000000000000000000';
   const initialMint = '10000000000000000000000000';
+  const rinkebyEthUsdPriceFeed = '0x8A753747A1Fa494EC906cE90E9f37563A8AF630e';
 
   const capacity = 10000e9;
   const initialPrice = 400e9;
@@ -56,11 +57,11 @@ describe.only('Whitelist Bond depository', function () {
 
   let WhitelistBondDepository: any;
   let WETH9: WETH9;
-  let PriceConsumerV3MockETH: any;
+  let PriceConsumerV3Mock: any;
   let users: any;
 
   beforeEach(async function () {
-    ({ WhitelistBondDepository, WETH9, PriceConsumerV3MockETH, users } = await setup());
+    ({ WhitelistBondDepository, WETH9, PriceConsumerV3Mock, users } = await setup());
     const [, , bob] = users;
     const block = await ethers.provider.getBlock('latest');
     const conclusion = block.timestamp + timeToConclusion;
@@ -71,7 +72,7 @@ describe.only('Whitelist Bond depository', function () {
 
     await WhitelistBondDepository.create(
       WETH9.address,
-      PriceConsumerV3MockETH.address,
+      rinkebyEthUsdPriceFeed,
       [capacity, initialPrice, buffer],
       [capacityInQuote, fixedTerm],
       [vesting, conclusion],
@@ -91,8 +92,8 @@ describe.only('Whitelist Bond depository', function () {
     });
 
     it('stores the price consumer address in the Market information', async function () {
-      const [, , priceConsumerV3] = await WhitelistBondDepository.markets(0);
-      expect(priceConsumerV3).to.equal(PriceConsumerV3MockETH.address);
+      const [, , priceFeed] = await WhitelistBondDepository.markets(0);
+      expect(priceFeed).to.equal(rinkebyEthUsdPriceFeed);
     });
 
     describe('Deposit', function () {
@@ -110,7 +111,7 @@ describe.only('Whitelist Bond depository', function () {
       // it('emits the quote token price and decimals from the price consumer', async function () {
       //   const [, , bob] = users;
       //   const marketId = 0;
-      //   const [mockPriceConsumerPrice, decimals] = await PriceConsumerV3MockETH.getLatestPrice();
+      //   const [mockPriceConsumerPrice, decimals] = await PriceConsumerV3Mock.getLatestPrice();
 
       //   const depositAmount = ethers.utils.parseEther('100');
 
@@ -124,7 +125,7 @@ describe.only('Whitelist Bond depository', function () {
         const marketId = 0;
         const etherAmountToDeposit = 10;
         const depositAmount = ethers.utils.parseEther(`${etherAmountToDeposit}`);
-        const [mockPriceConsumerPrice, priceConsumerDecimals] = await PriceConsumerV3MockETH.getLatestPrice();
+        const [mockPriceConsumerPrice, priceConsumerDecimals] = await PriceConsumerV3Mock.getLatestPrice(rinkebyEthUsdPriceFeed);
 
         const expectedAmountInUSD = etherAmountToDeposit * mockPriceConsumerPrice;
 

@@ -2,14 +2,13 @@
 pragma solidity >=0.7.5;
 
 import "./IERC20.sol";
-import "./IPriceConsumerV3.sol";
 
 interface IWhitelistBondDepository {
     // Info about each type of market
     struct Market {
         uint256 capacity; // capacity remaining
         IERC20 quoteToken; // token to accept as payment
-        IPriceConsumerV3 priceConsumerV3; // address of the price consumer, to return the USD value for the quote token when deposits are made
+        address priceFeed; // address of the price consumer, to return the USD value for the quote token when deposits are made
         bool capacityInQuote; // capacity limit is in payment token (true) or in THEO (false, default)
         uint64 totalDebt; // total debt from market
         uint64 maxPayout; // max tokens in/out (determined by capacityInQuote false/true, respectively)
@@ -71,7 +70,7 @@ interface IWhitelistBondDepository {
 
     function create(
         IERC20 _quoteToken, // token used to deposit
-        IPriceConsumerV3 _priceConsumerV3, // address of the price consumer, to return the USD value for the quote token when deposits are made
+        address _priceFeed, // address of the price consumer, to return the USD value for the quote token when deposits are made
         uint256[3] memory _market, // [capacity, initial price]
         bool[2] memory _booleans, // [capacity in quote, fixed term]
         uint256[2] memory _terms, // [vesting, conclusion]
