@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.10;
 
 import "../Types/NoteKeeper.sol";
@@ -6,14 +6,15 @@ import "../Types/NoteKeeper.sol";
 import "../Libraries/SafeERC20.sol";
 
 import "../Interfaces/IERC20Metadata.sol";
-import "../Interfaces/IBondDepository.sol";
+import "../Interfaces/IWhitelistBondDepository.sol";
+import "../Interfaces/IPriceConsumerV3.sol";
 
 /**
  * @title Theopetra Bond Depository
  * @notice Originally based off of Olympus Bond Depository V2
  */
 
-contract WhitelistTheopetraBondDepository is IBondDepository, NoteKeeper {
+contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeeper {
     /* ======== DEPENDENCIES ======== */
 
     using SafeERC20 for IERC20;
@@ -22,7 +23,7 @@ contract WhitelistTheopetraBondDepository is IBondDepository, NoteKeeper {
 
     event CreateMarket(uint256 indexed id, address indexed baseToken, address indexed quoteToken, uint256 initialPrice);
     event CloseMarket(uint256 indexed id);
-    event Bond(uint256 indexed id, uint256 amount, uint256 price);
+    event Bond(uint256 indexed id, uint256 amount, int quoteTokenValueFromPriceConsumer, uint8 quoteDecimalsFromPriceConsumer);
     event Tuned(uint256 indexed id, uint64 oldControlVariable, uint64 newControlVariable);
 
     /* ======== STATE VARIABLES ======== */
@@ -47,6 +48,12 @@ contract WhitelistTheopetraBondDepository is IBondDepository, NoteKeeper {
     ) NoteKeeper(_authority, _theo, _stheo, _staking, _treasury) {
         // save gas for users by bulk approving stake() transactions
         _theo.approve(address(_staking), 1e45);
+    }
+
+    struct PriceInfo {
+        uint256 price;
+        int priceConsumerPrice;
+        uint8 priceConsumerDecimals;
     }
 
     /* ======== DEPOSIT ======== */
@@ -88,10 +95,13 @@ contract WhitelistTheopetraBondDepository is IBondDepository, NoteKeeper {
         // Debt and the control variable decay over time
         _decay(_id, currentTime);
 
+        PriceInfo memory priceInfo;
+        (priceInfo.priceConsumerPrice, priceInfo.priceConsumerDecimals) = IPriceConsumerV3(market.priceConsumerV3).getLatestPrice();
+
         // Users input a maximum price, which protects them from price changes after
         // entering the mempool. max price is a slippage mitigation measure
-        uint256 price = _marketPrice(_id);
-        require(price <= _maxPrice, "Depository: more than max price");
+        priceInfo.price = _marketPrice(_id);
+        require(priceInfo.price <= _maxPrice, "Depository: more than max price");
 
         /**
          * payout for the deposit = amount / price
@@ -103,7 +113,7 @@ contract WhitelistTheopetraBondDepository is IBondDepository, NoteKeeper {
          *
          * 1e18 = THEO decimals (9) + price decimals (9)
          */
-        payout_ = ((_amount * 1e18) / price) / (10**metadata[_id].quoteDecimals);
+        payout_ = ((_amount * 1e18) / priceInfo.price) / (10**metadata[_id].quoteDecimals);
 
         // markets have a max payout amount, capping size because deposits
         // do not experience slippage. max payout is recalculated upon tuning
@@ -145,7 +155,7 @@ contract WhitelistTheopetraBondDepository is IBondDepository, NoteKeeper {
         // incrementing total debt raises the price of the next bond
         market.totalDebt += uint64(payout_);
 
-        emit Bond(_id, _amount, price);
+        emit Bond(_id, _amount, priceInfo.priceConsumerPrice, priceInfo.priceConsumerDecimals);
 
         /**
          * user data is stored as Notes. these are isolated array entries
@@ -274,10 +284,12 @@ contract WhitelistTheopetraBondDepository is IBondDepository, NoteKeeper {
      * @param _booleans    [capacity in quote, fixed term]
      * @param _terms       [vesting length (if fixed term) or vested timestamp, conclusion timestamp]
      * @param _intervals   [deposit interval (seconds), tune interval (seconds)]
+     * @param _priceConsumerV3 address of the price consumer, to return the USD value for the quote token when deposits are made
      * @return id_         ID of new bond market
      */
     function create(
         IERC20 _quoteToken,
+        IPriceConsumerV3 _priceConsumerV3,
         uint256[3] memory _market,
         bool[2] memory _booleans,
         uint256[2] memory _terms,
@@ -332,6 +344,7 @@ contract WhitelistTheopetraBondDepository is IBondDepository, NoteKeeper {
         markets.push(
             Market({
                 quoteToken: _quoteToken,
+                priceConsumerV3: _priceConsumerV3,
                 capacityInQuote: _booleans[0],
                 capacity: _market[0],
                 totalDebt: targetDebt,
