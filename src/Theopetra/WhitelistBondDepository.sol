@@ -23,7 +23,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
 
     event CreateMarket(uint256 indexed id, address indexed baseToken, address indexed quoteToken, uint256 initialPrice);
     event CloseMarket(uint256 indexed id);
-    event Bond(uint256 indexed id, uint256 amount, int quoteTokenValueFromPriceConsumer, uint8 quoteDecimalsFromPriceConsumer);
+    event Bond(uint256 indexed id, uint256 amount, int quoteTokenValueFromPriceConsumer, uint8 quoteDecimalsFromPriceConsumer, uint256 quoteTokenAmountInUSD);
     event Tuned(uint256 indexed id, uint64 oldControlVariable, uint64 newControlVariable);
 
     /* ======== STATE VARIABLES ======== */
@@ -52,6 +52,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
 
     struct PriceInfo {
         uint256 price;
+        uint256 quoteTokenAmountInUSD;
         int priceConsumerPrice;
         uint8 priceConsumerDecimals;
     }
@@ -97,6 +98,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
 
         PriceInfo memory priceInfo;
         (priceInfo.priceConsumerPrice, priceInfo.priceConsumerDecimals) = IPriceConsumerV3(market.priceConsumerV3).getLatestPrice();
+        priceInfo.quoteTokenAmountInUSD = (_amount * uint256(priceInfo.priceConsumerPrice)) / 10**metadata[_id].quoteDecimals; // with decimals of priceInfo.priceConsumerDecimals
 
         // Users input a maximum price, which protects them from price changes after
         // entering the mempool. max price is a slippage mitigation measure
@@ -155,7 +157,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         // incrementing total debt raises the price of the next bond
         market.totalDebt += uint64(payout_);
 
-        emit Bond(_id, _amount, priceInfo.priceConsumerPrice, priceInfo.priceConsumerDecimals);
+        emit Bond(_id, _amount, priceInfo.priceConsumerPrice, priceInfo.priceConsumerDecimals, priceInfo.quoteTokenAmountInUSD);
 
         /**
          * user data is stored as Notes. these are isolated array entries

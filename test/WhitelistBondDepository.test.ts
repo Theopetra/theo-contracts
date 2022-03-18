@@ -107,18 +107,31 @@ describe.only('Whitelist Bond depository', function () {
         expect(bobNotesIndexes.length).to.equal(1);
       });
 
-      it('emits the quote token price and decimals from the price consumer', async function () {
+      // it('emits the quote token price and decimals from the price consumer', async function () {
+      //   const [, , bob] = users;
+      //   const marketId = 0;
+      //   const [mockPriceConsumerPrice, decimals] = await PriceConsumerV3MockETH.getLatestPrice();
+
+      //   const depositAmount = ethers.utils.parseEther('100');
+
+      //   await expect(
+      //     bob.WhitelistBondDepository.deposit(marketId, depositAmount, initialPrice, bob.address, bob.address)
+      //   ).to.emit(WhitelistBondDepository, 'Bond').withArgs(marketId, depositAmount, mockPriceConsumerPrice, decimals);
+      // });
+
+      it('emits a USD value, scaled by `priceConsumerDecimals`, for the quote token amount deposited', async function () {
         const [, , bob] = users;
         const marketId = 0;
-        const [mockPriceConsumerPrice, decimals] = await PriceConsumerV3MockETH.getLatestPrice();
+        const etherAmountToDeposit = 10;
+        const depositAmount = ethers.utils.parseEther(`${etherAmountToDeposit}`);
+        const [mockPriceConsumerPrice, priceConsumerDecimals] = await PriceConsumerV3MockETH.getLatestPrice();
 
-        const depositAmount = ethers.utils.parseEther('100');
+        const expectedAmountInUSD = etherAmountToDeposit * mockPriceConsumerPrice;
 
         await expect(
           bob.WhitelistBondDepository.deposit(marketId, depositAmount, initialPrice, bob.address, bob.address)
-        ).to.emit(WhitelistBondDepository, 'Bond').withArgs(marketId, depositAmount, mockPriceConsumerPrice, decimals);
-      });
-
+        ).to.emit(WhitelistBondDepository, 'Bond').withArgs(marketId, depositAmount, mockPriceConsumerPrice, priceConsumerDecimals, expectedAmountInUSD);
+      })
 
     });
   });
