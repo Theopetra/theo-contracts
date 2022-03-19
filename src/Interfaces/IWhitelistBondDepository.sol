@@ -14,6 +14,7 @@ interface IWhitelistBondDepository {
         uint64 maxPayout; // max tokens in/out (determined by capacityInQuote false/true, respectively)
         uint64 sold; // base tokens out
         uint256 purchased; // quote tokens in
+        uint256 usdPricePerTHEO; // 0 decimal USD value for each THEO bond
     }
 
     // Info for creating new markets
@@ -84,6 +85,8 @@ interface IWhitelistBondDepository {
     function liveMarkets() external view returns (uint256[] memory);
 
     function liveMarketsFor(address _quoteToken) external view returns (uint256[] memory);
+
+    function calculatePrice(uint256 _bid) external view returns (uint256);
 
     function payoutFor(uint256 _amount, uint256 _bid) external view returns (uint256);
 

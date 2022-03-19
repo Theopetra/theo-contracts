@@ -23,7 +23,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
 
     event CreateMarket(uint256 indexed id, address indexed baseToken, address indexed quoteToken, uint256 initialPrice);
     event CloseMarket(uint256 indexed id);
-    event Bond(uint256 indexed id, uint256 amount, int quoteTokenValueFromPriceConsumer, uint8 quoteDecimalsFromPriceConsumer, uint256 quoteTokenAmountInUSD);
+    event Bond(uint256 indexed id, uint256 amount, uint256 price);
     event Tuned(uint256 indexed id, uint64 oldControlVariable, uint64 newControlVariable);
 
     /* ======== STATE VARIABLES ======== */
@@ -37,7 +37,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
     // Queries
     mapping(address => uint256[]) public marketsForQuote; // market IDs for quote token
 
-    IPriceConsumerV3 internal priceConsumerV3;
+    IPriceConsumerV3 immutable public priceConsumerV3;
 
     /* ======== CONSTRUCTOR ======== */
 
@@ -52,15 +52,6 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         priceConsumerV3 = _priceConsumerV3;
         // save gas for users by bulk approving stake() transactions
         _theo.approve(address(_staking), 1e45);
-    }
-
-    /* ======== STRUCTS ======== */
-
-    struct PriceInfo {
-        uint256 price;
-        uint256 quoteTokenAmountInUSD;
-        int priceConsumerPrice;
-        uint8 priceConsumerDecimals;
     }
 
     /* ======== DEPOSIT ======== */
@@ -102,25 +93,25 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         // Debt and the control variable decay over time
         _decay(_id, currentTime);
 
-        PriceInfo memory priceInfo;
-        (priceInfo.priceConsumerPrice, priceInfo.priceConsumerDecimals) = IPriceConsumerV3(priceConsumerV3).getLatestPrice(market.priceFeed);
-        priceInfo.quoteTokenAmountInUSD = (_amount * uint256(priceInfo.priceConsumerPrice)) / 10**metadata[_id].quoteDecimals; // with decimals of priceInfo.priceConsumerDecimals
+        // Get the amount of THEO per quote token
+        // With 9 decimal places
+        uint256 price = calculatePrice(_id);
+
         // Users input a maximum price, which protects them from price changes after
         // entering the mempool. max price is a slippage mitigation measure
-        priceInfo.price = _marketPrice(_id);
-        require(priceInfo.price <= _maxPrice, "Depository: more than max price");
+        require(price <= _maxPrice, "Depository: more than max price");
 
         /**
          * payout for the deposit = amount / price
          *
          * where
-         * payout = THEO out
+         * payout = THEO out, in THEO decimals (9)
          * amount = quote tokens in
-         * price = quote tokens : theo (i.e. 42069 DAI : THEO)
+         * price = THEO per quote token, in THEO decimals (9) (e.g. 3473326 THEO (9 decimals) / ETH; equivalent to 0.003473326 THEO/ETH)
          *
          * 1e18 = THEO decimals (9) + price decimals (9)
          */
-        payout_ = ((_amount * 1e18) / priceInfo.price) / (10**metadata[_id].quoteDecimals);
+        payout_ = ((_amount * 1e18) / price) / (10**metadata[_id].quoteDecimals);
 
         // markets have a max payout amount, capping size because deposits
         // do not experience slippage. max payout is recalculated upon tuning
@@ -162,7 +153,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         // incrementing total debt raises the price of the next bond
         market.totalDebt += uint64(payout_);
 
-        emit Bond(_id, _amount, priceInfo.priceConsumerPrice, priceInfo.priceConsumerDecimals, priceInfo.quoteTokenAmountInUSD);
+        emit Bond(_id, _amount, price);
 
         /**
          * user data is stored as Notes. these are isolated array entries
@@ -287,7 +278,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
      * @notice             creates a new market type
      * @dev                current price should be in 9 decimals.
      * @param _quoteToken  token used to deposit
-     * @param _market      [capacity (in THEO or quote), initial price / THEO (9 decimals), debt buffer (3 decimals)]
+     * @param _market      [capacity (in THEO or quote), bond price USD per THEO (9 decimals), debt buffer (3 decimals)]
      * @param _booleans    [capacity in quote, fixed term]
      * @param _terms       [vesting length (if fixed term) or vested timestamp, conclusion timestamp]
      * @param _intervals   [deposit interval (seconds), tune interval (seconds)]
@@ -357,7 +348,8 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
                 totalDebt: targetDebt,
                 maxPayout: maxPayout,
                 purchased: 0,
-                sold: 0
+                sold: 0,
+                usdPricePerTHEO: _market[1]
             })
         );
 
@@ -441,7 +433,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
      */
     function payoutFor(uint256 _amount, uint256 _id) external view override returns (uint256) {
         Metadata memory meta = metadata[_id];
-        return (_amount * 1e18) / marketPrice(_id) / 10**meta.quoteDecimals;
+        return (_amount * 1e18) / calculatePrice(_id) / 10**meta.quoteDecimals;
     }
 
     /**
@@ -540,6 +532,19 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         return ids;
     }
 
+    function calculatePrice(uint256 _id) public view override returns (uint256) {
+        // Get latest price for the market's quote token in USD
+        (int256 priceConsumerPrice, uint8 priceConsumerDecimals) = IPriceConsumerV3(priceConsumerV3).getLatestPrice(
+            markets[_id].priceFeed
+        );
+
+        int256 scaledPrice = scalePrice(int256(markets[_id].usdPricePerTHEO), 0, 9 + priceConsumerDecimals);
+
+        // calculate price as THEO per quote token, in THEO decimals (9)
+        uint256 price = uint256(scaledPrice / priceConsumerPrice);
+        return price;
+    }
+
     /* ======== INTERNAL VIEW ======== */
 
     /**
@@ -586,5 +591,20 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
 
         active_ = secondsSince_ < info.timeToAdjusted;
         decay_ = active_ ? (info.change * secondsSince_) / info.timeToAdjusted : info.change;
+    }
+
+    /* ======== INTERNAL PURE ======== */
+
+    function scalePrice(
+        int256 _price,
+        uint8 _priceDecimals,
+        uint8 _decimals
+    ) internal pure returns (int256) {
+        if (_priceDecimals < _decimals) {
+            return _price * int256(10**uint256(_decimals - _priceDecimals));
+        } else if (_priceDecimals > _decimals) {
+            return _price / int256(10**uint256(_priceDecimals - _decimals));
+        }
+        return _price;
     }
 }
