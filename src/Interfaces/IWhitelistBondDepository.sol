@@ -90,8 +90,6 @@ interface IWhitelistBondDepository {
 
     function payoutFor(uint256 _amount, uint256 _bid) external view returns (uint256);
 
-    function marketPrice(uint256 _bid) external view returns (uint256);
-
     function currentDebt(uint256 _bid) external view returns (uint256);
 
     function debtRatio(uint256 _bid) external view returns (uint256);

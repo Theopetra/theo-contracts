@@ -235,7 +235,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
 
             // compute seconds remaining until market will conclude
             uint256 timeRemaining = terms[_id].conclusion - _time;
-            uint256 price = _marketPrice(_id);
+            uint256 price = calculatePrice(_id);
 
             // standardize capacity into an base token amount
             // theo decimals (9) + price decimals (9)
@@ -392,37 +392,6 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
     /* ======== EXTERNAL VIEW ======== */
 
     /**
-     * @notice             calculate current market price of quote token in base token
-     * @dev                accounts for debt and control variable decay since last deposit (vs _marketPrice())
-     * @param _id          ID of market
-     * @return             price for market in THEO decimals
-     *
-     * price is derived from the equation
-     *
-     * p = cv * dr
-     *
-     * where
-     * p = price
-     * cv = control variable
-     * dr = debt ratio
-     *
-     * dr = d / s
-     *
-     * where
-     * d = debt
-     * s = supply of token at market creation
-     *
-     * d -= ( d * (dt / l) )
-     *
-     * where
-     * dt = change in time
-     * l = length of program
-     */
-    function marketPrice(uint256 _id) public view override returns (uint256) {
-        return (currentControlVariable(_id) * debtRatio(_id)) / (10**metadata[_id].quoteDecimals);
-    }
-
-    /**
      * @notice             payout due for amount of quote tokens
      * @dev                accounts for debt and control variable decay so it is up to date
      * @param _amount      amount of quote tokens to spend
@@ -546,17 +515,6 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
     }
 
     /* ======== INTERNAL VIEW ======== */
-
-    /**
-     * @notice                  calculate current market price of quote token in base token
-     * @dev                     see marketPrice() for explanation of price computation
-     * @dev                     uses info from storage because data has been updated before call (vs marketPrice())
-     * @param _id               market ID
-     * @return                  price for market in THEO decimals
-     */
-    function _marketPrice(uint256 _id) internal view returns (uint256) {
-        return (terms[_id].controlVariable * _debtRatio(_id)) / (10**metadata[_id].quoteDecimals);
-    }
 
     /**
      * @notice                  calculate debt factoring in decay
