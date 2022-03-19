@@ -47,7 +47,7 @@ describe.only('Whitelist Bond depository', function () {
 
   // Market-specific
   const capacity = 1e14;
-  const initialPrice = 10;
+  const initialPrice = 10e9; // 10 USD per THEO (9 decimals)
   const buffer = 2e5;
   const capacityInQuote = false;
   const fixedTerm = true;
@@ -92,7 +92,7 @@ describe.only('Whitelist Bond depository', function () {
     const [mockPriceConsumerPrice, mockPriceConsumerDecimals] = await PriceConsumerV3Mock.getLatestPrice(
       rinkebyEthUsdPriceFeed
     );
-    const expectedScaledPrice = initialPrice * 10 ** (mockPriceConsumerDecimals + 9 - 0); // mockPriceConsumerDecimals + THEO decimals (9) - usdPerTHEO decimals (0)
+    const expectedScaledPrice = initialPrice * 10 ** (mockPriceConsumerDecimals + 9 - 9); // mockPriceConsumerDecimals + THEO decimals (9) - usdPerTHEO decimals (0)
     expectedPrice = Math.floor(Number(expectedScaledPrice / mockPriceConsumerPrice)); // Expected price of THEO per ETH, in THEO decimals (9)
 
     // Calculate the `expectedPayout` in THEO (9 decimals)
@@ -119,13 +119,26 @@ describe.only('Whitelist Bond depository', function () {
       const [, , , , , , , , usdPricePerTHEO] = await WhitelistBondDepository.markets(marketId);
       expect(usdPricePerTHEO).to.equal(initialPrice);
     });
-  });
 
-  describe('Payout for', function () {
-    it('should give an accurate payout value for an amount of quote token', async function () {
-      await WhitelistBondDepository.payoutFor
-    })
-  })
+    it('allows a theo bond price to be less than 1 USD', async function () {
+      const [, , bob] = users;
+      const block = await ethers.provider.getBlock('latest');
+      const conclusion = block.timestamp + timeToConclusion;
+      const subUsdInitialPrice = 1_000_000 // 0.001 USD per THEO (9 decimals)
+
+      await WhitelistBondDepository.create(
+        WETH9.address,
+        rinkebyEthUsdPriceFeed,
+        [capacity, subUsdInitialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [depositInterval, tuneInterval]
+      );
+
+      expect(await WhitelistBondDepository.isLive(1)).to.equal(true);
+    });
+
+  });
 
   describe('Deposit', function () {
     it('should allow a deposit', async function () {
@@ -171,10 +184,7 @@ describe.only('Whitelist Bond depository', function () {
 
       expect(Number(purchased)).to.equal(Number(depositAmount));
     });
-
-    it.skip('allows a price for a theo bond to be less than 1 USD', async function () {});
   });
-
 
   describe('External view', function () {
     it('can give the current price of THEO per quote token', async function () {

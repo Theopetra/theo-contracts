@@ -278,7 +278,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
      * @notice             creates a new market type
      * @dev                current price should be in 9 decimals.
      * @param _quoteToken  token used to deposit
-     * @param _market      [capacity (in THEO or quote), bond price USD per THEO (9 decimals), debt buffer (3 decimals)]
+     * @param _market      [capacity (in THEO or quote), fixed bond price (9 decimals) USD per THEO, debt buffer (3 decimals)]
      * @param _booleans    [capacity in quote, fixed term]
      * @param _terms       [vesting length (if fixed term) or vested timestamp, conclusion timestamp]
      * @param _intervals   [deposit interval (seconds), tune interval (seconds)]
@@ -507,7 +507,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
             markets[_id].priceFeed
         );
 
-        int256 scaledPrice = scalePrice(int256(markets[_id].usdPricePerTHEO), 0, 9 + priceConsumerDecimals);
+        int256 scaledPrice = scalePrice(int256(markets[_id].usdPricePerTHEO), 9, 9 + priceConsumerDecimals);
 
         // calculate price as THEO per quote token, in THEO decimals (9)
         uint256 price = uint256(scaledPrice / priceConsumerPrice);
@@ -553,6 +553,11 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
 
     /* ======== INTERNAL PURE ======== */
 
+    /**
+     * @param _price            fixed bond price (USD per THEO), 9 decimals
+     * @param _priceDecimals    decimals (9) used for the fixed bond price
+     * @param _decimals         sum of decimals for THEO token (9) + decimals for the price feed
+     */
     function scalePrice(
         int256 _price,
         uint8 _priceDecimals,
