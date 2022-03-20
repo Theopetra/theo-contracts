@@ -17,6 +17,8 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
 
     address public override vault;
 
+    address public override wlSigner;
+
     address public newGovernor;
 
     address public newGuardian;
@@ -27,6 +29,8 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
 
     address public newVault;
 
+    address public newWlSigner;
+
     /* ========== Constructor ========== */
 
     constructor(
@@ -34,7 +38,8 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         address _guardian,
         address _policy,
         address _manager,
-        address _vault
+        address _vault,
+        address _wlSigner
     ) TheopetraAccessControlled(ITheopetraAuthority(address(this))) {
         governor = _governor;
         emit GovernorPushed(address(0), governor, true);
@@ -46,6 +51,8 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         emit ManagerPushed(address(0), manager, true);
         vault = _vault;
         emit VaultPushed(address(0), vault, true);
+        wlSigner = _wlSigner;
+        emit SignerPushed(address(0), vault, true);
     }
 
     /* ========== GOV ONLY ========== */
@@ -80,6 +87,12 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         emit VaultPushed(vault, newVault, _effectiveImmediately);
     }
 
+    function pushWlSigner(address _newWlSigner, bool _effectiveImmediately) external onlyGovernor {
+        if (_effectiveImmediately) wlSigner = _newWlSigner;
+        newWlSigner = _newWlSigner;
+        emit SignerPushed(wlSigner, newWlSigner, _effectiveImmediately);
+    }
+
     /* ========== PENDING ROLE ONLY ========== */
 
     function pullGovernor() external {
@@ -110,5 +123,11 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         require(msg.sender == newVault, "!newVault");
         emit VaultPulled(vault, newVault);
         vault = newVault;
+    }
+
+    function pullWlSigner() external {
+        require(msg.sender == newWlSigner, "!newWlSigner");
+        emit SignerPulled(wlSigner, newWlSigner);
+        wlSigner = newWlSigner;
     }
 }

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "../Types/NoteKeeper.sol";
+import "../Types/Signed.sol";
 
 import "../Libraries/SafeERC20.sol";
 
@@ -9,12 +10,13 @@ import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/IWhitelistBondDepository.sol";
 import "../Interfaces/IPriceConsumerV3.sol";
 
+
 /**
  * @title Theopetra Bond Depository
  * @notice Originally based off of Olympus Bond Depository V2
  */
 
-contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeeper {
+contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeeper, Signed {
     /* ======== DEPENDENCIES ======== */
 
     using SafeERC20 for IERC20;

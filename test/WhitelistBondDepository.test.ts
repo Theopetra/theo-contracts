@@ -40,7 +40,7 @@ const setup = deployments.createFixture(async function () {
   };
 });
 
-describe.only('Whitelist Bond depository', function () {
+describe('Whitelist Bond depository', function () {
   const LARGE_APPROVAL = '100000000000000000000000000000000';
   const initialMint = '10000000000000000000000000';
   const rinkebyEthUsdPriceFeed = '0x8A753747A1Fa494EC906cE90E9f37563A8AF630e';
@@ -65,12 +65,13 @@ describe.only('Whitelist Bond depository', function () {
   let WETH9: WETH9;
   let PriceConsumerV3Mock: any;
   let users: any;
+  let owner: any;
 
   let expectedPrice: number;
   let expectedPayout: number;
 
   beforeEach(async function () {
-    ({ WhitelistBondDepository, WETH9, PriceConsumerV3Mock, users } = await setup());
+    ({ WhitelistBondDepository, WETH9, PriceConsumerV3Mock, users, owner } = await setup());
     const [, , bob] = users;
     const block = await ethers.provider.getBlock('latest');
     const conclusion = block.timestamp + timeToConclusion;
