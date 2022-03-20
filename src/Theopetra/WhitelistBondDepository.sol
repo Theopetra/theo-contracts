@@ -501,15 +501,22 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         return ids;
     }
 
+    /**
+     * @notice                  calculate the price of THEO per quote token
+     * @dev                     get the latest price for the market's quote token in USD
+     *                          (`priceConsumerPrice`, with decimals `priceConsumerDecimals`)
+     *                          then `scalePrice` to scale the fixed bond price to THEO decimals when calculating `price`.
+     *                          finally, calculate `price` as THEO per quote token, in THEO decimals (9)
+     * @param _id               market ID
+     * @return                  uint256 price of THEO per quote token, in THEO decimals (9)
+     */
     function calculatePrice(uint256 _id) public view override returns (uint256) {
-        // Get latest price for the market's quote token in USD
         (int256 priceConsumerPrice, uint8 priceConsumerDecimals) = IPriceConsumerV3(priceConsumerV3).getLatestPrice(
             markets[_id].priceFeed
         );
 
         int256 scaledPrice = scalePrice(int256(markets[_id].usdPricePerTHEO), 9, 9 + priceConsumerDecimals);
 
-        // calculate price as THEO per quote token, in THEO decimals (9)
         uint256 price = uint256(scaledPrice / priceConsumerPrice);
         return price;
     }
