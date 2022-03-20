@@ -10,7 +10,6 @@ import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/IWhitelistBondDepository.sol";
 import "../Interfaces/IPriceConsumerV3.sol";
 
-
 /**
  * @title Theopetra Bond Depository
  * @notice Originally based off of Olympus Bond Depository V2
@@ -39,7 +38,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
     // Queries
     mapping(address => uint256[]) public marketsForQuote; // market IDs for quote token
 
-    IPriceConsumerV3 immutable public priceConsumerV3;
+    IPriceConsumerV3 public immutable priceConsumerV3;
 
     /* ======== CONSTRUCTOR ======== */
 
@@ -65,25 +64,16 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
      * @param _maxPrice    the maximum price at which to buy
      * @param _user        the recipient of the payout
      * @param _referral    the front end operator address
-     * @return payout_     the amount of sTHEO due
-     * @return expiry_     the timestamp at which payout is redeemable
-     * @return index_      the user index of the Note (used to redeem or query information)
+     * @return depositInfo DepositInfo
      */
     function deposit(
         uint256 _id,
         uint256 _amount,
         uint256 _maxPrice,
         address _user,
-        address _referral
-    )
-        external
-        override
-        returns (
-            uint256 payout_,
-            uint256 expiry_,
-            uint256 index_
-        )
-    {
+        address _referral,
+        bytes calldata signature
+    ) external override returns (DepositInfo memory depositInfo) {
         Market storage market = markets[_id];
         Terms memory term = terms[_id];
         uint48 currentTime = uint48(block.timestamp);
@@ -113,11 +103,11 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
          *
          * 1e18 = THEO decimals (9) + price decimals (9)
          */
-        payout_ = ((_amount * 1e18) / price) / (10**metadata[_id].quoteDecimals);
+        depositInfo.payout_ = ((_amount * 1e18) / price) / (10**metadata[_id].quoteDecimals);
 
         // markets have a max payout amount, capping size because deposits
         // do not experience slippage. max payout is recalculated upon tuning
-        require(payout_ <= market.maxPayout, "Depository: max size exceeded");
+        require(depositInfo.payout_ <= market.maxPayout, "Depository: max size exceeded");
 
         /*
          * each market is initialized with a capacity
@@ -128,7 +118,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
          * or the number of quote tokens that the market can buy
          * (if capacity in quote is true)
          */
-        market.capacity -= market.capacityInQuote ? _amount : payout_;
+        market.capacity -= market.capacityInQuote ? _amount : depositInfo.payout_;
 
         /**
          * bonds mature with a cliff at a set timestamp
@@ -145,15 +135,15 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
          * i.e. expiration = day 10. when alice deposits on day 1, her term
          * is 9 days. when bob deposits on day 2, his term is 8 days.
          */
-        expiry_ = term.fixedTerm ? term.vesting + currentTime : term.vesting;
+        depositInfo.expiry_ = term.fixedTerm ? term.vesting + currentTime : term.vesting;
 
         // markets keep track of how many quote tokens have been
         // purchased, and how much THEO has been sold
         market.purchased += _amount;
-        market.sold += uint64(payout_);
+        market.sold += uint64(depositInfo.payout_);
 
         // incrementing total debt raises the price of the next bond
-        market.totalDebt += uint64(payout_);
+        market.totalDebt += uint64(depositInfo.payout_);
 
         emit Bond(_id, _amount, price);
 
@@ -163,7 +153,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
          * is redeemable, the time when payout was redeemed, and the ID
          * of the market deposited into
          */
-        index_ = addNote(_user, payout_, uint48(expiry_), uint48(_id), _referral);
+        depositInfo.index_ = addNote(_user, depositInfo.payout_, uint48(depositInfo.expiry_), uint48(_id), _referral);
 
         // transfer payment to treasury
         market.quoteToken.safeTransferFrom(msg.sender, address(treasury), _amount);

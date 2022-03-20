@@ -44,6 +44,12 @@ interface IWhitelistBondDepository {
         bool active;
     }
 
+    struct DepositInfo {
+        uint256 payout_;
+        uint256 expiry_;
+        uint256 index_;
+    }
+
     /**
      * @notice deposit market
      * @param _bid uint256
@@ -51,23 +57,17 @@ interface IWhitelistBondDepository {
      * @param _maxPrice uint256
      * @param _user address
      * @param _referral address
-     * @return payout_ uint256
-     * @return expiry_ uint256
-     * @return index_ uint256
+     * @param signature bytes
+     * @return depositInfo DepositInfo
      */
     function deposit(
         uint256 _bid,
         uint256 _amount,
         uint256 _maxPrice,
         address _user,
-        address _referral
-    )
-        external
-        returns (
-            uint256 payout_,
-            uint256 expiry_,
-            uint256 index_
-        );
+        address _referral,
+        bytes calldata signature
+    ) external returns (DepositInfo memory depositInfo);
 
     function create(
         IERC20 _quoteToken, // token used to deposit
