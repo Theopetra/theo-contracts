@@ -1,6 +1,12 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
-import { WhitelistTheopetraBondDepository, WETH9, PriceConsumerV3Mock } from '../typechain-types';
+import {
+  WhitelistTheopetraBondDepository,
+  WETH9,
+  SignerHelper__factory,
+  PriceConsumerV3Mock,
+  SignerHelper,
+} from '../typechain-types';
 import { setupUsers } from './utils';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
 
@@ -40,7 +46,7 @@ const setup = deployments.createFixture(async function () {
   };
 });
 
-describe.only('Whitelist Bond depository', function () {
+describe('Whitelist Bond depository', function () {
   const LARGE_APPROVAL = '100000000000000000000000000000000';
   const rinkebyEthUsdPriceFeed = '0x8A753747A1Fa494EC906cE90E9f37563A8AF630e';
 
@@ -139,54 +145,119 @@ describe.only('Whitelist Bond depository', function () {
     });
   });
 
-  describe('Verify deposit signature', function () {
-    it('reverts if a wallet that is not the governor tries to sign the message', async function () {
-      const [governorWallet, anotherUserWallet] = await ethers.getSigners();
-      const [ , , bob] = users;
+  describe('Deposit signature verification', function () {
+    let SignerHelper: SignerHelper;
 
-      const messageHash = ethers.utils.solidityKeccak256(['address', 'string'], [bob.address, 'somedata']);
-      const messageHashBinary = ethers.utils.arrayify(messageHash);
-
-      signature = await anotherUserWallet.signMessage(messageHashBinary);
-
-      await expect(bob.WhitelistBondDepository.deposit(
-        marketId,
-        depositAmount,
-        maxPrice,
-        bob.address,
-        bob.address,
-        signature
-      )).to.be.revertedWith('Invalid signature');
-    })
-  })
-
-  describe('Deposit', function () {
     beforeEach(async function () {
       const [governorWallet] = await ethers.getSigners();
-      const [ , , bob] = users;
 
-      // building hash has to come from system address
-      // 32 bytes of data
-      const messageHash = ethers.utils.solidityKeccak256(['address', 'string'], [bob.address, 'somedata']);
+      // Deploy SignerHelper contract
+      const signerHelperFactory = new SignerHelper__factory(governorWallet);
+      SignerHelper = await signerHelperFactory.deploy();
+
+      // Set the secret on the Signed contract
+      await WhitelistBondDepository.setSecret('supersecret');
+    });
+
+    it('reverts if a wallet that is not the governor tries to sign the message', async function () {
+      const [, , bob] = users;
+      const [, anotherUserWallet] = await ethers.getSigners();
+
+      // Create a hash in the same way as created by Signed contract
+      const bobHash = await SignerHelper.createHash(
+        'somedata',
+        bob.address,
+        WhitelistBondDepository.address,
+        'supersecret'
+      );
+
+      const messageHashBinary = ethers.utils.arrayify(bobHash);
+
+      // Try to sign the message using another wallet (not the governor)
+      signature = await anotherUserWallet.signMessage(messageHashBinary);
+
+      await expect(
+        bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature)
+      ).to.be.revertedWith('Signature verification failed');
+    });
+
+    it('reverts if the secret used for creating the hash via the SignerHelper does not match that set on the Signer contract', async function () {
+      const [, , bob] = users;
+      const [governorWallet] = await ethers.getSigners();
+
+      // Create a hash in the same way as created by Signed contract
+      const bobHash = await SignerHelper.createHash(
+        'somedata',
+        bob.address,
+        WhitelistBondDepository.address,
+        'supersecret'
+      );
+
+      const messageHashBinary = ethers.utils.arrayify(bobHash);
+
+      // Set a new secret on the Signed contract
+      await WhitelistBondDepository.setSecret('newAndImprovedSuperSecret');
+
+      signature = await governorWallet.signMessage(messageHashBinary);
+
+      await expect(
+        bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature)
+      ).to.be.revertedWith('Signature verification failed');
+    });
+
+    it('reverts if the data used for creating the hash via the SignerHelper does not match that used in the Signer contract', async function () {
+      const [, , bob] = users;
+      const [governorWallet] = await ethers.getSigners();
+
+      const bobHash = await SignerHelper.createHash(
+        'thisIsNotTheCorrectData',
+        bob.address,
+        WhitelistBondDepository.address,
+        'supersecret'
+      );
 
       // 32 bytes of data in Uint8Array
-      const messageHashBinary = ethers.utils.arrayify(messageHash);
+      const messageHashBinary = ethers.utils.arrayify(bobHash);
 
       // To sign the 32 bytes of data, pass in the data
       signature = await governorWallet.signMessage(messageHashBinary);
-    })
+
+      await expect(
+        bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature)
+      ).to.be.revertedWith('Signature verification failed');
+    });
+  });
+
+  describe('Deposit success', function () {
+    beforeEach(async function () {
+      const [governorWallet] = await ethers.getSigners();
+      const [, , bob] = users;
+
+      // Deploy SignerHelper contract
+      // and use to create a hash in the same way as created by Signed contract
+      const signerHelperFactory = new SignerHelper__factory(governorWallet);
+      const SignerHelper = await signerHelperFactory.deploy();
+      const bobHash = await SignerHelper.createHash(
+        'somedata',
+        bob.address,
+        WhitelistBondDepository.address,
+        'supersecret'
+      );
+
+      // Set the secret on the Signed contract
+      await WhitelistBondDepository.setSecret('supersecret');
+
+      // 32 bytes of data in Uint8Array
+      const messageHashBinary = ethers.utils.arrayify(bobHash);
+
+      // To sign the 32 bytes of data, pass in the data
+      signature = await governorWallet.signMessage(messageHashBinary);
+    });
 
     it('should allow a deposit', async function () {
-      const [ , , bob] = users;
+      const [, , bob] = users;
 
-      await bob.WhitelistBondDepository.deposit(
-        marketId,
-        depositAmount,
-        maxPrice,
-        bob.address,
-        bob.address,
-        signature
-      );
+      await bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
       const bobNotesIndexes = await WhitelistBondDepository.indexesFor(bob.address);
 
       expect(bobNotesIndexes.length).to.equal(1);
@@ -198,7 +269,9 @@ describe.only('Whitelist Bond depository', function () {
       const depositAmount = ethers.utils.parseEther('25');
       const maxPrice = ethers.utils.parseEther('25');
 
-      await expect(bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature))
+      await expect(
+        bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature)
+      )
         .to.emit(WhitelistBondDepository, 'Bond')
         .withArgs(marketId, depositAmount, expectedPrice);
     });

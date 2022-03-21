@@ -17,9 +17,9 @@ abstract contract Signed is TheopetraAccessControlled {
         _secret = secret;
     }
 
-    // function createHash(string memory data) internal view returns (bytes32) {
-    //     return keccak256(abi.encodePacked(address(this), msg.sender, data, _secret));
-    // }
+    function createHash(string memory data) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(address(this), msg.sender, data, _secret));
+    }
 
     function getSigner(bytes32 hash, bytes memory signature) internal pure returns (address) {
         return hash.toEthSignedMessageHash().recover(signature);
@@ -29,23 +29,8 @@ abstract contract Signed is TheopetraAccessControlled {
         return extracted == authority.wlSigner();
     }
 
-
-    function isValidSignature(bytes32 hash, bytes memory signature) internal view returns (bool isValid) {
-        bytes32 signedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
-        return signedHash.recover(signature) == authority.wlSigner();
-    }
-
     function verifySignature(string memory data, bytes calldata signature) internal view {
-        bytes32 msgHash = keccak256(abi.encodePacked(msg.sender, data));
-
-        require(
-            isValidSignature(msgHash, signature),
-            "Invalid signature"
-        );
+        address extracted = getSigner(createHash(data), signature);
+        require(isAuthorizedSigner(extracted), "Signature verification failed");
     }
-
-    // function verifySignature(string memory data, bytes calldata signature) internal view {
-    //     address extracted = getSigner(createHash(data), signature);
-    //     require(isAuthorizedSigner(extracted), "Signature verification failed");
-    // }
 }
