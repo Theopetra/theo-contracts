@@ -226,6 +226,34 @@ describe('Whitelist Bond depository', function () {
         bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature)
       ).to.be.revertedWith('Signature verification failed');
     });
+
+    it('reverts if the user is not whitelisted', async function () {
+      const [, alice, bob] = users;
+      const [governorWallet] = await ethers.getSigners();
+
+      await alice.WETH9.deposit({ value: ethers.utils.parseEther('100') });
+      await alice.WETH9.approve(WhitelistBondDepository.address, LARGE_APPROVAL);
+
+      //Whitelist alice as an example of a working deposit
+      const aliceHash = await SignerHelper.createHash(
+        'somedata',
+        alice.address,
+        WhitelistBondDepository.address,
+        'supersecret'
+      );
+      const messageHashBinary = ethers.utils.arrayify(aliceHash);
+      signature = await governorWallet.signMessage(messageHashBinary);
+
+      // Alice can successfully deposit
+      await alice.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, alice.address, alice.address, signature);
+      const aliceNotesIndexes = await WhitelistBondDepository.indexesFor(alice.address);
+      expect(aliceNotesIndexes.length).to.equal(1);
+
+      // Bob is not whitelisted and cannot deposit
+      await expect(
+        bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature)
+      ).to.be.revertedWith('Signature verification failed');
+    });
   });
 
   describe('Deposit success', function () {
@@ -234,9 +262,9 @@ describe('Whitelist Bond depository', function () {
       const [, , bob] = users;
 
       // Deploy SignerHelper contract
-      // and use to create a hash in the same way as created by Signed contract
       const signerHelperFactory = new SignerHelper__factory(governorWallet);
       const SignerHelper = await signerHelperFactory.deploy();
+      // Create a hash in the same way as created by Signed contract
       const bobHash = await SignerHelper.createHash(
         'somedata',
         bob.address,
