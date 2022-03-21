@@ -3,19 +3,19 @@ pragma solidity ^0.8.10;
 
 import "../Types/NoteKeeper.sol";
 import "../Types/Signed.sol";
+import "../Types/PriceConsumerV3.sol";
 
 import "../Libraries/SafeERC20.sol";
 
 import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/IWhitelistBondDepository.sol";
-import "../Interfaces/IPriceConsumerV3.sol";
 
 /**
  * @title Theopetra Bond Depository
  * @notice Originally based off of Olympus Bond Depository V2
  */
 
-contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeeper, Signed {
+contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeeper, Signed, PriceConsumerV3 {
     /* ======== DEPENDENCIES ======== */
 
     using SafeERC20 for IERC20;
@@ -43,8 +43,6 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
     // Queries
     mapping(address => uint256[]) public marketsForQuote; // market IDs for quote token
 
-    IPriceConsumerV3 public immutable priceConsumerV3;
-
     /* ======== CONSTRUCTOR ======== */
 
     constructor(
@@ -52,10 +50,8 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         IERC20 _theo,
         IsTHEO _stheo,
         IStaking _staking,
-        ITreasury _treasury,
-        IPriceConsumerV3 _priceConsumerV3
+        ITreasury _treasury
     ) NoteKeeper(_authority, _theo, _stheo, _staking, _treasury) {
-        priceConsumerV3 = _priceConsumerV3;
         // save gas for users by bulk approving stake() transactions
         _theo.approve(address(_staking), 1e45);
     }
@@ -509,7 +505,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
      * @return                  uint256 price of THEO per quote token, in THEO decimals (9)
      */
     function calculatePrice(uint256 _id) public view override returns (uint256) {
-        (int256 priceConsumerPrice, uint8 priceConsumerDecimals) = IPriceConsumerV3(priceConsumerV3).getLatestPrice(
+        (int256 priceConsumerPrice, uint8 priceConsumerDecimals) = getLatestPrice(
             markets[_id].priceFeed
         );
 

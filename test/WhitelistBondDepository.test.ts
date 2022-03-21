@@ -5,13 +5,13 @@ import {
   WhitelistTheopetraBondDepository,
   WETH9,
   SignerHelper__factory,
-  PriceConsumerV3Mock,
   SignerHelper,
   StakingMock,
   TheopetraAuthority,
   TreasuryMock,
   UsdcERC20Mock,
   TheopetraERC20Mock,
+  AggregatorMockETH,
 } from '../typechain-types';
 import { setupUsers } from './utils';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
@@ -26,7 +26,7 @@ const setup = deployments.createFixture(async function () {
     MOCKSWITHARGS.stakingMock,
     MOCKSWITHARGS.treasuryMock,
     MOCKS.WETH9,
-    MOCKS.priceConsumerV3Mock,
+    MOCKS.aggregatorMockETH
   ]);
 
   const { deployer: owner } = await getNamedAccounts();
@@ -40,7 +40,7 @@ const setup = deployments.createFixture(async function () {
     TreasuryMock: <TreasuryMock>await ethers.getContract(MOCKSWITHARGS.treasuryMock),
     UsdcTokenMock: <UsdcERC20Mock>await ethers.getContract(MOCKS.usdcTokenMock),
     WETH9: <WETH9>await ethers.getContract(MOCKS.WETH9),
-    PriceConsumerV3Mock: <PriceConsumerV3Mock>await ethers.getContract(MOCKS.priceConsumerV3Mock),
+    AggregatorMockETH: <AggregatorMockETH>await ethers.getContract(MOCKS.aggregatorMockETH)
   };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
@@ -54,7 +54,6 @@ const setup = deployments.createFixture(async function () {
 
 describe('Whitelist Bond depository', function () {
   const LARGE_APPROVAL = '100000000000000000000000000000000';
-  const rinkebyEthUsdPriceFeed = ethers.utils.getAddress('0x8A753747A1Fa494EC906cE90E9f37563A8AF630e');
 
   // Market-specific
   const capacity = 1e14;
@@ -74,10 +73,10 @@ describe('Whitelist Bond depository', function () {
 
   let WhitelistBondDepository: WhitelistTheopetraBondDepository;
   let WETH9: WETH9;
-  let PriceConsumerV3Mock: PriceConsumerV3Mock;
   let TheopetraAuthority: TheopetraAuthority;
   let TheopetraERC20Mock: TheopetraERC20Mock;
   let StakingMock: StakingMock;
+  let AggregatorMockETH: AggregatorMockETH;
   let users: any;
   let signature: any;
 
@@ -88,10 +87,10 @@ describe('Whitelist Bond depository', function () {
     ({
       WhitelistBondDepository,
       WETH9,
-      PriceConsumerV3Mock,
       TheopetraAuthority,
       TheopetraERC20Mock,
       StakingMock,
+      AggregatorMockETH,
       users,
     } = await setup());
     const [, , bob] = users;
@@ -104,7 +103,7 @@ describe('Whitelist Bond depository', function () {
 
     await WhitelistBondDepository.create(
       WETH9.address,
-      rinkebyEthUsdPriceFeed,
+      AggregatorMockETH.address,
       [capacity, fixedBondPrice, buffer],
       [capacityInQuote, fixedTerm],
       [vesting, conclusion],
@@ -112,9 +111,8 @@ describe('Whitelist Bond depository', function () {
     );
 
     // Calculate the `expectedPrice` of THEO per ETH using mock price consumer values
-    const [mockPriceConsumerPrice, mockPriceConsumerDecimals] = await PriceConsumerV3Mock.getLatestPrice(
-      rinkebyEthUsdPriceFeed
-    );
+    const [,mockPriceConsumerPrice] = await AggregatorMockETH.latestRoundData();
+    const mockPriceConsumerDecimals = await AggregatorMockETH.decimals();
     const expectedScaledPrice = fixedBondPrice * 10 ** (mockPriceConsumerDecimals + 9 - 9); // mockPriceConsumerDecimals + THEO decimals (9) - usdPerTHEO decimals (0)
     expectedPrice = Math.floor(Number(expectedScaledPrice) / Number(mockPriceConsumerPrice)); // Expected price of THEO per ETH, in THEO decimals (9)
 
@@ -135,7 +133,7 @@ describe('Whitelist Bond depository', function () {
 
     it('stores the price consumer address in the Market information', async function () {
       const [, , priceFeed] = await WhitelistBondDepository.markets(marketId);
-      expect(priceFeed).to.equal(rinkebyEthUsdPriceFeed);
+      expect(priceFeed).to.equal(AggregatorMockETH.address);
     });
 
     it('keeps a record of the fixed USD price of THEO (the bond price) for the market', async function () {
@@ -150,7 +148,7 @@ describe('Whitelist Bond depository', function () {
       await expect(
         WhitelistBondDepository.create(
           WETH9.address,
-          rinkebyEthUsdPriceFeed,
+          AggregatorMockETH.address,
           [capacity, fixedBondPrice, buffer],
           [capacityInQuote, fixedTerm],
           [vesting, conclusion],
@@ -168,7 +166,7 @@ describe('Whitelist Bond depository', function () {
 
       await WhitelistBondDepository.create(
         WETH9.address,
-        rinkebyEthUsdPriceFeed,
+        AggregatorMockETH.address,
         [capacity, subUsdFixedBondPrice, buffer],
         [capacityInQuote, fixedTerm],
         [vesting, conclusion],
@@ -186,7 +184,7 @@ describe('Whitelist Bond depository', function () {
       await expect(
         alice.WhitelistBondDepository.create(
           WETH9.address,
-          rinkebyEthUsdPriceFeed,
+          AggregatorMockETH.address,
           [capacity, fixedBondPrice, buffer],
           [capacityInQuote, fixedTerm],
           [vesting, conclusion],
@@ -201,7 +199,7 @@ describe('Whitelist Bond depository', function () {
 
       await WhitelistBondDepository.create(
         WETH9.address,
-        rinkebyEthUsdPriceFeed,
+        AggregatorMockETH.address,
         [capacity, fixedBondPrice, buffer],
         [capacityInQuote, fixedTerm],
         [vesting, conclusion],
@@ -328,7 +326,7 @@ describe('Whitelist Bond depository', function () {
       await alice.WETH9.deposit({ value: ethers.utils.parseEther('100') });
       await alice.WETH9.approve(WhitelistBondDepository.address, LARGE_APPROVAL);
 
-      //Whitelist alice as an example of a working deposit
+      //Whitelist alice, for an example of a working deposit
       const aliceHash = await SignerHelper.createHash(
         'somedata',
         alice.address,

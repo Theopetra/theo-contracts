@@ -15,7 +15,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const sTheoToken = await deployments.get(CONTRACTS.sTheo);
     const Staking = await deployments.get(CONTRACTS.staking);
     const Treasury = await deployments.get(CONTRACTS.treasury);
-    const PriceConsumerV3 = await deployments.get(CONTRACTS.priceConsumerV3);
 
     const { deployer } = await getNamedAccounts();
     const chainId = await getChainId();
@@ -25,14 +24,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       sTheoToken.address,
       Staking.address,
       Treasury.address,
-      PriceConsumerV3.address,
     ];
 
     // If on Hardhat network, update args with addresses of already-deployed mocks
     if (chainId === '1337') {
-      const { TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock, PriceConsumerV3Mock } =
+      const { TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock } =
         await getNamedMockAddresses(hre);
-      args.splice(1, 5, TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock, PriceConsumerV3Mock);
+      args.splice(1, 4, TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock);
     }
 
     await deploy(CONTRACTS.whitelistBondDepo, {
@@ -56,5 +54,4 @@ func.dependencies =
         CONTRACTS.sTheo,
         CONTRACTS.staking,
         CONTRACTS.treasury,
-        CONTRACTS.priceConsumerV3,
       ];
