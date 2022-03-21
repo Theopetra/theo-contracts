@@ -56,5 +56,5 @@ func.dependencies =
         CONTRACTS.sTheo,
         CONTRACTS.staking,
         CONTRACTS.treasury,
-        CONTRACTS.priceConsumerV3
+        CONTRACTS.priceConsumerV3,
       ];

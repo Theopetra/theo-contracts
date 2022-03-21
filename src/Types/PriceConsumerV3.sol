@@ -7,12 +7,12 @@ contract PriceConsumerV3 {
     /**
      * Returns the latest price
      */
-    function getLatestPrice(address priceFeedAddress) public view returns (int, uint8) {
+    function getLatestPrice(address priceFeedAddress) public view returns (int256, uint8) {
         (
             uint80 roundID,
-            int price,
-            uint startedAt,
-            uint timeStamp,
+            int256 price,
+            uint256 startedAt,
+            uint256 timeStamp,
             uint80 answeredInRound
         ) = AggregatorV3Interface(priceFeedAddress).latestRoundData();
 

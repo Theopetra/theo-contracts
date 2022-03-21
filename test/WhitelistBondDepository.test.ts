@@ -399,7 +399,7 @@ describe('Whitelist Bond depository', function () {
       const [, , , , , , , , usdPricePerTHEO] = await WhitelistBondDepository.markets(marketId);
 
       expect(Number(usdPricePerTHEO)).to.equal(fixedBondPrice);
-    })
+    });
 
     it('emits the price of theo per quote token', async function () {
       const [, , bob] = users;

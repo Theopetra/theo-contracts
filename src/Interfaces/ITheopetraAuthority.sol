@@ -18,7 +18,6 @@ interface ITheopetraAuthority {
     event VaultPulled(address indexed from, address indexed to);
     event SignerPulled(address indexed from, address indexed to);
 
-
     /* ========== VIEW ========== */
 
     function governor() external view returns (address);

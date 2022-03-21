@@ -22,7 +22,12 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
 
     /* ======== EVENTS ======== */
 
-    event CreateMarket(uint256 indexed id, address indexed baseToken, address indexed quoteToken, uint256 fixedBondPrice);
+    event CreateMarket(
+        uint256 indexed id,
+        address indexed baseToken,
+        address indexed quoteToken,
+        uint256 fixedBondPrice
+    );
     event CloseMarket(uint256 indexed id);
     event Bond(uint256 indexed id, uint256 amount, uint256 price);
     event Tuned(uint256 indexed id, uint64 oldControlVariable, uint64 newControlVariable);

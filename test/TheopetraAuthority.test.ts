@@ -79,6 +79,5 @@ describe('TheopetraAuthority', function () {
       await expect(bob.TheopetraAuthority.pullWlSigner()).to.be.revertedWith('!newWlSigner');
       expect(await TheopetraAuthority.wlSigner()).to.equal(owner);
     });
-
   });
 });
