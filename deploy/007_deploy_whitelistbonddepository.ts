@@ -28,8 +28,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // If on Hardhat network, update args with addresses of already-deployed mocks
     if (chainId === '1337') {
-      const { TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock } =
-        await getNamedMockAddresses(hre);
+      const { TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock } = await getNamedMockAddresses(hre);
       args.splice(1, 4, TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock);
     }
 
@@ -48,10 +47,4 @@ func.tags = [CONTRACTS.whitelistBondDepo];
 func.dependencies =
   hre?.network?.config?.chainId === 1337
     ? [CONTRACTS.authority, 'Mocks']
-    : [
-        CONTRACTS.authority,
-        CONTRACTS.theoToken,
-        CONTRACTS.sTheo,
-        CONTRACTS.staking,
-        CONTRACTS.treasury,
-      ];
+    : [CONTRACTS.authority, CONTRACTS.theoToken, CONTRACTS.sTheo, CONTRACTS.staking, CONTRACTS.treasury];
