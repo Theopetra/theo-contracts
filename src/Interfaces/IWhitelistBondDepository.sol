@@ -55,7 +55,7 @@ interface IWhitelistBondDepository {
     function create(
         IERC20 _quoteToken, // token used to deposit
         address _priceFeed, // address of the price consumer, to return the USD value for the quote token when deposits are made
-        uint256[3] memory _market, // [capacity, initial price]
+        uint256[2] memory _market, // [capacity, fixed bond price (9 decimals) USD per THEO]
         bool[2] memory _booleans, // [capacity in quote, fixed term]
         uint256[2] memory _terms // [vesting, conclusion]
     ) external returns (uint256 id_);

@@ -111,8 +111,13 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
          * or the number of quote tokens that the market can buy
          * (if capacity in quote is true)
          */
+
+        require(
+            market.capacity >= (market.capacityInQuote ? _amount : depositInfo.payout_),
+            "Depository: capacity exceeded"
+        );
+
         market.capacity -= market.capacityInQuote ? _amount : depositInfo.payout_;
-        require(market.capacity > 0, "Depository: capacity exceeded");
 
         if (market.capacity == 0) {
             emit CloseMarket(_id);
@@ -160,7 +165,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
      * @notice             creates a new market type
      * @dev                current price should be in 9 decimals.
      * @param _quoteToken  token used to deposit
-     * @param _market      [capacity (in THEO or quote), fixed bond price (9 decimals) USD per THEO, debt buffer (3 decimals)]
+     * @param _market      [capacity (in THEO or quote), fixed bond price (9 decimals) USD per THEO]
      * @param _booleans    [capacity in quote, fixed term]
      * @param _terms       [vesting length (if fixed term) or vested timestamp, conclusion timestamp]
      * @param _priceFeed   address of the price consumer, to return the USD value for the quote token when deposits are made
@@ -169,7 +174,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
     function create(
         IERC20 _quoteToken,
         address _priceFeed,
-        uint256[3] memory _market,
+        uint256[2] memory _market,
         bool[2] memory _booleans,
         uint256[2] memory _terms
     ) external override onlyPolicy returns (uint256 id_) {
@@ -191,19 +196,9 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
             })
         );
 
-        terms.push(
-            Terms({
-                fixedTerm: _booleans[1],
-                vesting: uint48(_terms[0]),
-                conclusion: uint48(_terms[1])
-            })
-        );
+        terms.push(Terms({ fixedTerm: _booleans[1], vesting: uint48(_terms[0]), conclusion: uint48(_terms[1]) }));
 
-        metadata.push(
-            Metadata({
-                quoteDecimals: uint8(decimals)
-            })
-        );
+        metadata.push(Metadata({ quoteDecimals: uint8(decimals) }));
 
         marketsForQuote[address(_quoteToken)].push(id_);
 
@@ -297,9 +292,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
      * @return                  uint256 price of THEO per quote token, in THEO decimals (9)
      */
     function calculatePrice(uint256 _id) public view override returns (uint256) {
-        (int256 priceConsumerPrice, uint8 priceConsumerDecimals) = getLatestPrice(
-            markets[_id].priceFeed
-        );
+        (int256 priceConsumerPrice, uint8 priceConsumerDecimals) = getLatestPrice(markets[_id].priceFeed);
 
         int256 scaledPrice = scalePrice(int256(markets[_id].usdPricePerTHEO), 9, 9 + priceConsumerDecimals);
 

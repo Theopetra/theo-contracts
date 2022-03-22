@@ -61,7 +61,6 @@ describe('Whitelist Bond depository', function () {
   // Market-specific
   const capacity = 1e14;
   const fixedBondPrice = 10e9; // 10 USD per THEO (9 decimals)
-  const buffer = 2e5;
   const capacityInQuote = false;
   const fixedTerm = true;
   const vesting = 100;
@@ -108,15 +107,15 @@ describe('Whitelist Bond depository', function () {
     const conclusion = block.timestamp + timeToConclusion;
 
     // Deposit / mint quote tokens and approve transfer for WhitelistBondDepository, to allow deposits
-    await bob.WETH9.deposit({ value: ethers.utils.parseEther('100') });
+    await bob.WETH9.deposit({ value: ethers.utils.parseEther('1000') });
     await bob.WETH9.approve(WhitelistBondDepository.address, LARGE_APPROVAL);
-    await UsdcTokenMock.mint(bob.address, 100_000_000); // 100 USDC (6 decimals for USDC)
+    await UsdcTokenMock.mint(bob.address, 100_000_000_000); // 100_000 USDC (6 decimals for USDC)
     await bob.UsdcTokenMock.approve(WhitelistBondDepository.address, LARGE_APPROVAL);
 
     await WhitelistBondDepository.create(
       WETH9.address,
       AggregatorMockETH.address,
-      [capacity, fixedBondPrice, buffer],
+      [capacity, fixedBondPrice],
       [capacityInQuote, fixedTerm],
       [vesting, conclusion]
     );
@@ -172,7 +171,7 @@ describe('Whitelist Bond depository', function () {
         WhitelistBondDepository.create(
           WETH9.address,
           AggregatorMockETH.address,
-          [capacity, fixedBondPrice, buffer],
+          [capacity, fixedBondPrice],
           [capacityInQuote, fixedTerm],
           [vesting, conclusion]
         )
@@ -189,7 +188,7 @@ describe('Whitelist Bond depository', function () {
       await WhitelistBondDepository.create(
         WETH9.address,
         AggregatorMockETH.address,
-        [capacity, subUsdFixedBondPrice, buffer],
+        [capacity, subUsdFixedBondPrice],
         [capacityInQuote, fixedTerm],
         [vesting, conclusion]
       );
@@ -206,7 +205,7 @@ describe('Whitelist Bond depository', function () {
         alice.WhitelistBondDepository.create(
           WETH9.address,
           AggregatorMockETH.address,
-          [capacity, fixedBondPrice, buffer],
+          [capacity, fixedBondPrice],
           [capacityInQuote, fixedTerm],
           [vesting, conclusion]
         )
@@ -220,7 +219,7 @@ describe('Whitelist Bond depository', function () {
       await WhitelistBondDepository.create(
         WETH9.address,
         AggregatorMockETH.address,
-        [capacity, fixedBondPrice, buffer],
+        [capacity, fixedBondPrice],
         [capacityInQuote, fixedTerm],
         [vesting, conclusion]
       );
@@ -237,7 +236,7 @@ describe('Whitelist Bond depository', function () {
       await WhitelistBondDepository.create(
         UsdcTokenMock.address,
         AggregatorMockUSDC.address,
-        [capacity, fixedBondPrice, buffer],
+        [capacity, fixedBondPrice],
         [capacityInQuote, fixedTerm],
         [vesting, conclusion]
       );
@@ -254,12 +253,29 @@ describe('Whitelist Bond depository', function () {
       await WhitelistBondDepository.create(
         UsdcTokenMock.address,
         AggregatorMockUSDC.address,
-        [capacity, subUsdFixedBondPrice, buffer],
+        [capacity, subUsdFixedBondPrice],
         [capacityInQuote, fixedTerm],
         [vesting, conclusion]
       );
 
       expect(await WhitelistBondDepository.isLive(1)).to.equal(true);
+    });
+
+    it('allows a market capacity to be set in quote tokens', async function () {
+      const block = await ethers.provider.getBlock('latest');
+      const conclusion = block.timestamp + timeToConclusion;
+
+      const isCapacitySetInQuoteTokenAmount = true;
+
+      await expect(
+        WhitelistBondDepository.create(
+          WETH9.address,
+          AggregatorMockETH.address,
+          [capacity, fixedBondPrice],
+          [isCapacitySetInQuoteTokenAmount, fixedTerm],
+          [vesting, conclusion]
+        )
+      ).to.not.be.reverted;
     });
   });
 
@@ -440,7 +456,7 @@ describe('Whitelist Bond depository', function () {
       await WhitelistBondDepository.create(
         UsdcTokenMock.address,
         AggregatorMockUSDC.address,
-        [capacity, fixedBondPrice, buffer],
+        [capacity, fixedBondPrice],
         [capacityInQuote, fixedTerm],
         [vesting, usdcMarketconclusion]
       );
@@ -572,6 +588,163 @@ describe('Whitelist Bond depository', function () {
       const [payout_] = await WhitelistBondDepository.pendingFor(bob.address, 0);
       expect(Number(newStakingTHEOBalance) - Number(initialStakingTheoBalance)).to.equal(payout_);
     });
+
+    it('will revert if the attempted deposit amount is larger than the market capacity', async function () {
+      const [, , bob] = users;
+      const tooBigDepositAmount = ethers.utils.parseEther('2000');
+
+      await expect(
+        bob.WhitelistBondDepository.deposit(
+          marketId,
+          tooBigDepositAmount,
+          tooBigDepositAmount,
+          bob.address,
+          bob.address,
+          signature
+        )
+      ).to.be.revertedWith('Depository: capacity exceeded');
+    });
+
+    it('will reduce the capacity remaining for the market when a deposit is made', async function () {
+      const [, , bob] = users;
+      const firstDepositAmount = ethers.utils.parseEther('25');
+
+      await bob.WhitelistBondDepository.deposit(
+        marketId,
+        firstDepositAmount,
+        firstDepositAmount,
+        bob.address,
+        bob.address,
+        signature
+      );
+
+      const [capacityAfterDeposit] = await WhitelistBondDepository.markets(marketId);
+      expect(Number(capacityAfterDeposit)).to.be.lessThan(capacity);
+    });
+
+    it('will allow deposits up to the market capacity but will revert deposit attempts after capacity is reached', async function () {
+      const [, , bob] = users;
+
+      await bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
+
+      await bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
+
+      const [capacity] = await WhitelistBondDepository.markets(marketId);
+      const bigDepositAmount = ethers.utils.parseEther('299');
+      const payoutForBigDeposit = await WhitelistBondDepository.payoutFor(bigDepositAmount, marketId);
+      expect(Number(capacity) - Number(payoutForBigDeposit) < 0);
+
+      await expect(
+        bob.WhitelistBondDepository.deposit(
+          marketId,
+          bigDepositAmount,
+          bigDepositAmount,
+          bob.address,
+          bob.address,
+          signature
+        )
+      ).to.be.revertedWith('Depository: capacity exceeded');
+    });
+
+    it('allows deposits up to the market capacity (i.e. exactly zero capacity remaining; with market cap set in quote token-terms)', async function () {
+      const [, , bob] = users;
+      const block = await ethers.provider.getBlock('latest');
+      const conclusion = block.timestamp + timeToConclusion;
+
+      const isCapacitySetInQuoteTokenAmount = true;
+      const lowCapacity = ethers.utils.parseEther('100'); // 100 ETH (18 decimals)
+      const firstDepositAmount = ethers.utils.parseEther('25');
+
+      await WhitelistBondDepository.create(
+        WETH9.address,
+        AggregatorMockETH.address,
+        [lowCapacity, fixedBondPrice],
+        [isCapacitySetInQuoteTokenAmount, fixedTerm],
+        [vesting, conclusion]
+      );
+
+      const [capacity] = await WhitelistBondDepository.markets(2); // Market Id is 2, as there are already two other markets created previously
+      expect(Number(capacity)).to.equal(Number(lowCapacity));
+      // First deposit
+      await bob.WhitelistBondDepository.deposit(2, firstDepositAmount, maxPrice, bob.address, bob.address, signature);
+      const [newCapacity] = await WhitelistBondDepository.markets(2);
+      expect(Number(newCapacity)).to.equal(Number(lowCapacity) - Number(firstDepositAmount));
+
+      // Second deposit, with 75 ETH to reach zero capacity remaining
+      const hitCapDepositAmount = ethers.utils.parseEther('75');
+      await bob.WhitelistBondDepository.deposit(
+        2,
+        hitCapDepositAmount,
+        hitCapDepositAmount,
+        bob.address,
+        bob.address,
+        signature
+      );
+      const [finalCapacity] = await WhitelistBondDepository.markets(2);
+      expect(Number(finalCapacity)).to.equal(0);
+    });
+
+    it('will emit a CloseMarket event when capacity is reached (market capacity is set in quote token-terms)', async function () {
+      const [, , bob] = users;
+      const block = await ethers.provider.getBlock('latest');
+      const conclusion = block.timestamp + timeToConclusion;
+
+      const isCapacitySetInQuoteTokenAmount = true;
+      const lowCapacity = ethers.utils.parseEther('100');
+
+      await WhitelistBondDepository.create(
+        WETH9.address,
+        AggregatorMockETH.address,
+        [lowCapacity, fixedBondPrice],
+        [isCapacitySetInQuoteTokenAmount, fixedTerm],
+        [vesting, conclusion]
+      );
+
+      // 100 ETH to hit capacity of 100 ETH
+      const hitCapDepositAmount = ethers.utils.parseEther('100');
+      await expect(
+        bob.WhitelistBondDepository.deposit(
+          2,
+          hitCapDepositAmount,
+          hitCapDepositAmount,
+          bob.address,
+          bob.address,
+          signature
+        )
+      )
+        .to.emit(WhitelistBondDepository, 'CloseMarket')
+        .withArgs(2);
+    });
+
+    it('will revert when market capacity is breached, when capacity is set in quote token-terms', async function () {
+      const [, , bob] = users;
+      const block = await ethers.provider.getBlock('latest');
+      const conclusion = block.timestamp + timeToConclusion;
+
+      const isCapacitySetInQuoteTokenAmount = true;
+      const lowCapacity = ethers.utils.parseEther('100');
+
+      await WhitelistBondDepository.create(
+        WETH9.address,
+        AggregatorMockETH.address,
+        [lowCapacity, fixedBondPrice],
+        [isCapacitySetInQuoteTokenAmount, fixedTerm],
+        [vesting, conclusion]
+      );
+
+      // Second deposit, 101 ETH to breach capacity of 100 ETH
+      const breachCapDepositAmount = ethers.utils.parseEther('101');
+      await expect(
+        bob.WhitelistBondDepository.deposit(
+          2,
+          breachCapDepositAmount,
+          breachCapDepositAmount,
+          bob.address,
+          bob.address,
+          signature
+        )
+      ).to.be.revertedWith('Depository: capacity exceeded');
+    });
   });
 
   describe('External view', function () {
@@ -650,6 +823,52 @@ describe('Whitelist Bond depository', function () {
       await expect(
         bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature)
       ).to.be.revertedWith('Depository: market concluded');
+    });
+
+    it('does not allow further deposits after capacity (set in quote token terms) becomes zero via a previous deposit, which effectively closes the market', async function () {
+      const [, , bob] = users;
+      const block = await ethers.provider.getBlock('latest');
+      const conclusion = block.timestamp + timeToConclusion;
+
+      const isCapacitySetInQuoteTokenAmount = true;
+      const lowCapacity = ethers.utils.parseEther('100');
+
+      await WhitelistBondDepository.create(
+        WETH9.address,
+        AggregatorMockETH.address,
+        [lowCapacity, fixedBondPrice],
+        [isCapacitySetInQuoteTokenAmount, fixedTerm],
+        [vesting, conclusion]
+      );
+      const [capacity] = await WhitelistBondDepository.markets(1); // Market Id is 2, as there are already two other markets created previously
+      expect(Number(capacity)).to.equal(Number(lowCapacity));
+
+      // 100 ETH to hit capacity of 100 ETH
+      const hitCapDepositAmount = ethers.utils.parseEther('100');
+      await expect(
+        bob.WhitelistBondDepository.deposit(
+          1,
+          hitCapDepositAmount,
+          hitCapDepositAmount,
+          bob.address,
+          bob.address,
+          signature
+        )
+      )
+        .to.emit(WhitelistBondDepository, 'CloseMarket')
+        .withArgs(1);
+
+      const secondDepositAmount = ethers.utils.parseEther('1');
+      await expect(
+        bob.WhitelistBondDepository.deposit(
+          1,
+          secondDepositAmount,
+          secondDepositAmount,
+          bob.address,
+          bob.address,
+          signature
+        )
+      ).to.be.revertedWith('Depository: capacity exceeded');
     });
 
     it('should close after the specified time-to-conclusion for the market has passed', async function () {
