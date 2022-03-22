@@ -12,6 +12,7 @@ import {
   UsdcERC20Mock,
   TheopetraERC20Mock,
   AggregatorMockETH,
+  AggregatorMockUSDC,
 } from '../typechain-types';
 import { setupUsers } from './utils';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
@@ -26,7 +27,8 @@ const setup = deployments.createFixture(async function () {
     MOCKSWITHARGS.stakingMock,
     MOCKSWITHARGS.treasuryMock,
     MOCKS.WETH9,
-    MOCKS.aggregatorMockETH
+    MOCKS.aggregatorMockETH,
+    MOCKS.aggregatorMockUSDC,
   ]);
 
   const { deployer: owner } = await getNamedAccounts();
@@ -40,7 +42,8 @@ const setup = deployments.createFixture(async function () {
     TreasuryMock: <TreasuryMock>await ethers.getContract(MOCKSWITHARGS.treasuryMock),
     UsdcTokenMock: <UsdcERC20Mock>await ethers.getContract(MOCKS.usdcTokenMock),
     WETH9: <WETH9>await ethers.getContract(MOCKS.WETH9),
-    AggregatorMockETH: <AggregatorMockETH>await ethers.getContract(MOCKS.aggregatorMockETH)
+    AggregatorMockETH: <AggregatorMockETH>await ethers.getContract(MOCKS.aggregatorMockETH),
+    AggregatorMockUSDC: <AggregatorMockUSDC>await ethers.getContract(MOCKS.aggregatorMockUSDC),
   };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
@@ -67,9 +70,12 @@ describe('Whitelist Bond depository', function () {
   const tuneInterval = 60 * 60;
   const marketId = 0;
 
-  // Deposit-specific
+  // Deposit-specific, for WETH deposits
   const depositAmount = ethers.utils.parseEther('25');
   const maxPrice = ethers.utils.parseEther('25');
+
+  // Deposit-specific, for USDC deposits
+  const usdcDepositAmount = 100_000_000; // // 1e8, equivalent to 100 USDC (6 decimals for USDC)
 
   let WhitelistBondDepository: WhitelistTheopetraBondDepository;
   let WETH9: WETH9;
@@ -77,11 +83,15 @@ describe('Whitelist Bond depository', function () {
   let TheopetraERC20Mock: TheopetraERC20Mock;
   let StakingMock: StakingMock;
   let AggregatorMockETH: AggregatorMockETH;
+  let UsdcTokenMock: UsdcERC20Mock;
+  let AggregatorMockUSDC: AggregatorMockUSDC;
   let users: any;
   let signature: any;
 
-  let expectedPrice: number;
-  let expectedPayout: number;
+  let expectedPricePerWETH: number;
+  let expectedPayoutTheoWEth: number;
+  let expectedPricePerUSDC: number;
+  let expectedPayoutTheoUsdc: number;
 
   beforeEach(async function () {
     ({
@@ -91,15 +101,19 @@ describe('Whitelist Bond depository', function () {
       TheopetraERC20Mock,
       StakingMock,
       AggregatorMockETH,
+      AggregatorMockUSDC,
+      UsdcTokenMock,
       users,
     } = await setup());
     const [, , bob] = users;
     const block = await ethers.provider.getBlock('latest');
     const conclusion = block.timestamp + timeToConclusion;
 
+    // Deposit / mint quote tokens and approve transfer for WhitelistBondDepository, to allow deposits
     await bob.WETH9.deposit({ value: ethers.utils.parseEther('100') });
-
     await bob.WETH9.approve(WhitelistBondDepository.address, LARGE_APPROVAL);
+    await UsdcTokenMock.mint(bob.address, 100_000_000); // 100 USDC (6 decimals for USDC)
+    await bob.UsdcTokenMock.approve(WhitelistBondDepository.address, LARGE_APPROVAL);
 
     await WhitelistBondDepository.create(
       WETH9.address,
@@ -110,14 +124,26 @@ describe('Whitelist Bond depository', function () {
       [depositInterval, tuneInterval]
     );
 
-    // Calculate the `expectedPrice` of THEO per ETH using mock price consumer values
-    const [,mockPriceConsumerPrice] = await AggregatorMockETH.latestRoundData();
+    // Calculate the `expectedPricePerWETH` (9 decimals) of THEO per ETH using mock price consumer values
+    const [, mockPriceConsumerPrice] = await AggregatorMockETH.latestRoundData();
     const mockPriceConsumerDecimals = await AggregatorMockETH.decimals();
-    const expectedScaledPrice = fixedBondPrice * 10 ** (mockPriceConsumerDecimals + 9 - 9); // mockPriceConsumerDecimals + THEO decimals (9) - usdPerTHEO decimals (0)
-    expectedPrice = Math.floor(Number(expectedScaledPrice) / Number(mockPriceConsumerPrice)); // Expected price of THEO per ETH, in THEO decimals (9)
+    const expectedScaledPrice = fixedBondPrice * 10 ** (mockPriceConsumerDecimals + 9 - 9); // mockPriceConsumerDecimals + THEO decimals (9) - usdPerTHEO decimals (9)
+    expectedPricePerWETH = Math.floor(Number(expectedScaledPrice) / Number(mockPriceConsumerPrice)); // Expected price of THEO per ETH, in THEO decimals (9)
 
-    // Calculate the `expectedPayout` in THEO (9 decimals)
-    expectedPayout = Math.floor((Number(depositAmount) * 1e18) / expectedPrice / 10 ** 18); // 10**18 decimals for ETH
+    // Calculate the `expectedPayoutTheoWEth` (that is, the THEO payout for a WETH-THEO bond market) in THEO (9 decimals)
+    expectedPayoutTheoWEth = Math.floor((Number(depositAmount) * 1e18) / expectedPricePerWETH / 10 ** 18); //1e18 = theo decimals (9) + fixed bond price decimals (9); 10**18 decimals for ETH
+
+    // Calculate the `expectedPricePerUSDC` (9 decimals) of THEO per USDC using mock price consumer values
+    // Example: `expectedPricePerUSDC` of 10_000_000_000 means Theo is 10x USDC price
+    const [, mockPriceConsumerPriceUSDC] = await AggregatorMockUSDC.latestRoundData();
+    const mockPriceConsumerDecimalsUSDC = await AggregatorMockUSDC.decimals();
+    const expectedScaledPriceUSDC = fixedBondPrice * 10 ** (mockPriceConsumerDecimalsUSDC + 9 - 9); // mockPriceConsumerDecimalsUSDC + THEO decimals (9) - usdPerTHEO decimals (9)
+    expectedPricePerUSDC = Math.floor(Number(expectedScaledPriceUSDC) / Number(mockPriceConsumerPriceUSDC)); // Expected price of THEO per ETH, in THEO decimals (9)
+
+    // Calculate the `expectedPayoutTheoUsdc` (that is, the THEO payout for USDC amount deposited to a USDC-THEO bond market) in THEO (9 decimals)
+    // Example: deposit of 100_000_000 (100 USDC, with 6 decimals), `expectedPricePerUSDC` of 10_000_000_000 (i.e. Theo is 10x USDC price)
+    // Expect payout of 10_000_000_000 THEO (10 THEO, with 9 decimals)
+    expectedPayoutTheoUsdc = Math.floor((Number(usdcDepositAmount) * 1e18) / expectedPricePerUSDC / 10 ** 6); // 1e18 = theo decimals (9) + fixed bond price decimals (9); 10**6 decimals for USDC
   });
 
   describe('Deployment', function () {
@@ -208,6 +234,41 @@ describe('Whitelist Bond depository', function () {
       const [firstMarketId, secondMarketId] = await WhitelistBondDepository.liveMarkets();
       expect(Number(firstMarketId)).to.equal(0);
       expect(Number(secondMarketId)).to.equal(1);
+    });
+
+    it('allows a market with USDC as the quote token', async function () {
+      const block = await ethers.provider.getBlock('latest');
+      const conclusion = block.timestamp + timeToConclusion;
+
+      // New market for USDC
+      await WhitelistBondDepository.create(
+        UsdcTokenMock.address,
+        AggregatorMockUSDC.address,
+        [capacity, fixedBondPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [depositInterval, tuneInterval]
+      );
+
+      expect(await WhitelistBondDepository.isLive(marketId)).to.equal(true);
+      expect(await WhitelistBondDepository.isLive(1)).to.equal(true);
+    });
+
+    it('allows a market with a USDC quote token to have a theo bond price of less than 1 USD', async function () {
+      const block = await ethers.provider.getBlock('latest');
+      const conclusion = block.timestamp + timeToConclusion;
+      const subUsdFixedBondPrice = 1_000_000; // 0.001 USD per THEO (9 decimals)
+
+      await WhitelistBondDepository.create(
+        UsdcTokenMock.address,
+        AggregatorMockUSDC.address,
+        [capacity, subUsdFixedBondPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [depositInterval, tuneInterval]
+      );
+
+      expect(await WhitelistBondDepository.isLive(1)).to.equal(true);
     });
   });
 
@@ -356,6 +417,8 @@ describe('Whitelist Bond depository', function () {
   });
 
   describe('Deposit success', function () {
+    let usdcMarketId: any;
+
     beforeEach(async function () {
       const [governorWallet] = await ethers.getSigners();
       const [, , bob] = users;
@@ -379,12 +442,42 @@ describe('Whitelist Bond depository', function () {
 
       // To sign the 32 bytes of data, pass in the data
       signature = await governorWallet.signMessage(messageHashBinary);
+
+      // Create second market, with USDC as quote token
+      const usdcMarketblock = await ethers.provider.getBlock('latest');
+      const usdcMarketconclusion = usdcMarketblock.timestamp + timeToConclusion;
+      await WhitelistBondDepository.create(
+        UsdcTokenMock.address,
+        AggregatorMockUSDC.address,
+        [capacity, fixedBondPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, usdcMarketconclusion],
+        [depositInterval, tuneInterval]
+      );
+      [usdcMarketId] = await WhitelistBondDepository.liveMarketsFor(UsdcTokenMock.address);
+      expect(Number(usdcMarketId)).to.equal(1);
     });
 
-    it('should allow a deposit', async function () {
+    it('should allow a deposit to a WETH-THEO market', async function () {
       const [, , bob] = users;
 
       await bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
+      const bobNotesIndexes = await WhitelistBondDepository.indexesFor(bob.address);
+
+      expect(bobNotesIndexes.length).to.equal(1);
+    });
+
+    it('should allow a deposit to a USDC-THEO market', async function () {
+      const [, , bob] = users;
+
+      await bob.WhitelistBondDepository.deposit(
+        usdcMarketId,
+        usdcDepositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
       const bobNotesIndexes = await WhitelistBondDepository.indexesFor(bob.address);
 
       expect(bobNotesIndexes.length).to.equal(1);
@@ -406,16 +499,32 @@ describe('Whitelist Bond depository', function () {
         bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature)
       )
         .to.emit(WhitelistBondDepository, 'Bond')
-        .withArgs(marketId, depositAmount, expectedPrice);
+        .withArgs(marketId, depositAmount, expectedPricePerWETH);
     });
 
-    it('adds the payout (due in THEO, 9 decimals) to the total amount of THEO sold by the market', async function () {
+    it('adds the payout (due in THEO, 9 decimals) to the total amount of THEO sold by a WETH-THEO market', async function () {
       const [, , bob] = users;
 
       await bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
       const [, , , , , , sold] = await WhitelistBondDepository.markets(marketId);
 
-      expect(Number(sold)).to.equal(expectedPayout);
+      expect(Number(sold)).to.equal(expectedPayoutTheoWEth);
+    });
+
+    it('adds the payout (due in THEO, 9 decimals) to the total amount of THEO sold by a USDC-THEO market', async function () {
+      const [, , bob] = users;
+
+      await bob.WhitelistBondDepository.deposit(
+        usdcMarketId,
+        usdcDepositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
+      const [, , , , , , sold] = await WhitelistBondDepository.markets(usdcMarketId);
+
+      expect(Number(sold)).to.equal(expectedPayoutTheoUsdc);
     });
 
     it('does not change the payout (if the price of THEO per quote token remains the same)', async function () {
@@ -428,7 +537,7 @@ describe('Whitelist Bond depository', function () {
       const [payout2_] = await WhitelistBondDepository.pendingFor(bob.address, 1);
 
       expect(payout1_).to.equal(payout2_);
-      expect(Number(payout1_) + Number(payout2_)).to.equal(2 * expectedPayout);
+      expect(Number(payout1_) + Number(payout2_)).to.equal(2 * expectedPayoutTheoWEth);
     });
 
     it('adds the amount of quote tokens in the deposit to the total amount purchased by the market', async function () {
@@ -477,12 +586,12 @@ describe('Whitelist Bond depository', function () {
 
   describe('External view', function () {
     it('can give the current price of THEO per quote token', async function () {
-      expect(await WhitelistBondDepository.calculatePrice(marketId)).to.equal(expectedPrice);
+      expect(await WhitelistBondDepository.calculatePrice(marketId)).to.equal(expectedPricePerWETH);
     });
 
     it('can give the payout expected in THEO (9 decimals) for a specified amount of quote tokens', async function () {
       const amount = ethers.utils.parseEther('100');
-      const expectedPayoutQuote = Math.floor(Number(amount) / expectedPrice); // Amount of quote tokens divided by current price of THEO per quote token
+      const expectedPayoutQuote = Math.floor(Number(amount) / expectedPricePerWETH); // Amount of quote tokens divided by current price of THEO per quote token
 
       expect(await WhitelistBondDepository.payoutFor(amount, marketId)).to.equal(expectedPayoutQuote);
     });

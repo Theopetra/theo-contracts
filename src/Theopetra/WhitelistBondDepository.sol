@@ -298,7 +298,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
          * that will decay over in the length of the program if price remains the same).
          * it is converted into base token terms if passed in in quote token terms.
          *
-         * 1e18 = theo decimals (9) + initial price decimals (9)
+         * 1e18 = theo decimals (9) + fixed bond price decimals (9)
          */
         uint64 targetDebt = uint64(_booleans[0] ? ((_market[0] * 1e18) / _market[1]) / 10**decimals : _market[0]);
 
@@ -392,7 +392,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
      * @param _id          ID of market
      * @return             amount of THEO to be paid in THEO decimals
      *
-     * @dev 1e18 = theo decimals (9) + market price decimals (9)
+     * @dev 1e18 = theo decimals (9) + fixed bond price decimals (9)
      */
     function payoutFor(uint256 _amount, uint256 _id) external view override returns (uint256) {
         Metadata memory meta = metadata[_id];

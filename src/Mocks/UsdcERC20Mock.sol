@@ -9,4 +9,11 @@ contract UsdcERC20Mock is ERC20 {
     function mint(address to, uint256 value) public virtual {
         _mint(to, value);
     }
+
+    /**
+     * @dev Sets {decimals} to a value other than the default one of 18.
+     */
+    function decimals() public view virtual override returns (uint8) {
+        return 6;
+    }
 }

@@ -15,6 +15,7 @@ export const MOCKS: Record<string, string> = {
   sTheoMock: 'sTheoMock',
   WETH9: 'WETH9',
   aggregatorMockETH: 'AggregatorMockETH',
+  aggregatorMockUSDC: 'AggregatorMockUSDC',
 };
 
 export const MOCKSWITHARGS: Record<string, string> = {
