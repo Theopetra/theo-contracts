@@ -30,5 +30,5 @@ interface ITheopetraAuthority {
 
     function vault() external view returns (address);
 
-    function wlSigner() external view returns (address);
+    function whitelistSigner() external view returns (address);
 }

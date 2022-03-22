@@ -17,7 +17,7 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
 
     address public override vault;
 
-    address public override wlSigner;
+    address public override whitelistSigner;
 
     address public newGovernor;
 
@@ -29,7 +29,7 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
 
     address public newVault;
 
-    address public newWlSigner;
+    address public newWhitelistSigner;
 
     /* ========== Constructor ========== */
 
@@ -39,7 +39,7 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         address _policy,
         address _manager,
         address _vault,
-        address _wlSigner
+        address _whitelistSigner
     ) TheopetraAccessControlled(ITheopetraAuthority(address(this))) {
         governor = _governor;
         emit GovernorPushed(address(0), governor, true);
@@ -51,7 +51,7 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         emit ManagerPushed(address(0), manager, true);
         vault = _vault;
         emit VaultPushed(address(0), vault, true);
-        wlSigner = _wlSigner;
+        whitelistSigner = _whitelistSigner;
         emit SignerPushed(address(0), vault, true);
     }
 
@@ -87,10 +87,10 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         emit VaultPushed(vault, newVault, _effectiveImmediately);
     }
 
-    function pushWlSigner(address _newWlSigner, bool _effectiveImmediately) external onlyGovernor {
-        if (_effectiveImmediately) wlSigner = _newWlSigner;
-        newWlSigner = _newWlSigner;
-        emit SignerPushed(wlSigner, newWlSigner, _effectiveImmediately);
+    function pushWhitelistSigner(address _newWhitelistSigner, bool _effectiveImmediately) external onlyGovernor {
+        if (_effectiveImmediately) whitelistSigner = _newWhitelistSigner;
+        newWhitelistSigner = _newWhitelistSigner;
+        emit SignerPushed(whitelistSigner, newWhitelistSigner, _effectiveImmediately);
     }
 
     /* ========== PENDING ROLE ONLY ========== */
@@ -125,9 +125,9 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         vault = newVault;
     }
 
-    function pullWlSigner() external {
-        require(msg.sender == newWlSigner, "!newWlSigner");
-        emit SignerPulled(wlSigner, newWlSigner);
-        wlSigner = newWlSigner;
+    function pullWhitelistSigner() external {
+        require(msg.sender == newWhitelistSigner, "!newWhitelistSigner");
+        emit SignerPulled(whitelistSigner, newWhitelistSigner);
+        whitelistSigner = newWhitelistSigner;
     }
 }

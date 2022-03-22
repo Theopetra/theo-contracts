@@ -11,8 +11,7 @@ import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/IWhitelistBondDepository.sol";
 
 /**
- * @title Theopetra Bond Depository
- * @notice Originally based off of Olympus Bond Depository V2
+ * @title Theopetra Whitelist Bond Depository
  */
 
 contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeeper, Signed, PriceConsumerV3 {

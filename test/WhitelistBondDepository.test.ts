@@ -320,8 +320,8 @@ describe('Whitelist Bond depository', function () {
       const [oldSignerWallet, newSignerWallet] = await ethers.getSigners();
 
       // Push a new signer
-      await TheopetraAuthority.pushWlSigner(newSignerWallet.address, true);
-      expect(await TheopetraAuthority.wlSigner()).to.equal(newSignerWallet.address);
+      await TheopetraAuthority.pushWhitelistSigner(newSignerWallet.address, true);
+      expect(await TheopetraAuthority.whitelistSigner()).to.equal(newSignerWallet.address);
 
       // Create a hash in the same way as created by Signed contract
       const bobHash = await SignerHelper.createHash(

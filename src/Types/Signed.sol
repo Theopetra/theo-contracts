@@ -26,7 +26,7 @@ abstract contract Signed is TheopetraAccessControlled {
     }
 
     function isAuthorizedSigner(address extracted) internal view virtual returns (bool) {
-        return extracted == authority.wlSigner();
+        return extracted == authority.whitelistSigner();
     }
 
     function verifySignature(string memory data, bytes calldata signature) internal view {
