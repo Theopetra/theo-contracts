@@ -10,8 +10,6 @@ interface IWhitelistBondDepository {
         IERC20 quoteToken; // token to accept as payment
         address priceFeed; // address of the price consumer, to return the USD value for the quote token when deposits are made
         bool capacityInQuote; // capacity limit is in payment token (true) or in THEO (false, default)
-        uint64 totalDebt; // total debt from market
-        uint64 maxPayout; // max tokens in/out (determined by capacityInQuote false/true, respectively)
         uint64 sold; // base tokens out
         uint256 purchased; // quote tokens in
         uint256 usdPricePerTHEO; // 0 decimal USD value for each THEO bond
@@ -20,28 +18,13 @@ interface IWhitelistBondDepository {
     // Info for creating new markets
     struct Terms {
         bool fixedTerm; // fixed term or fixed expiration
-        uint64 controlVariable; // scaling variable for price
         uint48 vesting; // length of time from deposit to maturity if fixed-term
         uint48 conclusion; // timestamp when market no longer offered (doubles as time when market matures if fixed-expiry)
-        uint64 maxDebt; // 9 decimal debt maximum in THEO
     }
 
     // Additional info about market.
     struct Metadata {
-        uint48 lastTune; // last timestamp when control variable was tuned
-        uint48 lastDecay; // last timestamp when market was created and debt was decayed
-        uint48 length; // time from creation to conclusion. used as speed to decay debt.
-        uint48 depositInterval; // target frequency of deposits
-        uint48 tuneInterval; // frequency of tuning
         uint8 quoteDecimals; // decimals of quote token
-    }
-
-    // Control variable adjustment data
-    struct Adjustment {
-        uint64 change;
-        uint48 lastAdjustment;
-        uint48 timeToAdjusted;
-        bool active;
     }
 
     struct DepositInfo {
@@ -74,8 +57,7 @@ interface IWhitelistBondDepository {
         address _priceFeed, // address of the price consumer, to return the USD value for the quote token when deposits are made
         uint256[3] memory _market, // [capacity, initial price]
         bool[2] memory _booleans, // [capacity in quote, fixed term]
-        uint256[2] memory _terms, // [vesting, conclusion]
-        uint32[2] memory _intervals // [deposit interval, tune interval]
+        uint256[2] memory _terms // [vesting, conclusion]
     ) external returns (uint256 id_);
 
     function close(uint256 _id) external;
@@ -89,10 +71,4 @@ interface IWhitelistBondDepository {
     function calculatePrice(uint256 _bid) external view returns (uint256);
 
     function payoutFor(uint256 _amount, uint256 _bid) external view returns (uint256);
-
-    function currentDebt(uint256 _bid) external view returns (uint256);
-
-    function debtRatio(uint256 _bid) external view returns (uint256);
-
-    function debtDecay(uint256 _bid) external view returns (uint64);
 }

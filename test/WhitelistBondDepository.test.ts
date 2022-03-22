@@ -66,8 +66,6 @@ describe('Whitelist Bond depository', function () {
   const fixedTerm = true;
   const vesting = 100;
   const timeToConclusion = 60 * 60 * 24;
-  const depositInterval = 60 * 60 * 4;
-  const tuneInterval = 60 * 60;
   const marketId = 0;
 
   // Deposit-specific, for WETH deposits
@@ -120,8 +118,7 @@ describe('Whitelist Bond depository', function () {
       AggregatorMockETH.address,
       [capacity, fixedBondPrice, buffer],
       [capacityInQuote, fixedTerm],
-      [vesting, conclusion],
-      [depositInterval, tuneInterval]
+      [vesting, conclusion]
     );
 
     // Calculate the `expectedPricePerWETH` (9 decimals) of THEO per ETH using mock price consumer values
@@ -163,7 +160,7 @@ describe('Whitelist Bond depository', function () {
     });
 
     it('keeps a record of the fixed USD price of THEO (the bond price) for the market', async function () {
-      const [, , , , , , , , usdPricePerTHEO] = await WhitelistBondDepository.markets(marketId);
+      const [, , , , , , usdPricePerTHEO] = await WhitelistBondDepository.markets(marketId);
       expect(usdPricePerTHEO).to.equal(fixedBondPrice);
     });
 
@@ -177,8 +174,7 @@ describe('Whitelist Bond depository', function () {
           AggregatorMockETH.address,
           [capacity, fixedBondPrice, buffer],
           [capacityInQuote, fixedTerm],
-          [vesting, conclusion],
-          [depositInterval, tuneInterval]
+          [vesting, conclusion]
         )
       )
         .to.emit(WhitelistBondDepository, 'CreateMarket')
@@ -195,8 +191,7 @@ describe('Whitelist Bond depository', function () {
         AggregatorMockETH.address,
         [capacity, subUsdFixedBondPrice, buffer],
         [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
-        [depositInterval, tuneInterval]
+        [vesting, conclusion]
       );
 
       expect(await WhitelistBondDepository.isLive(1)).to.equal(true);
@@ -213,8 +208,7 @@ describe('Whitelist Bond depository', function () {
           AggregatorMockETH.address,
           [capacity, fixedBondPrice, buffer],
           [capacityInQuote, fixedTerm],
-          [vesting, conclusion],
-          [depositInterval, tuneInterval]
+          [vesting, conclusion]
         )
       ).to.be.revertedWith('UNAUTHORIZED');
     });
@@ -228,8 +222,7 @@ describe('Whitelist Bond depository', function () {
         AggregatorMockETH.address,
         [capacity, fixedBondPrice, buffer],
         [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
-        [depositInterval, tuneInterval]
+        [vesting, conclusion]
       );
       const [firstMarketId, secondMarketId] = await WhitelistBondDepository.liveMarkets();
       expect(Number(firstMarketId)).to.equal(0);
@@ -246,8 +239,7 @@ describe('Whitelist Bond depository', function () {
         AggregatorMockUSDC.address,
         [capacity, fixedBondPrice, buffer],
         [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
-        [depositInterval, tuneInterval]
+        [vesting, conclusion]
       );
 
       expect(await WhitelistBondDepository.isLive(marketId)).to.equal(true);
@@ -264,8 +256,7 @@ describe('Whitelist Bond depository', function () {
         AggregatorMockUSDC.address,
         [capacity, subUsdFixedBondPrice, buffer],
         [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
-        [depositInterval, tuneInterval]
+        [vesting, conclusion]
       );
 
       expect(await WhitelistBondDepository.isLive(1)).to.equal(true);
@@ -451,8 +442,7 @@ describe('Whitelist Bond depository', function () {
         AggregatorMockUSDC.address,
         [capacity, fixedBondPrice, buffer],
         [capacityInQuote, fixedTerm],
-        [vesting, usdcMarketconclusion],
-        [depositInterval, tuneInterval]
+        [vesting, usdcMarketconclusion]
       );
       [usdcMarketId] = await WhitelistBondDepository.liveMarketsFor(UsdcTokenMock.address);
       expect(Number(usdcMarketId)).to.equal(1);
@@ -487,7 +477,7 @@ describe('Whitelist Bond depository', function () {
       const [, , bob] = users;
 
       await bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
-      const [, , , , , , , , usdPricePerTHEO] = await WhitelistBondDepository.markets(marketId);
+      const [, , , , , , usdPricePerTHEO] = await WhitelistBondDepository.markets(marketId);
 
       expect(Number(usdPricePerTHEO)).to.equal(fixedBondPrice);
     });
@@ -506,7 +496,7 @@ describe('Whitelist Bond depository', function () {
       const [, , bob] = users;
 
       await bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
-      const [, , , , , , sold] = await WhitelistBondDepository.markets(marketId);
+      const [, , , , sold] = await WhitelistBondDepository.markets(marketId);
 
       expect(Number(sold)).to.equal(expectedPayoutTheoWEth);
     });
@@ -522,7 +512,7 @@ describe('Whitelist Bond depository', function () {
         bob.address,
         signature
       );
-      const [, , , , , , sold] = await WhitelistBondDepository.markets(usdcMarketId);
+      const [, , , , sold] = await WhitelistBondDepository.markets(usdcMarketId);
 
       expect(Number(sold)).to.equal(expectedPayoutTheoUsdc);
     });
@@ -544,7 +534,7 @@ describe('Whitelist Bond depository', function () {
       const [, , bob] = users;
 
       await bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
-      const [, , , , , , , purchased] = await WhitelistBondDepository.markets(marketId);
+      const [, , , , , purchased] = await WhitelistBondDepository.markets(marketId);
 
       expect(Number(purchased)).to.equal(Number(depositAmount));
     });
