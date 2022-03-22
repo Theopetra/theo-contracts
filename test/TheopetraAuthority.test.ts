@@ -69,7 +69,9 @@ describe('TheopetraAuthority', function () {
     it('should revert if a user other than the governor makes a call to set the whitelist signer address', async function () {
       const { users } = await setup();
       const [, alice] = users;
-      await expect(alice.TheopetraAuthority.pushWhitelistSigner(alice.address, true)).to.be.revertedWith('UNAUTHORIZED');
+      await expect(alice.TheopetraAuthority.pushWhitelistSigner(alice.address, true)).to.be.revertedWith(
+        'UNAUTHORIZED'
+      );
     });
 
     it('should revert if a user other than the new signer makes a call to pull the whitelist signer address', async function () {
