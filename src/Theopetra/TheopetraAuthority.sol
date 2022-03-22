@@ -52,7 +52,7 @@ contract TheopetraAuthority is ITheopetraAuthority, TheopetraAccessControlled {
         vault = _vault;
         emit VaultPushed(address(0), vault, true);
         whitelistSigner = _whitelistSigner;
-        emit SignerPushed(address(0), vault, true);
+        emit SignerPushed(address(0), whitelistSigner, true);
     }
 
     /* ========== GOV ONLY ========== */

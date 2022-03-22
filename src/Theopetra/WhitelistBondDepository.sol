@@ -81,7 +81,8 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         // |-------------------------------------| t
         require(currentTime < term.conclusion, "Depository: market concluded");
 
-        // Get the amount of THEO per quote token
+        // Get the price of THEO in quote token terms
+        // i.e. the number of quote tokens per THEO
         // With 9 decimal places
         uint256 price = calculatePrice(_id);
 
@@ -95,7 +96,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
          * where
          * payout = THEO out, in THEO decimals (9)
          * amount = quote tokens in
-         * price = THEO per quote token, in THEO decimals (9) (e.g. 3473326 THEO (9 decimals) / ETH; equivalent to 0.003473326 THEO/ETH)
+         * price = quote tokens per THEO, in THEO decimals (9)
          *
          * 1e18 = THEO decimals (9) + price decimals (9)
          */
@@ -282,13 +283,13 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
     }
 
     /**
-     * @notice                  calculate the price of THEO per quote token
+     * @notice                  calculate the price of THEO in quote token terms; i.e. the number of quote tokens per THEO
      * @dev                     get the latest price for the market's quote token in USD
      *                          (`priceConsumerPrice`, with decimals `priceConsumerDecimals`)
      *                          then `scalePrice` to scale the fixed bond price to THEO decimals when calculating `price`.
-     *                          finally, calculate `price` as THEO per quote token, in THEO decimals (9)
+     *                          finally, calculate `price` as quote tokens per THEO, in THEO decimals (9)
      * @param _id               market ID
-     * @return                  uint256 price of THEO per quote token, in THEO decimals (9)
+     * @return                  uint256 price of THEO in quote token terms, in THEO decimals (9)
      */
     function calculatePrice(uint256 _id) public view override returns (uint256) {
         (int256 priceConsumerPrice, uint8 priceConsumerDecimals) = getLatestPrice(markets[_id].priceFeed);

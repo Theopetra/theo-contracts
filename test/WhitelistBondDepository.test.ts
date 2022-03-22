@@ -130,7 +130,7 @@ describe('Whitelist Bond depository', function () {
     expectedPayoutTheoWEth = Math.floor((Number(depositAmount) * 1e18) / expectedPricePerWETH / 10 ** 18); //1e18 = theo decimals (9) + fixed bond price decimals (9); 10**18 decimals for ETH
 
     // Calculate the `expectedPricePerUSDC` (9 decimals) of THEO per USDC using mock price consumer values
-    // Example: `expectedPricePerUSDC` of 10_000_000_000 means Theo is 10x USDC price
+    // Example: `expectedPricePerUSDC` of 10_000_000_000 means Theo is 10x USDC price (i.e. 10 USDC per THEO)
     const [, mockPriceConsumerPriceUSDC] = await AggregatorMockUSDC.latestRoundData();
     const mockPriceConsumerDecimalsUSDC = await AggregatorMockUSDC.decimals();
     const expectedScaledPriceUSDC = fixedBondPrice * 10 ** (mockPriceConsumerDecimalsUSDC + 9 - 9); // mockPriceConsumerDecimalsUSDC + THEO decimals (9) - usdPerTHEO decimals (9)

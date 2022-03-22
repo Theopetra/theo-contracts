@@ -12,7 +12,7 @@ interface IWhitelistBondDepository {
         bool capacityInQuote; // capacity limit is in payment token (true) or in THEO (false, default)
         uint64 sold; // base tokens out
         uint256 purchased; // quote tokens in
-        uint256 usdPricePerTHEO; // 0 decimal USD value for each THEO bond
+        uint256 usdPricePerTHEO; // 9 decimal USD value for each THEO bond
     }
 
     // Info for creating new markets
