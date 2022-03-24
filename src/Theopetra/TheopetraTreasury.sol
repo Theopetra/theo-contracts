@@ -73,6 +73,10 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     Queue[] public permissionQueue;
     uint256 public immutable blocksNeededForQueue;
 
+    int256 private deltaTokenPrice;
+    int256 private deltaTreasuryYield;
+    uint256 private timeLastUpdated;
+
     bool public timelockEnabled;
     bool public initialized;
 
@@ -97,6 +101,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         timelockEnabled = false;
         initialized = false;
         blocksNeededForQueue = _timelock;
+        timeLastUpdated = block.timestamp;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -354,6 +359,25 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         return (false, 0);
     }
 
+    /**
+     * @notice  calculate the change in treasury yield (`deltaTreasuryYield`), as a fraction of the current yield
+     * @dev     `deltaTreasuryYield` is calculated as (treasuryYield1 - treasuryYield0) / treasuryYield1
+     * @param   treasuryYield int256, the most recent treasury yield
+     */
+    function treasuryPerformanceUpdate(int256 treasuryYield) public override onlyPolicy {
+        //TODO: Update when info on treasuryYield is available
+    }
+
+        /**
+     * @notice  calculate the change in token price, as a fraction of the current token price
+     * @dev     will revert if called sooner than 8 hours (28800 seconds) since the last successful call
+     */
+    function tokenPerformanceUpdate() public override {
+        require(block.timestamp >= timeLastUpdated + 28800, "Called too soon since last update");
+        //TODO: Update to measure the change in token price over the last 8 hours and store the result in deltaTokenPrice
+        timeLastUpdated = block.timestamp;
+    }
+
     /* ========== TIMELOCKED FUNCTIONS ========== */
 
     // functions are used prior to enabling on-chain governance
@@ -492,5 +516,13 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      */
     function baseSupply() external view override returns (uint256) {
         return THEO.totalSupply() - theoDebt;
+    }
+
+    function getDeltaTokenPrice() public view override returns (int256) {
+        return deltaTokenPrice;
+    }
+
+    function getDeltaTreasuryYield() public view override returns (int256) {
+        return deltaTreasuryYield;
     }
 }
