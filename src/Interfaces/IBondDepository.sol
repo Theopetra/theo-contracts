@@ -92,4 +92,8 @@ interface IBondDepository {
     function debtRatio(uint256 _bid) external view returns (uint256);
 
     function debtDecay(uint256 _bid) external view returns (uint64);
+
+    function getTheoPool() external view returns (address);
+
+    function setTheoPool(address _theoPool) external;
 }

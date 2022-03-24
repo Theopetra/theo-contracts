@@ -38,17 +38,17 @@ const setup = deployments.createFixture(async function () {
   };
 });
 
-describe('Bond depository', function () {
+describe.only('Bond depository', function () {
   const bid = 0;
   const buffer = 2e5;
   const capacity = 10000e9;
   const capacityInQuote = false;
-  const depositAmount = '10000000000000000000000'; // 10,000 (1e22)
+  const depositAmount = '10000000000000000000'; // 10 ETH (1e19)
   const depositInterval = 60 * 60 * 4;
   const fixedTerm = true;
   const initialPrice = 400e9;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
-  const timeToConclusion = 60 * 60 * 24;
+  const timeToConclusion = 60 * 60 * 24 * 180; // seconds in 180 days
   const tuneInterval = 60 * 60;
   const vesting = 100;
   // Initial mint for Mock USDC
@@ -162,7 +162,14 @@ describe('Bond depository', function () {
       ).to.be.revertedWith('UNAUTHORIZED');
     });
 
-    it('should set max payout to correct % of capacity', async function () {
+    it('should store the vesting length in the bond terms', async function () {
+      const [, , vestingLength] = await BondDepository.terms(bid);
+
+      expect(vestingLength).to.equal(vesting);
+
+    })
+
+    it.skip('should set max payout to correct % of capacity', async function () {
       const [, , , , maxPayout, ,] = await BondDepository.markets(bid);
       const upperBound = (capacity * 1.0033) / 6;
       const lowerBound = (capacity * 0.9967) / 6;
@@ -495,5 +502,41 @@ describe('Bond depository', function () {
       expect(bobBalance).to.lessThan(Number(firstExpectedPayout * 1.0001));
       expect(bobBalance).to.be.lessThan(Number(totalExpectedPayoutsOverAllTime));
     });
+  });
+
+  describe('Bond pricing', function () {
+    const theoPool = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
+
+    describe('THEO pool', function () {
+      it('has a function to set the THEO liquidity pool address', async function () {
+        await expect(BondDepository.setTheoPool(theoPool)).to.not.be.reverted;
+      });
+
+      it('has a function to get the THEO liquidity pool address', async function () {
+        await BondDepository.setTheoPool(theoPool);
+        await expect(BondDepository.getTheoPool()).to.not.be.reverted;
+        expect(await BondDepository.getTheoPool()).to.equal(theoPool);
+      });
+
+      it('will revert if an attempt is made by an account other than the guardian to set the THEO pool address', async function () {
+        const [, , bob] = users;
+
+        await expect(bob.BondDepository.setTheoPool(theoPool)).to.be.revertedWith('UNAUTHORIZED');
+      });
+
+      it('allows the guardian to set the THEO pool address', async function () {
+        const [, , bob] = users;
+
+        await TheopetraAuthority.pushGuardian(bob.address, true);
+
+        await expect(bob.BondDepository.setTheoPool(theoPool)).to.not.be.reverted;
+        expect(await BondDepository.getTheoPool()).to.equal(theoPool);
+      });
+    });
+
+    describe('market price', function () {
+      it.skip('gets the market price', async function () {
+      });
+    })
   });
 });

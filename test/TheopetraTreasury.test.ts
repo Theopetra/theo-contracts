@@ -34,7 +34,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe.only('TheopetraTreasury', () => {
+describe('TheopetraTreasury', () => {
   describe('Deployment', () => {
     it('deploys as expected', async () => {
       await setup();

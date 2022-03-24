@@ -36,6 +36,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     // Queries
     mapping(address => uint256[]) public marketsForQuote; // market IDs for quote token
 
+    address private theoPool;
+
     /* ======== CONSTRUCTOR ======== */
 
     constructor(
@@ -375,6 +377,24 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         terms[_id].conclusion = uint48(block.timestamp);
         markets[_id].capacity = 0;
         emit CloseMarket(_id);
+    }
+
+    /* ======== THEO POOL ======== */
+
+    /**
+     * @notice                  get the address of the theo liquidity pool (`theoPool`)
+     * @return                  address for theo liquidity pool
+     */
+    function getTheoPool() public view returns (address) {
+        return theoPool;
+    }
+
+    /**
+     * @notice             set the address for the theo liquidity pool
+     * @param _theoPool    address of the theo liquidity pool
+     */
+    function setTheoPool(address _theoPool) public override onlyGuardian {
+        theoPool = _theoPool;
     }
 
     /* ======== EXTERNAL VIEW ======== */
