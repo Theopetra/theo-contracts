@@ -20,15 +20,13 @@ interface ITreasury {
 
     function repayDebtWithReserve(uint256 amount_, address token_) external;
 
-    function treasuryPerformanceUpdate(int256 treasuryYield) external;
-
     function tokenPerformanceUpdate() external;
 
     function excessReserves() external view returns (uint256);
 
     function baseSupply() external view returns (uint256);
 
-    function getDeltaTokenPrice() external view returns (int256);
+    function deltaTokenPrice() external view returns (int256);
 
-    function getDeltaTreasuryYield() external view returns (int256);
+    function deltaTreasuryYield() external view returns (int256);
 }

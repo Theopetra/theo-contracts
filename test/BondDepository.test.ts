@@ -38,7 +38,7 @@ const setup = deployments.createFixture(async function () {
   };
 });
 
-describe.only('Bond depository', function () {
+describe('Bond depository', function () {
   const bid = 0;
   const buffer = 2e5;
   const capacity = 10000e9;
@@ -50,11 +50,15 @@ describe.only('Bond depository', function () {
   const LARGE_APPROVAL = '100000000000000000000000000000000';
   const timeToConclusion = 60 * 60 * 24 * 180; // seconds in 180 days
   const tuneInterval = 60 * 60;
-  const vesting = 100;
+  const vesting = 60 * 60 * 24 * 14; // seconds in 14 days
   // Initial mint for Mock USDC
   const initialMint = '10000000000000000000000000';
+  const bondRateFixed = 10_000_000; // 1% in decimal form (i.e. 0.01 with 9 decimals)
+  const maxBondRateVariable = 40_000_000; // 4% in decimal form (i.e. 0.04 with 9 decimals)
+  const discountRateBond = 10_000_000; // 1% in decimal form (i.e. 0.01 with 9 decimals)
+  const discountRateYield = 20_000_000; // 2% in decimal form (i.e. 0.02 with 9 decimals)
 
-  let block;
+  let block: any;
   let BondDepository: any;
   let conclusion: number;
   let sTheoMock: any;
@@ -99,7 +103,7 @@ describe.only('Bond depository', function () {
       UsdcTokenMock.address,
       [capacity, initialPrice, buffer],
       [capacityInQuote, fixedTerm],
-      [vesting, conclusion],
+      [vesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
       [depositInterval, tuneInterval]
     );
     expect(await BondDepository.isLive(bid)).to.equal(true);
@@ -129,7 +133,7 @@ describe.only('Bond depository', function () {
         WETH9.address,
         [capacity, initialPrice, buffer],
         [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
+        [vesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
         [depositInterval, tuneInterval]
       );
     });
@@ -139,7 +143,7 @@ describe.only('Bond depository', function () {
         WETH9.address,
         [capacity, initialPrice, buffer],
         [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
+        [vesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
         [depositInterval, tuneInterval]
       );
       expect(await BondDepository.isLive(bid)).to.equal(true);
@@ -156,7 +160,7 @@ describe.only('Bond depository', function () {
           UsdcTokenMock.address,
           [capacity, initialPrice, buffer],
           [capacityInQuote, fixedTerm],
-          [vesting, conclusion],
+          [vesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
           [depositInterval, tuneInterval]
         )
       ).to.be.revertedWith('UNAUTHORIZED');
@@ -166,8 +170,80 @@ describe.only('Bond depository', function () {
       const [, , vestingLength] = await BondDepository.terms(bid);
 
       expect(vestingLength).to.equal(vesting);
+    });
 
-    })
+    it('can be created with a vesting length of 90 days', async function () {
+      const longVesting = 60 * 60 * 24 * 90;
+
+      await BondDepository.create(
+        UsdcTokenMock.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [longVesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      );
+
+      const [, , vestingLength] = await BondDepository.terms(1);
+
+      expect(vestingLength).to.equal(longVesting);
+    });
+
+    it('can be created with a vesting length of 30 days', async function () {
+      const longVesting = 60 * 60 * 24 * 30;
+
+      await BondDepository.create(
+        UsdcTokenMock.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [longVesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      );
+
+      const [, , vestingLength] = await BondDepository.terms(1);
+
+      expect(vestingLength).to.equal(longVesting);
+    });
+
+    it('can be created with a vesting length that extends beyond the market conclusion time', async function () {
+      const longVesting = 60 * 60 * 24 * 90; // 90 days vesting time
+      const shorterConclusion = block.timestamp + 60 * 60 * 24 * 30; // 30 days to market conclusion
+
+      await BondDepository.create(
+        UsdcTokenMock.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [longVesting, shorterConclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      );
+
+      const [, , vestingLength] = await BondDepository.terms(1);
+
+      expect(vestingLength).to.equal(longVesting);
+    });
+
+    it('should store the correct market terms', async function () {
+      const [, , vestingLength, marketConclusion, , brFixed, maxBrVariable, Drb, Dyb] = await BondDepository.terms(bid);
+
+      expect(vestingLength).to.equal(vesting);
+      expect(marketConclusion).to.equal(conclusion);
+      expect(brFixed).to.equal(bondRateFixed);
+      expect(maxBrVariable).to.equal(maxBondRateVariable);
+      expect(Drb).to.equal(discountRateBond);
+      expect(Dyb).to.equal(discountRateYield);
+    });
+
+    it('calculates the variable discount on the bond (Brv; Bond rate, variable)', async function () {
+      const [, , , , , brFixed, , Drb, Dyb] = await BondDepository.terms(bid);
+
+      const deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
+      const deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
+
+      const brvActual = await BondDepository.marketPriceTheo(bid);
+      const expectedBrv =
+        Number(brFixed) + ((Number(Drb) * Number(deltaTokenPrice)) / 10**9) + ((Number(Dyb) * Number(deltaTreasuryYield) / 10**9));
+
+      expect(Number(brvActual)).to.equal(Number(expectedBrv));
+    });
 
     it.skip('should set max payout to correct % of capacity', async function () {
       const [, , , , maxPayout, ,] = await BondDepository.markets(bid);
@@ -182,7 +258,7 @@ describe.only('Bond depository', function () {
         WETH9.address,
         [capacity, initialPrice, buffer],
         [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
+        [vesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
         [depositInterval, tuneInterval]
       );
       const [firstMarketId, secondMarketId] = await BondDepository.liveMarkets();
@@ -195,7 +271,7 @@ describe.only('Bond depository', function () {
         WETH9.address,
         [capacity, initialPrice, buffer],
         [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
+        [vesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
         [depositInterval, tuneInterval]
       );
 
@@ -320,7 +396,7 @@ describe.only('Bond depository', function () {
         WETH9.address,
         [capacity, initialPrice, buffer],
         [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
+        [vesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
         [depositInterval, tuneInterval]
       );
 
@@ -535,8 +611,7 @@ describe.only('Bond depository', function () {
     });
 
     describe('market price', function () {
-      it.skip('gets the market price', async function () {
-      });
-    })
+      it.skip('gets the market price', async function () {});
+    });
   });
 });

@@ -274,7 +274,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * @param _quoteToken  token used to deposit
      * @param _market      [capacity (in THEO or quote), initial price / THEO (9 decimals), debt buffer (3 decimals)]
      * @param _booleans    [capacity in quote, fixed term]
-     * @param _terms       [vesting length (if fixed term) or vested timestamp, conclusion timestamp]
+     * @param _terms       [vesting length (if fixed term) or vested timestamp, conclusion timestamp, bondRateFixed, maxBondRateVariable, initial discountRateBond (Drb), initial discountRateYield (Dyb)]
      * @param _intervals   [deposit interval (seconds), tune interval (seconds)]
      * @return id_         ID of new bond market
      */
@@ -282,7 +282,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         IERC20 _quoteToken,
         uint256[3] memory _market,
         bool[2] memory _booleans,
-        uint256[2] memory _terms,
+        uint256[6] memory _terms,
         uint32[2] memory _intervals
     ) external override onlyPolicy returns (uint256 id_) {
         // the length of the program, in seconds
@@ -349,7 +349,11 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
                 controlVariable: uint64(controlVariable),
                 vesting: uint48(_terms[0]),
                 conclusion: uint48(_terms[1]),
-                maxDebt: uint64(maxDebt)
+                maxDebt: uint64(maxDebt),
+                bondRateFixed: uint64(_terms[2]),
+                maxBondRateVariable: uint64(_terms[3]),
+                discountRateBond: uint64(_terms[4]),
+                discountRateYield: uint64(_terms[5])
             })
         );
 
@@ -428,6 +432,37 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      */
     function marketPrice(uint256 _id) public view override returns (uint256) {
         return (currentControlVariable(_id) * debtRatio(_id)) / (10**metadata[_id].quoteDecimals);
+    }
+
+    /**
+     * @notice             calculate current market price of quote token in base token (i.e. quote tokens per THEO)
+     * @param _id          ID of market
+     * @return             price for market in THEO decimals
+     *
+     * price is derived from the equation
+     *
+     * P = Cmv * (1 - Brv)
+     *
+     * where
+     * p = price
+     * cmv = current market value
+     * Brv = bond rate, variable
+     *
+     * Brv = Brf + Bcrb + Bcyb
+     *
+     * where
+     * Brf = bond rate, fixed
+     * Bcrb = Drb * deltaTokenPrice
+     * Bcyb = Dyb * deltaTreasuryYield
+     *
+     *
+     * where
+     * Drb is a discount rate as a proportion (that is, a percentage in its decimal form) applied to the fluctuation in token price (deltaTokenPrice)
+     * Dyb is a discount rate as a proportion (that is a percentage in its decimal form) applied to the fluctuation of the treasury yield (deltaTreasuryYield)
+     * Drb, Dyb, deltaTokenPrice and deltaTreasuryYield are expressed as proportions (that is, they are a percentages in decimal form), with 9 decimals
+     */
+    function marketPriceTheo(uint256 _id) public view override returns (int256) {
+        return _bondRateVariable(_id);
     }
 
     /**
@@ -586,5 +621,17 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
 
         active_ = secondsSince_ < info.timeToAdjusted;
         decay_ = active_ ? (info.change * secondsSince_) / info.timeToAdjusted : info.change;
+    }
+
+    /**
+     * @notice                  calculate bond rate variable (Brv)
+     * @dev                     see marketPrice for calculation details.
+     * @param _id               ID of market
+     */
+    function _bondRateVariable(uint256 _id) internal view returns (int256) {
+        return
+            int64(terms[_id].bondRateFixed) +
+            ((int64(terms[_id].discountRateBond) * ITreasury(treasury).deltaTokenPrice()) / 10**9) + //deltaTokenPrice is 9 decimals
+            ((int64(terms[_id].discountRateYield) * ITreasury(treasury).deltaTreasuryYield()) / 10**9); // deltaTreasuryYield is 9 decimals
     }
 }

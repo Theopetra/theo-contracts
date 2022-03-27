@@ -1,18 +1,19 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
-import { TheopetraAuthority, TheopetraTreasury, TheopetraERC20Mock } from '../typechain-types';
+import { TheopetraAuthority, TheopetraTreasury, TheopetraERC20Mock, YieldReporterMock } from '../typechain-types';
 import { CONTRACTS, MOCKS } from '../utils/constants';
 import { setupUsers } from './utils';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.authority, CONTRACTS.treasury]);
+  await deployments.fixture([CONTRACTS.authority, CONTRACTS.treasury, MOCKS.yieldReporterMock]);
   const addressZero = '0x0000000000000000000000000000000000000000';
   const { deployer: owner } = await getNamedAccounts();
   const contracts = {
     UsdcTokenMock: await ethers.getContract(MOCKS.usdcTokenMock),
     Treasury: <TheopetraTreasury>await ethers.getContract(CONTRACTS.treasury),
-    Theo: await ethers.getContract(CONTRACTS.theoToken),
+    Theo: <TheopetraERC20Mock>await ethers.getContract(CONTRACTS.theoToken),
     TheopetraAuthority: <TheopetraAuthority>await ethers.getContract(CONTRACTS.authority),
+    YieldReporterMock: <YieldReporterMock>await ethers.getContract(MOCKS.yieldReporterMock)
   };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
@@ -70,47 +71,35 @@ describe('TheopetraTreasury', () => {
     });
   });
 
-  describe('Access control', function () {
-    it('reverts if a call to `enable` is made by an address that is not the Governor', async function () {
+  describe('enable', function () {
+    it('reverts if a call is made by an address that is not the Governor', async function () {
       const { users } = await setup();
 
       // enable the rewards manager
       await expect(users[1].Treasury.enable(8, users[1].address, users[0].address)).to.be.revertedWith('UNAUTHORIZED');
     });
-  });
 
-  describe('Treasury yield', function () {
-    it('should have a function (`getDeltaTreasuryYield`) to get the difference in treasury yield', async function () {
+    it('can set the address of the yield reporter', async function () {
+      const { Treasury, YieldReporterMock } = await setup();
+
+      await expect(Treasury.enable(11, YieldReporterMock.address, YieldReporterMock.address)).to.not.be.reverted;
+    })
+  })
+
+  describe('deltaTreasuryYield', function () {
+    it('should revert if the yield reporter address is address zero', async function () {
       const { Treasury } = await setup();
-      await expect(Treasury.getDeltaTreasuryYield()).to.not.be.reverted;
-      expect(await Treasury.getDeltaTreasuryYield()).to.equal(0); // Initial deltaTreasuryYield will be 0
-    });
+      await expect(Treasury.deltaTreasuryYield()).to.be.revertedWith("Zero address: YieldReporter");
+    })
 
-    it.skip('should correctly calculate the difference in treasury yield', async function () {
-      // TODO, Depending on definition of deltaTreasuryYield
-    });
+    it('should calculate the difference in treasury yield', async function () {
+      const { Treasury, YieldReporterMock } = await setup();
 
-    describe('treasuryPerformanceUpdate', function () {
-      it('can be called by the policy holder', async function () {
-        const { TheopetraAuthority, users } = await setup();
-        const [, , bob] = users;
+      // Use same value as in the mock yield reporter
+      const expectedDeltaTreasuryYield = Math.round(((10_000_000_000 - 15_000_000_000)* 10**9) / 15_000_000_000);
 
-        // Make bob the policy holder
-        await TheopetraAuthority.pushPolicy(bob.address, true);
-        await expect(bob.Treasury.treasuryPerformanceUpdate(1_000_000_000)).to.not.be.reverted;
-      });
-
-      it('will revert if called by an address that is not the policy holder', async function () {
-        const { TheopetraAuthority, users } = await setup();
-        const [, alice, bob] = users;
-
-        // Make bob the policy holder
-        await TheopetraAuthority.pushPolicy(bob.address, true);
-
-        await expect(alice.Treasury.treasuryPerformanceUpdate(1_000_000_000)).to.be.revertedWith('UNAUTHORIZED');
-      });
-
-      it.skip('updates the value of `deltaTreasuryYield`', async function () {});
+      await Treasury.enable(11, YieldReporterMock.address, YieldReporterMock.address);
+      expect(Number(await Treasury.deltaTreasuryYield())).to.equal(expectedDeltaTreasuryYield);
     });
   });
 
@@ -125,24 +114,31 @@ describe('TheopetraTreasury', () => {
       return Math.floor(Math.random() * (max - min + 1) + min);
     }
 
-    it('should have a function (`getDeltaTokenPrice`) to get the difference in token price', async function () {
+    it('should have a function (`deltaTokenPrice`) to get the difference in token price', async function () {
       const { Treasury } = await setup();
-      await expect(Treasury.getDeltaTokenPrice()).to.not.be.reverted;
-      expect(await Treasury.getDeltaTokenPrice()).to.equal(0); // Initial deltaTokenPrice will be 0
+      await expect(Treasury.deltaTokenPrice()).to.be.reverted; // Will revert if called before tokenPerformanceUpdate updates contract state, as currentTokenPrice will be zero
+
+      // Move forward 8 hours to allow tokenPerformanceUpdate to update contract state
+      await moveTimeForward(60 * 60 * 8);
+      await Treasury.tokenPerformanceUpdate();
+
+      await expect(Treasury.deltaTokenPrice()).to.not.be.reverted;
+      expect(await Treasury.deltaTokenPrice()).to.equal(1);
     });
 
     describe('`tokenPerformanceUpdate`', function () {
-      it(' can be first called 8 hours after the contract is created', async function () {
+      it('can be called any time', async function () {
         const { Treasury } = await setup(); // When Treasury is created, the state variable `timeLastUpdated` is updated to be the block.timestamp
 
-        await moveTimeForward(60 * 60 * 8);
+        await moveTimeForward(randomIntFromInterval(1, 10_000_000));
         await expect(Treasury.tokenPerformanceUpdate()).to.not.be.reverted;
       });
 
-      it('will revert if called immediately after contract creation', async function () {
+      it('will not do anything if called immediately after contract creation', async function () {
         const { Treasury } = await setup(); // When Treasury is created, the state variable `timeLastUpdated` is updated to be the block.timestamp
 
-        await expect(Treasury.tokenPerformanceUpdate()).to.be.revertedWith('Called too soon since last update');
+        await Treasury.tokenPerformanceUpdate();
+        await expect(Treasury.deltaTokenPrice()).to.be.reverted; // Will revert if called before tokenPerformanceUpdate updates contract state, as currentTokenPrice will be zero
       });
 
       it('can be called every 8 hours', async function () {
@@ -154,25 +150,43 @@ describe('TheopetraTreasury', () => {
         }
       });
 
-      it('will revert if called within 8 hours of the last updated time', async function () {
+      it('updates `deltaTokenPrice` only when called at or after 8 hours since contract creation or since the last successfull call', async function () {
         const { Treasury } = await setup();
 
-        for (let i = 0; i < 2; i++) {
-          await moveTimeForward(60 * 60 * 8);
-          await expect(Treasury.tokenPerformanceUpdate()).to.not.be.reverted;
-        }
+        await moveTimeForward(60 * 60 * 8);
+        await Treasury.tokenPerformanceUpdate();
+        expect(await Treasury.deltaTokenPrice()).to.equal(1);
 
-        await moveTimeForward(randomIntFromInterval(0, 60 * 60 * 8 - 1));
-        await expect(Treasury.tokenPerformanceUpdate()).to.be.revertedWith('Called too soon since last update');
+        // Move forward 5 hours
+        await moveTimeForward(60 * 60 * 5);
+        await Treasury.tokenPerformanceUpdate();
+        expect(await Treasury.deltaTokenPrice()).to.equal(1);
+
+        // Move forward 2 more hour (total of 7 hours)
+        await moveTimeForward(60 * 60 * 2);
+        await Treasury.tokenPerformanceUpdate();
+        expect(await Treasury.deltaTokenPrice()).to.equal(1);
+
+        // Move forward 1 more hour (total of 8 hours)
+        await moveTimeForward(60 * 60 * 1);
+        await Treasury.tokenPerformanceUpdate();
+        expect(await Treasury.deltaTokenPrice()).to.equal(0);
       });
 
-      it('will not revert if called at times beyond 8 hours since the last updated time', async function () {
+      it('updates `deltaTokenPrice` as expected when called at or beyond every 8 hours', async function () {
         const { Treasury } = await setup();
 
-        for (let i = 0; i < 3; i++) {
-          await moveTimeForward(randomIntFromInterval(60*60*8, 60*60*100));
-          await expect(Treasury.tokenPerformanceUpdate()).to.not.be.reverted;
-        }
+        await moveTimeForward(60 * 60 * 8);
+        await Treasury.tokenPerformanceUpdate();
+        expect(await Treasury.deltaTokenPrice()).to.equal(1);
+
+        await moveTimeForward(60 * 60 * 9);
+        await Treasury.tokenPerformanceUpdate();
+        expect(await Treasury.deltaTokenPrice()).to.equal(0);
+
+        await moveTimeForward(60 * 60 * 8);
+        await Treasury.tokenPerformanceUpdate();
+        expect(await Treasury.deltaTokenPrice()).to.equal(0);
       });
     });
   });
