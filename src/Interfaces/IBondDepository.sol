@@ -22,10 +22,10 @@ interface IBondDepository {
         uint48 vesting; // length of time from deposit to maturity if fixed-term
         uint48 conclusion; // timestamp when market no longer offered (doubles as time when market matures if fixed-expiry)
         uint64 maxDebt; // 9 decimal debt maximum in THEO
-        uint64 bondRateFixed; // 9 decimal fixed discount expressed as a proportion (that is, a percentage in its decimal form)
-        uint64 maxBondRateVariable; // 9 decimal maximum proportion (that is, a percentage in its decimal form) discount on current market price
-        uint64 discountRateBond; // 9 decimal
-        uint64 discountRateYield; // 9 decimal
+        int64 bondRateFixed; // 9 decimal fixed discount expressed as a proportion (that is, a percentage in its decimal form)
+        int64 maxBondRateVariable; // 9 decimal maximum proportion (that is, a percentage in its decimal form) discount on current market price
+        int64 discountRateBond; // 9 decimal
+        int64 discountRateYield; // 9 decimal
     }
 
     // Additional info about market.
@@ -75,7 +75,8 @@ interface IBondDepository {
         IERC20 _quoteToken, // token used to deposit
         uint256[3] memory _market, // [capacity, initial price]
         bool[2] memory _booleans, // [capacity in quote, fixed term]
-        uint256[6] memory _terms, // [vesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield]
+        uint256[2] memory _terms, // [vesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield]
+        int64[4] memory _rates, // [bondRateFixed, maxBondRateVariable, initial discountRateBond (Drb), initial discountRateYield (Dyb)]
         uint32[2] memory _intervals // [deposit interval, tune interval]
     ) external returns (uint256 id_);
 

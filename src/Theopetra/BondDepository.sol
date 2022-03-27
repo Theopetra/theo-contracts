@@ -274,7 +274,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * @param _quoteToken  token used to deposit
      * @param _market      [capacity (in THEO or quote), initial price / THEO (9 decimals), debt buffer (3 decimals)]
      * @param _booleans    [capacity in quote, fixed term]
-     * @param _terms       [vesting length (if fixed term) or vested timestamp, conclusion timestamp, bondRateFixed, maxBondRateVariable, initial discountRateBond (Drb), initial discountRateYield (Dyb)]
+     * @param _terms       [vesting length (if fixed term) or vested timestamp, conclusion timestamp]
+     * @param _rates       [bondRateFixed, maxBondRateVariable, initial discountRateBond (Drb), initial discountRateYield (Dyb)]
      * @param _intervals   [deposit interval (seconds), tune interval (seconds)]
      * @return id_         ID of new bond market
      */
@@ -282,7 +283,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         IERC20 _quoteToken,
         uint256[3] memory _market,
         bool[2] memory _booleans,
-        uint256[6] memory _terms,
+        uint256[2] memory _terms,
+        int64[4] memory _rates,
         uint32[2] memory _intervals
     ) external override onlyPolicy returns (uint256 id_) {
         // the length of the program, in seconds
@@ -350,10 +352,10 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
                 vesting: uint48(_terms[0]),
                 conclusion: uint48(_terms[1]),
                 maxDebt: uint64(maxDebt),
-                bondRateFixed: uint64(_terms[2]),
-                maxBondRateVariable: uint64(_terms[3]),
-                discountRateBond: uint64(_terms[4]),
-                discountRateYield: uint64(_terms[5])
+                bondRateFixed: int64(_rates[0]),
+                maxBondRateVariable: int64(_rates[1]),
+                discountRateBond: int64(_rates[2]),
+                discountRateYield: int64(_rates[3])
             })
         );
 
@@ -462,7 +464,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * Drb, Dyb, deltaTokenPrice and deltaTreasuryYield are expressed as proportions (that is, they are a percentages in decimal form), with 9 decimals
      */
     function marketPriceTheo(uint256 _id) public view override returns (int256) {
-        return _bondRateVariable(_id);
+        return int256(_bondRateVariable(_id));
     }
 
     /**
@@ -629,9 +631,14 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * @param _id               ID of market
      */
     function _bondRateVariable(uint256 _id) internal view returns (int256) {
-        return
-            int64(terms[_id].bondRateFixed) +
+        int256 bondRateVariable = int64(terms[_id].bondRateFixed) +
             ((int64(terms[_id].discountRateBond) * ITreasury(treasury).deltaTokenPrice()) / 10**9) + //deltaTokenPrice is 9 decimals
             ((int64(terms[_id].discountRateYield) * ITreasury(treasury).deltaTreasuryYield()) / 10**9); // deltaTreasuryYield is 9 decimals
+
+        if(bondRateVariable >= terms[_id].maxBondRateVariable) {
+            return terms[_id].maxBondRateVariable;
+        } else {
+            return bondRateVariable;
+        }
     }
 }

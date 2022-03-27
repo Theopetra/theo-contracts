@@ -83,6 +83,10 @@ describe('TheopetraTreasury', () => {
       const { Treasury, YieldReporterMock } = await setup();
 
       await expect(Treasury.enable(11, YieldReporterMock.address, YieldReporterMock.address)).to.not.be.reverted;
+    });
+
+    it.skip('can set the address of the liquidity pool', async function () {
+
     })
   })
 

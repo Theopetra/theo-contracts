@@ -63,7 +63,6 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     }
 
     struct PriceInfo {
-        // int256 deltaTokenPrice;
         int256 deltaTreasuryYield;
         uint256 timeLastUpdated;
         uint256 lastTokenPrice;
