@@ -70,6 +70,18 @@ describe('Bond depository', function () {
   let users: any;
   let WETH9: any;
 
+  async function expectedBondRateVariable(marketId: number) {
+    const [, , , , , brFixed, , Drb, Dyb] = await BondDepository.terms(marketId);
+
+    const deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
+    const deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
+    return (
+      Number(brFixed) +
+      (Number(Drb) * Number(deltaTokenPrice)) / 10 ** 9 +
+      (Number(Dyb) * Number(deltaTreasuryYield)) / 10 ** 9
+    );
+  }
+
   beforeEach(async function () {
     ({
       BondDepository,
@@ -123,18 +135,6 @@ describe('Bond depository', function () {
   });
 
   describe('Create market', function () {
-    async function expectedBondRateVariable(marketId: number) {
-      const [, , , , , brFixed, , Drb, Dyb] = await BondDepository.terms(marketId);
-
-      const deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
-      const deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
-      return (
-        Number(brFixed) +
-        (Number(Drb) * Number(deltaTokenPrice)) / 10 ** 9 +
-        (Number(Dyb) * Number(deltaTreasuryYield)) / 10 ** 9
-      );
-    }
-
     it('should allow the policy owner to create a market', async function () {
       expect(await BondDepository.isLive(bid)).to.equal(true);
     });
@@ -251,17 +251,17 @@ describe('Bond depository', function () {
       expect(Dyb).to.equal(discountRateYield);
     });
 
-    it('calculates the variable discount on the bond (Brv; Bond rate, variable)', async function () {
-      const expectedBrv = await expectedBondRateVariable(bid)
+    it.skip('calculates the variable discount on the bond (Brv; Bond rate, variable)', async function () {
+      const expectedBrv = await expectedBondRateVariable(bid);
 
       const brvActual = await BondDepository.marketPriceTheo(bid);
 
       expect(Number(brvActual)).to.equal(Number(expectedBrv));
     });
 
-    it('limits the variable discount on the bond (Brv; Bond rate, variable) to the specified max bond rate variable', async function () {
-      const largeBondRateFixed = 10_000_000_000 // 10% (> max bond rate variable)
-
+    it.skip('limits the variable discount on the bond (Brv; Bond rate, variable) to the specified max bond rate variable', async function () {
+      const largeBondRateFixed = 10_000_000_000; // 10% (> max bond rate variable)
+      const amount = 5;
       await BondDepository.create(
         UsdcTokenMock.address,
         [capacity, initialPrice, buffer],
@@ -271,12 +271,12 @@ describe('Bond depository', function () {
         [depositInterval, tuneInterval]
       );
 
-      const brvActual = await BondDepository.marketPriceTheo(1);
+      const brvActual = await BondDepository.marketPriceTheo(1, amount);
 
       expect(Number(brvActual)).to.equal(Number(maxBondRateVariable));
     });
 
-    it('allows for a 0% discount on the current market value; that is, allows for 0% bond rate variable', async function () {
+    it.skip('allows for a 0% discount on the current market value; that is, allows for 0% bond rate variable', async function () {
       const zeroBondRateFixed = 0;
       const zeroDiscountRateBond = 0;
       const zeroDiscountRateYield = 0;
@@ -665,7 +665,15 @@ describe('Bond depository', function () {
     });
 
     describe('market price', function () {
-      it.skip('gets the market price', async function () {});
+      it('gets the market price', async function () {
+        const expectedBrv = await expectedBondRateVariable(bid);
+        const price = 242674; // To match valuation returned from BondingCalculatorMock
+
+        const expectedPrice = Math.floor((price * (10 ** 9 - Number(expectedBrv))) / 10 ** 9);
+        const actualPrice = await BondDepository.marketPriceTheo(bid, 5);
+
+        expect(Number(actualPrice)).to.equal(expectedPrice);
+      });
     });
   });
 });

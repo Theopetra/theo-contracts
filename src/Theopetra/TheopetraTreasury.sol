@@ -510,17 +510,18 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     }
 
     /**
-     * @notice returns THEO valuation of asset
+     * @notice returns THEO valuation for an amount of Quote Tokens
      * @param _token address
      * @param _amount uint256
      * @return value_ uint256
      */
     function tokenValue(address _token, uint256 _amount) public view override returns (uint256 value_) {
-        value_ = _amount.mul(10**IERC20Metadata(address(THEO)).decimals()).div(10**IERC20Metadata(_token).decimals());
-
-        if (permissions[STATUS.LIQUIDITYTOKEN][_token]) {
-            value_ = IBondCalculator(bondCalculator[_token]).valuation(_token, _amount);
-        }
+        require(
+            permissions[STATUS.LIQUIDITYTOKEN][_token] && bondCalculator[_token] != address(0),
+            "No Bonding Calculator"
+        );
+        require(_token != address(0), "No liquidity token");
+        value_ = IBondCalculator(bondCalculator[_token]).valuation(_token, _amount);
     }
 
     /**
@@ -542,10 +543,10 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     /**
      * @notice  calculate the proportional change (i.e. a percentage as a decimal) in treasury yield, with 9 decimals
      * @dev     calculated as (currentYield - lastYield) / lastYield
-    *           using 9 decimals for the yield values and for return value.
-    *           example: ((10_000_000_000 - 15_000_000_000)*(10**9)) / 15_000_000_000 = -333333333
-    *           -333333333 is equivalent to the proportion -0.333333333 (that is, -33.3333333%)
-      * @return  int256 percentage change in treasury yield. 9 decimals
+     *           using 9 decimals for the yield values and for return value.
+     *           example: ((10_000_000_000 - 15_000_000_000)*(10**9)) / 15_000_000_000 = -333333333
+     *           -333333333 is equivalent to the proportion -0.333333333 (that is, -33.3333333%)
+     * @return  int256 percentage change in treasury yield. 9 decimals
      */
     function deltaTreasuryYield() public view override returns (int256) {
         require(address(yieldReporter) != address(0), "Zero address: YieldReporter");

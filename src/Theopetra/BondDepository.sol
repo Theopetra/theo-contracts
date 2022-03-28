@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.10;
 
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import "../Types/NoteKeeper.sol";
 
 import "../Libraries/SafeERC20.sol";
 
 import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/IBondDepository.sol";
+import "../Interfaces/ITreasury.sol";
 
 /**
  * @title Theopetra Bond Depository
@@ -17,6 +20,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     /* ======== DEPENDENCIES ======== */
 
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
 
     /* ======== EVENTS ======== */
 
@@ -438,6 +442,9 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
 
     /**
      * @notice             calculate current market price of quote token in base token (i.e. quote tokens per THEO)
+     * @dev                uses the Treasury's tokenValue method to get the asset value
+     *                     tokenValue is the THEO value of the _amount of the quote token;
+     *                     therefore, we divide the value returned by tokenValue by _amount, to get the Quote-Token per THEO price
      * @param _id          ID of market
      * @return             price for market in THEO decimals
      *
@@ -463,8 +470,10 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * Dyb is a discount rate as a proportion (that is a percentage in its decimal form) applied to the fluctuation of the treasury yield (deltaTreasuryYield)
      * Drb, Dyb, deltaTokenPrice and deltaTreasuryYield are expressed as proportions (that is, they are a percentages in decimal form), with 9 decimals
      */
-    function marketPriceTheo(uint256 _id) public view override returns (int256) {
-        return int256(_bondRateVariable(_id));
+    function marketPriceTheo(uint256 _id, uint256 _amount) public view override returns (int256) {
+        return
+            ((ITreasury(NoteKeeper.treasury).tokenValue(address(markets[_id].quoteToken), _amount) / _amount).toInt256() *
+            (10**9 - _bondRateVariable(_id))) / 10**9;
     }
 
     /**
@@ -635,7 +644,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
             ((int64(terms[_id].discountRateBond) * ITreasury(treasury).deltaTokenPrice()) / 10**9) + //deltaTokenPrice is 9 decimals
             ((int64(terms[_id].discountRateYield) * ITreasury(treasury).deltaTreasuryYield()) / 10**9); // deltaTreasuryYield is 9 decimals
 
-        if(bondRateVariable >= terms[_id].maxBondRateVariable) {
+        if (bondRateVariable >= terms[_id].maxBondRateVariable) {
             return terms[_id].maxBondRateVariable;
         } else {
             return bondRateVariable;
