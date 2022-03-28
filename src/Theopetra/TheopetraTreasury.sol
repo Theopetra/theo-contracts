@@ -374,22 +374,17 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     }
 
     /**
-     * @notice  update the current token price and previous (last) token price
-     * @dev     can be called at any time but will only update contract state every 8 hours
+     * @notice              update the current token price and previous (last) token price.
+     *                      Token price is calculated with `tokenValue` using the specified Quote Token
+     * @dev                 can be called at any time but will only update contract state every 8 hours
+     * @param _quoteToken   address of the quote token used for the Quote-Token/THEO liquidity pool
      */
-    function tokenPerformanceUpdate() public override {
+    function tokenPerformanceUpdate(address _quoteToken) public override {
         if (block.timestamp >= priceInfo.timeLastUpdated + 28800) {
             priceInfo.lastTokenPrice = priceInfo.currentTokenPrice;
-            priceInfo.currentTokenPrice = getCurrentTokenPrice();
+            priceInfo.currentTokenPrice = tokenValue(_quoteToken, 1);
             priceInfo.timeLastUpdated = block.timestamp;
         }
-    }
-
-    /**
-     * @notice  get the the current token price from uniswap as time-weighted average price
-     */
-    function getCurrentTokenPrice() internal view returns (uint256) {
-        return 2_000_000_000; // TODO: update code to get TWAP.
     }
 
     /* ========== TIMELOCKED FUNCTIONS ========== */

@@ -90,9 +90,7 @@ interface IBondDepository {
 
     function payoutFor(uint256 _amount, uint256 _bid) external view returns (uint256);
 
-    function marketPrice(uint256 _bid) external view returns (uint256);
-
-    function marketPriceTheo(uint256 _bid, uint256 _amount) external view returns (int256);
+    function marketPrice(uint256 _bid, uint256 _amount) external view returns (uint256);
 
     function currentDebt(uint256 _bid) external view returns (uint256);
 

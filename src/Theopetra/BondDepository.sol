@@ -11,6 +11,8 @@ import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/IBondDepository.sol";
 import "../Interfaces/ITreasury.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title Theopetra Bond Depository
  * @notice Originally based off of Olympus Bond Depository V2
@@ -21,6 +23,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
 
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
+    using SafeCast for int256;
 
     /* ======== EVENTS ======== */
 
@@ -96,7 +99,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
 
         // Users input a maximum price, which protects them from price changes after
         // entering the mempool. max price is a slippage mitigation measure
-        uint256 price = _marketPrice(_id);
+        uint256 price = marketPrice(_id, _amount);
         require(price <= _maxPrice, "Depository: more than max price");
 
         /**
@@ -410,37 +413,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     /* ======== EXTERNAL VIEW ======== */
 
     /**
-     * @notice             calculate current market price of quote token in base token
-     * @dev                accounts for debt and control variable decay since last deposit (vs _marketPrice())
-     * @param _id          ID of market
-     * @return             price for market in THEO decimals
-     *
-     * price is derived from the equation
-     *
-     * p = cv * dr
-     *
-     * where
-     * p = price
-     * cv = control variable
-     * dr = debt ratio
-     *
-     * dr = d / s
-     *
-     * where
-     * d = debt
-     * s = supply of token at market creation
-     *
-     * d -= ( d * (dt / l) )
-     *
-     * where
-     * dt = change in time
-     * l = length of program
-     */
-    function marketPrice(uint256 _id) public view override returns (uint256) {
-        return (currentControlVariable(_id) * debtRatio(_id)) / (10**metadata[_id].quoteDecimals);
-    }
-
-    /**
      * @notice             calculate current market price of quote token in base token (i.e. quote tokens per THEO)
      * @dev                uses the Treasury's tokenValue method to get the asset value
      *                     tokenValue is the THEO value of the _amount of the quote token;
@@ -470,10 +442,10 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * Dyb is a discount rate as a proportion (that is a percentage in its decimal form) applied to the fluctuation of the treasury yield (deltaTreasuryYield)
      * Drb, Dyb, deltaTokenPrice and deltaTreasuryYield are expressed as proportions (that is, they are a percentages in decimal form), with 9 decimals
      */
-    function marketPriceTheo(uint256 _id, uint256 _amount) public view override returns (int256) {
+    function marketPrice(uint256 _id, uint256 _amount) public view override returns (uint256) {
         return
-            ((ITreasury(NoteKeeper.treasury).tokenValue(address(markets[_id].quoteToken), _amount) / _amount).toInt256() *
-            (10**9 - _bondRateVariable(_id))) / 10**9;
+            ((ITreasury(NoteKeeper.treasury).tokenValue(address(markets[_id].quoteToken), _amount) / _amount) *
+                (10**9 - _bondRateVariable(_id))) / 10**9;
     }
 
     /**
@@ -487,7 +459,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      */
     function payoutFor(uint256 _amount, uint256 _id) external view override returns (uint256) {
         Metadata memory meta = metadata[_id];
-        return (_amount * 1e18) / marketPrice(_id) / 10**meta.quoteDecimals;
+        return (_amount * 1e18) / marketPrice(_id, _amount) / 10**meta.quoteDecimals;
     }
 
     /**
@@ -639,15 +611,17 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * @dev                     see marketPrice for calculation details.
      * @param _id               ID of market
      */
-    function _bondRateVariable(uint256 _id) internal view returns (int256) {
+    function _bondRateVariable(uint256 _id) internal view returns (uint256) {
         int256 bondRateVariable = int64(terms[_id].bondRateFixed) +
             ((int64(terms[_id].discountRateBond) * ITreasury(treasury).deltaTokenPrice()) / 10**9) + //deltaTokenPrice is 9 decimals
             ((int64(terms[_id].discountRateYield) * ITreasury(treasury).deltaTreasuryYield()) / 10**9); // deltaTreasuryYield is 9 decimals
 
-        if (bondRateVariable >= terms[_id].maxBondRateVariable) {
-            return terms[_id].maxBondRateVariable;
+        if (bondRateVariable <= 0) {
+            return 0;
+        } else if (bondRateVariable >= terms[_id].maxBondRateVariable) {
+            return uint256(uint64(terms[_id].maxBondRateVariable));
         } else {
-            return bondRateVariable;
+            return bondRateVariable.toUint256();
         }
     }
 }

@@ -621,14 +621,14 @@ describe('Bond depository', function () {
       });
     });
 
-    describe.only('market price', function () {
+    describe('market price', function () {
       const price = 242674; // To match valuation returned from BondingCalculatorMock
 
       it('gets the market price', async function () {
         const expectedBrv = await expectedBondRateVariable(bid);
 
         const expectedPrice = Math.floor((price * (10 ** 9 - Number(expectedBrv))) / 10 ** 9);
-        const marketPrice = await BondDepository.marketPriceTheo(bid, depositAmount);
+        const marketPrice = await BondDepository.marketPrice(bid, depositAmount);
 
         expect(Number(marketPrice)).to.equal(expectedPrice);
       });
@@ -646,7 +646,7 @@ describe('Bond depository', function () {
         );
 
         const expectedPrice = Math.floor((price * (10 ** 9 - Number(maxBondRateVariable))) / 10 ** 9);
-        const marketPrice = await BondDepository.marketPriceTheo(1, depositAmount);
+        const marketPrice = await BondDepository.marketPrice(1, depositAmount);
 
         expect(Number(marketPrice)).to.equal(Number(expectedPrice));
       });
@@ -668,7 +668,31 @@ describe('Bond depository', function () {
         const expectedBrv = await expectedBondRateVariable(1);
 
         const expectedPrice = Math.floor((price * (10 ** 9 - Number(expectedBrv))) / 10 ** 9);
-        const marketPrice = await BondDepository.marketPriceTheo(1, depositAmount);
+        const marketPrice = await BondDepository.marketPrice(1, depositAmount);
+
+        expect(Number(marketPrice)).to.equal(Number(price));
+        expect(Number(marketPrice)).to.equal(Number(expectedPrice));
+      });
+
+      it('has a minimum discount on the bond of 0% (that is, it does not allow a negative discount)', async function () {
+        const negativeBondRateFixed = -10_000_000; // -1% in decimal form (i.e. -0.01 with 9 decimals)
+        const negativeDiscountRateBond = -10_000_000; // -1% in decimal form (i.e. -0.01 with 9 decimals)
+        const negativeDiscountRateYield = -20_000_000; // -2% in decimal form (i.e. -0.02 with 9 decimals)
+
+        await BondDepository.create(
+          UsdcTokenMock.address,
+          [capacity, initialPrice, buffer],
+          [capacityInQuote, fixedTerm],
+          [vesting, conclusion],
+          [negativeBondRateFixed, maxBondRateVariable, negativeDiscountRateBond, negativeDiscountRateYield],
+          [depositInterval, tuneInterval]
+        );
+
+        const rawCalculatedBrv = await expectedBondRateVariable(1);
+        expect(rawCalculatedBrv).to.be.lessThan(0);
+
+        const expectedPrice = Math.floor((price * (10 ** 9 - 0)) / 10 ** 9);
+        const marketPrice = await BondDepository.marketPrice(1, depositAmount);
 
         expect(Number(marketPrice)).to.equal(Number(price));
         expect(Number(marketPrice)).to.equal(Number(expectedPrice));
