@@ -251,50 +251,7 @@ describe('Bond depository', function () {
       expect(Dyb).to.equal(discountRateYield);
     });
 
-    it.skip('calculates the variable discount on the bond (Brv; Bond rate, variable)', async function () {
-      const expectedBrv = await expectedBondRateVariable(bid);
 
-      const brvActual = await BondDepository.marketPriceTheo(bid);
-
-      expect(Number(brvActual)).to.equal(Number(expectedBrv));
-    });
-
-    it.skip('limits the variable discount on the bond (Brv; Bond rate, variable) to the specified max bond rate variable', async function () {
-      const largeBondRateFixed = 10_000_000_000; // 10% (> max bond rate variable)
-      const amount = 5;
-      await BondDepository.create(
-        UsdcTokenMock.address,
-        [capacity, initialPrice, buffer],
-        [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
-        [largeBondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
-        [depositInterval, tuneInterval]
-      );
-
-      const brvActual = await BondDepository.marketPriceTheo(1, amount);
-
-      expect(Number(brvActual)).to.equal(Number(maxBondRateVariable));
-    });
-
-    it.skip('allows for a 0% discount on the current market value; that is, allows for 0% bond rate variable', async function () {
-      const zeroBondRateFixed = 0;
-      const zeroDiscountRateBond = 0;
-      const zeroDiscountRateYield = 0;
-
-      await BondDepository.create(
-        UsdcTokenMock.address,
-        [capacity, initialPrice, buffer],
-        [capacityInQuote, fixedTerm],
-        [vesting, conclusion],
-        [zeroBondRateFixed, maxBondRateVariable, zeroDiscountRateBond, zeroDiscountRateYield],
-        [depositInterval, tuneInterval]
-      );
-
-      const expectedBrv = await expectedBondRateVariable(1);
-      const brvActual = await BondDepository.marketPriceTheo(1);
-
-      expect(Number(brvActual)).to.equal(Number(expectedBrv));
-    });
 
     it.skip('should set max payout to correct % of capacity', async function () {
       const [, , , , maxPayout, ,] = await BondDepository.markets(bid);
@@ -664,15 +621,57 @@ describe('Bond depository', function () {
       });
     });
 
-    describe('market price', function () {
+    describe.only('market price', function () {
+      const price = 242674; // To match valuation returned from BondingCalculatorMock
+
       it('gets the market price', async function () {
         const expectedBrv = await expectedBondRateVariable(bid);
-        const price = 242674; // To match valuation returned from BondingCalculatorMock
 
         const expectedPrice = Math.floor((price * (10 ** 9 - Number(expectedBrv))) / 10 ** 9);
-        const actualPrice = await BondDepository.marketPriceTheo(bid, 5);
+        const marketPrice = await BondDepository.marketPriceTheo(bid, depositAmount);
 
-        expect(Number(actualPrice)).to.equal(expectedPrice);
+        expect(Number(marketPrice)).to.equal(expectedPrice);
+      });
+
+      it('limits the discount on the market price to the specified max bond rate variable', async function () {
+        const largeBondRateFixed = 10_000_000_000; // 10% (> max bond rate variable)
+
+        await BondDepository.create(
+          UsdcTokenMock.address,
+          [capacity, initialPrice, buffer],
+          [capacityInQuote, fixedTerm],
+          [vesting, conclusion],
+          [largeBondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+          [depositInterval, tuneInterval]
+        );
+
+        const expectedPrice = Math.floor((price * (10 ** 9 - Number(maxBondRateVariable))) / 10 ** 9);
+        const marketPrice = await BondDepository.marketPriceTheo(1, depositAmount);
+
+        expect(Number(marketPrice)).to.equal(Number(expectedPrice));
+      });
+
+      it('allows for a 0% discount on the current market value; that is, allows for 0% bond rate variable', async function () {
+        const zeroBondRateFixed = 0;
+        const zeroDiscountRateBond = 0;
+        const zeroDiscountRateYield = 0;
+
+        await BondDepository.create(
+          UsdcTokenMock.address,
+          [capacity, initialPrice, buffer],
+          [capacityInQuote, fixedTerm],
+          [vesting, conclusion],
+          [zeroBondRateFixed, maxBondRateVariable, zeroDiscountRateBond, zeroDiscountRateYield],
+          [depositInterval, tuneInterval]
+        );
+
+        const expectedBrv = await expectedBondRateVariable(1);
+
+        const expectedPrice = Math.floor((price * (10 ** 9 - Number(expectedBrv))) / 10 ** 9);
+        const marketPrice = await BondDepository.marketPriceTheo(1, depositAmount);
+
+        expect(Number(marketPrice)).to.equal(Number(price));
+        expect(Number(marketPrice)).to.equal(Number(expectedPrice));
       });
     });
   });
