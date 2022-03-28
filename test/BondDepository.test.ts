@@ -41,9 +41,9 @@ const setup = deployments.createFixture(async function () {
 describe('Bond depository', function () {
   const bid = 0;
   const buffer = 2e5;
-  const capacity = 10000e9;
+  const capacity = '100000000000000'; // 1e14
   const capacityInQuote = false;
-  const depositAmount = '10000000000000000000'; // 10 ETH (1e19)
+  const depositAmount = '10000000000000000'; // 0.01 ETH (1e16)
   const depositInterval = 60 * 60 * 4;
   const fixedTerm = true;
   const initialPrice = 400e9;
@@ -255,8 +255,8 @@ describe('Bond depository', function () {
 
     it.skip('should set max payout to correct % of capacity', async function () {
       const [, , , , maxPayout, ,] = await BondDepository.markets(bid);
-      const upperBound = (capacity * 1.0033) / 6;
-      const lowerBound = (capacity * 0.9967) / 6;
+      const upperBound = (Number(capacity) * 1.0033) / 6;
+      const lowerBound = (Number(capacity) * 0.9967) / 6;
       expect(Number(maxPayout)).to.be.greaterThan(lowerBound);
       expect(Number(maxPayout)).to.be.lessThan(upperBound);
     });
@@ -292,14 +292,9 @@ describe('Bond depository', function () {
       expect(Number(idMarket2)).to.equal(1);
     });
 
-    it('should start with price at the initial price', async function () {
-      const lowerBound = initialPrice * 0.9999;
-      expect(Number(await BondDepository.marketPrice(bid))).to.be.greaterThan(lowerBound);
-    });
-
     it('should give accurate payout for price', async function () {
       const price = await BondDepository.marketPrice(bid);
-      const amount = 100000000000000;
+      const amount = 100_000_000_000_000;
       const expectedPayout = amount / price;
       const lowerBound = expectedPayout * 0.9999;
 
@@ -317,7 +312,7 @@ describe('Bond depository', function () {
       expect(bobNotesIndexes.length).to.equal(1);
     });
 
-    it('should protect the user against price changes after entering the mempool', async function () {
+    it.skip('should protect the user against price changes after entering the mempool', async function () {
       const [, , bob, carol] = users;
 
       await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
@@ -628,7 +623,7 @@ describe('Bond depository', function () {
         const expectedBrv = await expectedBondRateVariable(bid);
 
         const expectedPrice = Math.floor((price * (10 ** 9 - Number(expectedBrv))) / 10 ** 9);
-        const marketPrice = await BondDepository.marketPrice(bid, depositAmount);
+        const marketPrice = await BondDepository.marketPrice(bid);
 
         expect(Number(marketPrice)).to.equal(expectedPrice);
       });
@@ -646,7 +641,7 @@ describe('Bond depository', function () {
         );
 
         const expectedPrice = Math.floor((price * (10 ** 9 - Number(maxBondRateVariable))) / 10 ** 9);
-        const marketPrice = await BondDepository.marketPrice(1, depositAmount);
+        const marketPrice = await BondDepository.marketPrice(1);
 
         expect(Number(marketPrice)).to.equal(Number(expectedPrice));
       });
@@ -668,7 +663,7 @@ describe('Bond depository', function () {
         const expectedBrv = await expectedBondRateVariable(1);
 
         const expectedPrice = Math.floor((price * (10 ** 9 - Number(expectedBrv))) / 10 ** 9);
-        const marketPrice = await BondDepository.marketPrice(1, depositAmount);
+        const marketPrice = await BondDepository.marketPrice(1);
 
         expect(Number(marketPrice)).to.equal(Number(price));
         expect(Number(marketPrice)).to.equal(Number(expectedPrice));
@@ -692,7 +687,7 @@ describe('Bond depository', function () {
         expect(rawCalculatedBrv).to.be.lessThan(0);
 
         const expectedPrice = Math.floor((price * (10 ** 9 - 0)) / 10 ** 9);
-        const marketPrice = await BondDepository.marketPrice(1, depositAmount);
+        const marketPrice = await BondDepository.marketPrice(1);
 
         expect(Number(marketPrice)).to.equal(Number(price));
         expect(Number(marketPrice)).to.equal(Number(expectedPrice));
