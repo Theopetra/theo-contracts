@@ -9,10 +9,10 @@ interface IBondDepository {
         uint256 capacity; // capacity remaining
         IERC20 quoteToken; // token to accept as payment
         bool capacityInQuote; // capacity limit is in payment token (true) or in THEO (false, default)
-        uint64 totalDebt; // total debt from market
-        uint64 maxPayout; // max tokens in/out (determined by capacityInQuote false/true, respectively)
         uint64 sold; // base tokens out
         uint256 purchased; // quote tokens in
+        uint256 totalDebt; // total debt from market
+        uint256 maxPayout; // max tokens in/out (determined by capacityInQuote false/true, respectively)
     }
 
     // Info for creating new markets
@@ -33,8 +33,8 @@ interface IBondDepository {
         uint48 lastTune; // last timestamp when control variable was tuned
         uint48 lastDecay; // last timestamp when market was created and debt was decayed
         uint48 length; // time from creation to conclusion. used as speed to decay debt.
-        uint48 depositInterval; // target frequency of deposits
-        uint48 tuneInterval; // frequency of tuning
+        uint64 depositInterval; // target frequency of deposits
+        uint64 tuneInterval; // frequency of tuning
         uint8 quoteDecimals; // decimals of quote token
     }
 
@@ -42,7 +42,7 @@ interface IBondDepository {
     struct Adjustment {
         uint64 change;
         uint48 lastAdjustment;
-        uint48 timeToAdjusted;
+        uint64 timeToAdjusted;
         bool active;
     }
 
@@ -77,7 +77,7 @@ interface IBondDepository {
         bool[2] memory _booleans, // [capacity in quote, fixed term]
         uint256[2] memory _terms, // [vesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield]
         int64[4] memory _rates, // [bondRateFixed, maxBondRateVariable, initial discountRateBond (Drb), initial discountRateYield (Dyb)]
-        uint32[2] memory _intervals // [deposit interval, tune interval]
+        uint64[2] memory _intervals // [deposit interval, tune interval]
     ) external returns (uint256 id_);
 
     function close(uint256 _id) external;

@@ -251,7 +251,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
              * i.e. market has 10 days remaining. deposit interval is 1 day. capacity
              * is 10,000 THEO. max payout would be 1,000 THEO (10,000 * 1 / 10).
              */
-            markets[_id].maxPayout = uint64((capacity * meta.depositInterval) / timeRemaining);
+            markets[_id].maxPayout = uint256((capacity * meta.depositInterval) / timeRemaining);
 
             // calculate the ideal total debt to satisfy capacity in the remaining time
             uint256 targetDebt = (capacity * meta.length) / timeRemaining;
@@ -292,7 +292,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         bool[2] memory _booleans,
         uint256[2] memory _terms,
         int64[4] memory _rates,
-        uint32[2] memory _intervals
+        uint64[2] memory _intervals
     ) external override onlyPolicy returns (uint256 id_) {
         // the length of the program, in seconds
         uint256 secondsToConclusion = _terms[1] - block.timestamp;
@@ -307,14 +307,14 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
          *
          * 1e18 = theo decimals (9) + initial price decimals (9)
          */
-        uint64 targetDebt = uint64(_booleans[0] ? ((_market[0] * 1e18) / _market[1]) / 10**decimals : _market[0]);
+        uint256 targetDebt = uint256(_booleans[0] ? ((_market[0] * 1e18) / _market[1]) / 10**decimals : _market[0]);
 
         /*
          * max payout is the amount of capacity that should be utilized in a deposit
          * interval. for example, if capacity is 1,000 THEO, there are 10 days to conclusion,
          * and the preferred deposit interval is 1 day, max payout would be 100 THEO.
          */
-        uint64 maxPayout = uint64((targetDebt * _intervals[0]) / secondsToConclusion);
+        uint256 maxPayout = (targetDebt * _intervals[0]) / secondsToConclusion;
 
         /*
          * max debt serves as a circuit breaker for the market. let's say the quote
@@ -371,8 +371,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
                 lastTune: uint48(block.timestamp),
                 lastDecay: uint48(block.timestamp),
                 length: uint48(secondsToConclusion),
-                depositInterval: _intervals[0],
-                tuneInterval: _intervals[1],
+                depositInterval: uint64(_intervals[0]),
+                tuneInterval: uint64(_intervals[1]),
                 quoteDecimals: uint8(decimals)
             })
         );
