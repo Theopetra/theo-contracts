@@ -101,4 +101,8 @@ interface IBondDepository {
     function getTheoBondingCalculator() external view returns (address);
 
     function setTheoBondingCalculator(address _theoBondingCalculator) external;
+
+    function setDiscountRateBond(uint256 _id, int64 _discountRateBond) external;
+
+    function setDiscountRateYield(uint256 _id, int64 _discountRateYield) external;
 }

@@ -391,7 +391,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         emit CloseMarket(_id);
     }
 
-    /* ======== THEO POOL ======== */
+    /* ======== BONDING CALCULATOR ======== */
 
     /**
      * @notice                  get the address of the theo bonding calculator
@@ -402,11 +402,31 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     }
 
     /**
-     * @notice             set the address for the theo liquidity pool
+     * @notice             set the address for the theo bonding calculator
      * @param _theoBondingCalculator    address of the theo bonding calculator
      */
     function setTheoBondingCalculator(address _theoBondingCalculator) public override onlyGuardian {
         theoBondingCalculator = _theoBondingCalculator;
+    }
+
+    /* ======== BONDING RATES ======== */
+
+    /**
+     * @notice                      update the Discount Rate Return Bond (Drb) for a specified market
+     * @param _id                   uint256 the ID of the bond market to update
+     * @param _discountRateBond     uint64 the new Discount Rate Return Bond (Drb), 9 decimals
+     */
+    function setDiscountRateBond(uint256 _id, int64 _discountRateBond) public override onlyPolicy {
+        terms[_id].discountRateBond = _discountRateBond;
+    }
+
+    /**
+     * @notice                      update the Discount Rate Return Yield (Dyb) for a specified market
+     * @param _id                   uint256 the ID of the bond market to update
+     * @param _discountRateYield    uint64 the new Discount Rate Return Yield (Dyb), 9 decimals
+     */
+    function setDiscountRateYield(uint256 _id, int64 _discountRateYield) public override onlyPolicy {
+        terms[_id].discountRateYield = _discountRateYield;
     }
 
     /* ======== EXTERNAL VIEW ======== */
