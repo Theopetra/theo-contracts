@@ -383,7 +383,8 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     function tokenPerformanceUpdate(address _quoteToken, address _bondDepository) public override {
         if (block.timestamp >= priceInfo.timeLastUpdated + 28800) {
             priceInfo.lastTokenPrice = priceInfo.currentTokenPrice;
-            priceInfo.currentTokenPrice = IBondCalculator(IBondDepository(_bondDepository).getTheoBondingCalculator()).valuation(_quoteToken, 1);
+            priceInfo.currentTokenPrice = IBondCalculator(IBondDepository(_bondDepository).getTheoBondingCalculator())
+                .valuation(_quoteToken, 1);
             priceInfo.timeLastUpdated = block.timestamp;
         }
     }

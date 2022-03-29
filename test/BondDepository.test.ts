@@ -822,7 +822,6 @@ describe('Bond depository', function () {
         const price = 242674; // To match valuation returned from BondingCalculatorMock
         const newExpectedPrice = Math.floor((price * (10 ** 9 - Number(newExpectedBrv))) / 10 ** 9);
 
-
         const newMarketPrice = await BondDepository.marketPrice(bid);
 
         expect(Number(newMarketPrice)).to.equal(newExpectedPrice);

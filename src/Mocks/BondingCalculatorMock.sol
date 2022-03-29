@@ -17,9 +17,12 @@ contract BondingCalculatorMock {
         THEO = ITHEO(_theo);
     }
 
-    function getPoolFromFactory(address factoryAddress, address tokenA,
-    address tokenB,
-    uint24 fee) internal view returns (address pool) {
+    function getPoolFromFactory(
+        address factoryAddress,
+        address tokenA,
+        address tokenB,
+        uint24 fee
+    ) internal view returns (address pool) {
         return 0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8; // Just using an example address for this mock
     }
 
@@ -33,12 +36,11 @@ contract BondingCalculatorMock {
         return _amount * getPriceX96FromSqrtPriceX96(1234217676608908277512433764);
     }
 
-
     /**
      * @notice             Return Quote-Token per THEO value
      * @dev                for example: 242674 (9 decimals): 0.000242674 ETH per THEO (ca. 4120 THEO per ETH)
      */
-    function getPriceX96FromSqrtPriceX96(uint160 sqrtPriceX96) public pure returns(uint256 priceX96) {
+    function getPriceX96FromSqrtPriceX96(uint160 sqrtPriceX96) public pure returns (uint256 priceX96) {
         return 242674; // 9 decimals
     }
 }
