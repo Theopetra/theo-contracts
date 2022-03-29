@@ -90,9 +90,9 @@ describe('TheopetraTreasury', () => {
     });
 
     it('can set the address of the yield reporter', async function () {
-      const { Treasury, YieldReporterMock } = await setup();
+      const { Treasury, YieldReporterMock, addressZero } = await setup();
 
-      await expect(Treasury.enable(11, YieldReporterMock.address, YieldReporterMock.address)).to.not.be.reverted;
+      await expect(Treasury.enable(11, YieldReporterMock.address, addressZero)).to.not.be.reverted;
     });
   });
 
@@ -103,12 +103,12 @@ describe('TheopetraTreasury', () => {
     });
 
     it('should calculate the difference in treasury yield', async function () {
-      const { Treasury, YieldReporterMock } = await setup();
+      const { Treasury, YieldReporterMock, addressZero } = await setup();
 
       // Use same value as in the mock yield reporter
       const expectedDeltaTreasuryYield = Math.round(((10_000_000_000 - 15_000_000_000) * 10 ** 9) / 15_000_000_000);
 
-      await Treasury.enable(11, YieldReporterMock.address, YieldReporterMock.address);
+      await Treasury.enable(11, YieldReporterMock.address, addressZero);
       expect(Number(await Treasury.deltaTreasuryYield())).to.equal(expectedDeltaTreasuryYield);
     });
   });
