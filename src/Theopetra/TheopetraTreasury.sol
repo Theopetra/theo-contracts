@@ -75,6 +75,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     ITHEO public immutable THEO;
     IsTHEO public sTHEO;
     IYieldReporter private yieldReporter;
+    IBondCalculator private theoBondingCalculator;
 
     mapping(STATUS => address[]) public registry;
     mapping(STATUS => mapping(address => bool)) public permissions;
@@ -276,6 +277,24 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         emit RepayDebt(msg.sender, address(THEO), _amount, _amount);
     }
 
+    /* ======== BONDING CALCULATOR ======== */
+
+    /**
+     * @notice                  get the address of the theo bonding calculator
+     * @return                  address for theo liquidity pool
+     */
+    function getTheoBondingCalculator() public view override returns (IBondCalculator) {
+        return IBondCalculator(theoBondingCalculator);
+    }
+
+    /**
+     * @notice             set the address for the theo bonding calculator
+     * @param _theoBondingCalculator    address of the theo bonding calculator
+     */
+    function setTheoBondingCalculator(address _theoBondingCalculator) public override onlyGuardian {
+        theoBondingCalculator = IBondCalculator(_theoBondingCalculator);
+    }
+
     /* ========== MANAGERIAL FUNCTIONS ========== */
 
     /**
@@ -380,11 +399,10 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      * @dev                 can be called at any time but will only update contract state every 8 hours
      * @param _quoteToken   address of the quote token used for the Quote-Token/THEO liquidity pool
      */
-    function tokenPerformanceUpdate(address _quoteToken, address _bondDepository) public override {
+    function tokenPerformanceUpdate(address _quoteToken) public override {
         if (block.timestamp >= priceInfo.timeLastUpdated + 28800) {
             priceInfo.lastTokenPrice = priceInfo.currentTokenPrice;
-            priceInfo.currentTokenPrice = IBondCalculator(IBondDepository(_bondDepository).getTheoBondingCalculator())
-                .valuation(_quoteToken, 1);
+            priceInfo.currentTokenPrice = IBondCalculator(theoBondingCalculator).valuation(_quoteToken, 1);
             priceInfo.timeLastUpdated = block.timestamp;
         }
     }

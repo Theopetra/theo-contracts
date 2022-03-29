@@ -42,8 +42,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     // Queries
     mapping(address => uint256[]) public marketsForQuote; // market IDs for quote token
 
-    address private theoBondingCalculator;
-
     /* ======== CONSTRUCTOR ======== */
 
     constructor(
@@ -391,24 +389,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         emit CloseMarket(_id);
     }
 
-    /* ======== BONDING CALCULATOR ======== */
-
-    /**
-     * @notice                  get the address of the theo bonding calculator
-     * @return                  address for theo liquidity pool
-     */
-    function getTheoBondingCalculator() public view returns (address) {
-        return theoBondingCalculator;
-    }
-
-    /**
-     * @notice             set the address for the theo bonding calculator
-     * @param _theoBondingCalculator    address of the theo bonding calculator
-     */
-    function setTheoBondingCalculator(address _theoBondingCalculator) public override onlyGuardian {
-        theoBondingCalculator = _theoBondingCalculator;
-    }
-
     /* ======== BONDING RATES ======== */
 
     /**
@@ -462,10 +442,13 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * Drb, Dyb, deltaTokenPrice and deltaTreasuryYield are expressed as proportions (that is, they are a percentages in decimal form), with 9 decimals
      */
     function marketPrice(uint256 _id) public view override returns (uint256) {
-        require(theoBondingCalculator != address(0), "No bonding calculator");
+        IBondCalculator theoBondingCalculator = ITreasury(NoteKeeper.treasury).getTheoBondingCalculator();
+        if (address(theoBondingCalculator) == address(0)){
+            revert("No bonding calculator");
+        }
         return
-            (IBondCalculator(theoBondingCalculator).valuation(address(markets[_id].quoteToken), 1) *
-                (10**9 - _bondRateVariable(_id))) / 10**9;
+            (theoBondingCalculator.valuation(address(markets[_id].quoteToken), 1)) *
+                (10**9 - _bondRateVariable(_id)) / 10**9;
     }
 
     /**

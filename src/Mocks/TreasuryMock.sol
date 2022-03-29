@@ -2,11 +2,13 @@
 pragma solidity ^0.7.5;
 
 import "../Interfaces/ITHEO.sol";
+import "../Interfaces/IBondCalculator.sol";
 
 contract TreasuryMock {
     event Minted(address indexed caller, address indexed recipient, uint256 amount);
 
     ITHEO public immutable THEO;
+    IBondCalculator private theoBondingCalculator;
 
     constructor(address _theo) {
         THEO = ITHEO(_theo);
@@ -29,7 +31,12 @@ contract TreasuryMock {
         return 200_000_000; // 20%. 0.02 (9 decimals)
     }
 
-    // function tokenValue(address _token, uint256 _amount) public view returns (uint256 value_) {
-    //     return _amount * 242674; // To match valuation returned from BondingCalculatorMock
-    // }
+    function getTheoBondingCalculator() public view returns (IBondCalculator) {
+        return IBondCalculator(theoBondingCalculator);
+    }
+
+    function setTheoBondingCalculator(address _theoBondingCalculator) public {
+        theoBondingCalculator = IBondCalculator(_theoBondingCalculator);
+    }
+
 }

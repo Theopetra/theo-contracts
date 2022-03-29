@@ -299,7 +299,7 @@ describe('Bond depository', function () {
   describe('Deposit', function () {
     beforeEach(async function () {
       // Set the address of the bonding calculator
-      await BondDepository.setTheoBondingCalculator(BondingCalculatorMock.address);
+      await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
     });
 
     it('should allow a deposit', async function () {
@@ -453,7 +453,7 @@ describe('Bond depository', function () {
   describe('pendingFor', function () {
     beforeEach(async function () {
       // Set the address of the bonding calculator
-      await BondDepository.setTheoBondingCalculator(BondingCalculatorMock.address);
+      await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
     });
 
     it('should show the Note as being not-yet-matured before the vesting time has passed', async function () {
@@ -512,7 +512,7 @@ describe('Bond depository', function () {
   describe('Redeem', function () {
     beforeEach(async function () {
       // Set the address of the bonding calculator
-      await BondDepository.setTheoBondingCalculator(BondingCalculatorMock.address);
+      await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
     });
 
     it('should not be immediately redeemable (before the vesting time has passed)', async function () {
@@ -636,7 +636,7 @@ describe('Bond depository', function () {
 
   describe('Bond pricing', function () {
     describe('Bonding calculator', function () {
-      it('if not set, should result in a deposit attempt reverting', async function () {
+      it('a deposit attempt should revert if the bond calculator is not set', async function () {
         const [, , bob, carol] = users;
 
         await expect(
@@ -644,50 +644,24 @@ describe('Bond depository', function () {
         ).to.be.revertedWith('No bonding calculator');
       });
 
-      it('if set as address zero, should result in a deposit attempt reverting', async function () {
+      it('a deposit attempt should revert if the bond calculator isset as address zero', async function () {
         const [, , bob, carol] = users;
         const addressZero = await ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
-        await BondDepository.setTheoBondingCalculator(addressZero);
+
+        await TreasuryMock.setTheoBondingCalculator(addressZero);
 
         await expect(
           bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address)
         ).to.be.revertedWith('No bonding calculator');
       });
 
-      it('if not set or set as address zero, should result in a call to get the market price reverting', async function () {
+      it('a call to get the market price should revert if the bond calculator is not set or set as address zero', async function () {
         const addressZero = await ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
 
         await expect(BondDepository.marketPrice(bid)).to.be.revertedWith('No bonding calculator');
 
-        await BondDepository.setTheoBondingCalculator(addressZero);
+        await TreasuryMock.setTheoBondingCalculator(addressZero);
         await expect(BondDepository.marketPrice(bid)).to.be.revertedWith('No bonding calculator');
-      });
-
-      it('has a function to set the bonding calculator address', async function () {
-        await expect(BondDepository.setTheoBondingCalculator(BondingCalculatorMock.address)).to.not.be.reverted;
-      });
-
-      it('has a function to get the bonding calculator address', async function () {
-        await BondDepository.setTheoBondingCalculator(BondingCalculatorMock.address);
-        await expect(BondDepository.getTheoBondingCalculator()).to.not.be.reverted;
-        expect(await BondDepository.getTheoBondingCalculator()).to.equal(BondingCalculatorMock.address);
-      });
-
-      it('will revert if an attempt is made by an account other than the guardian to set the bonding calculator address', async function () {
-        const [, , bob] = users;
-
-        await expect(bob.BondDepository.setTheoBondingCalculator(BondingCalculatorMock.address)).to.be.revertedWith(
-          'UNAUTHORIZED'
-        );
-      });
-
-      it('allows the guardian to set the bonding calculator address', async function () {
-        const [, , bob] = users;
-
-        await TheopetraAuthority.pushGuardian(bob.address, true);
-
-        await expect(bob.BondDepository.setTheoBondingCalculator(BondingCalculatorMock.address)).to.not.be.reverted;
-        expect(await BondDepository.getTheoBondingCalculator()).to.equal(BondingCalculatorMock.address);
       });
     });
 
@@ -696,7 +670,7 @@ describe('Bond depository', function () {
 
       beforeEach(async function () {
         // Set the address of the bonding calculator
-        await BondDepository.setTheoBondingCalculator(BondingCalculatorMock.address);
+        await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
       });
 
       it('should give accurate payout for price', async function () {
@@ -805,7 +779,7 @@ describe('Bond depository', function () {
 
       it('will update the market price as expected', async function () {
         // Set the address of the bonding calculator to allow market price calculation
-        await BondDepository.setTheoBondingCalculator(BondingCalculatorMock.address);
+        await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
 
         const newExpectedDiscountRateBond = 5_000_000;
         await BondDepository.setDiscountRateBond(bid, newExpectedDiscountRateBond);
@@ -850,7 +824,7 @@ describe('Bond depository', function () {
 
       it('will update the market price as expected', async function () {
         // Set the address of the bonding calculator to allow market price calculation
-        await BondDepository.setTheoBondingCalculator(BondingCalculatorMock.address);
+        await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
 
         const newExpectedDiscountRateYield = 7_000_000;
         await BondDepository.setDiscountRateYield(bid, newExpectedDiscountRateYield);

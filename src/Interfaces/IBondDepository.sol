@@ -75,7 +75,7 @@ interface IBondDepository {
         IERC20 _quoteToken, // token used to deposit
         uint256[3] memory _market, // [capacity, initial price]
         bool[2] memory _booleans, // [capacity in quote, fixed term]
-        uint256[2] memory _terms, // [vesting, conclusion, bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield]
+        uint256[2] memory _terms, // [vesting, conclusion]
         int64[4] memory _rates, // [bondRateFixed, maxBondRateVariable, initial discountRateBond (Drb), initial discountRateYield (Dyb)]
         uint64[2] memory _intervals // [deposit interval, tune interval]
     ) external returns (uint256 id_);
@@ -97,10 +97,6 @@ interface IBondDepository {
     function debtRatio(uint256 _bid) external view returns (uint256);
 
     function debtDecay(uint256 _bid) external view returns (uint64);
-
-    function getTheoBondingCalculator() external view returns (address);
-
-    function setTheoBondingCalculator(address _theoBondingCalculator) external;
 
     function setDiscountRateBond(uint256 _id, int64 _discountRateBond) external;
 
