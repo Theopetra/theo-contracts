@@ -20,7 +20,7 @@ interface ITreasury {
 
     function repayDebtWithReserve(uint256 amount_, address token_) external;
 
-    function tokenPerformanceUpdate(address _quoteToken) external;
+    function tokenPerformanceUpdate(address _quoteToken, address _bondDepository) external;
 
     function excessReserves() external view returns (uint256);
 

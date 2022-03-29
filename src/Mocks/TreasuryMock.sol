@@ -29,7 +29,7 @@ contract TreasuryMock {
         return 200_000_000; // 20%. 0.02 (9 decimals)
     }
 
-    function tokenValue(address _token, uint256 _amount) public view returns (uint256 value_) {
-        return _amount * 242674; // To match valuation returned from BondingCalculatorMock
-    }
+    // function tokenValue(address _token, uint256 _amount) public view returns (uint256 value_) {
+    //     return _amount * 242674; // To match valuation returned from BondingCalculatorMock
+    // }
 }

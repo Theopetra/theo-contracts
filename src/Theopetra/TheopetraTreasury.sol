@@ -13,6 +13,7 @@ import "../Interfaces/IsTHEO.sol";
 import "../Interfaces/IBondCalculator.sol";
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IYieldReporter.sol";
+import "../Interfaces/IBondDepository.sol";
 
 import "../Types/TheopetraAccessControlled.sol";
 
@@ -379,10 +380,10 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      * @dev                 can be called at any time but will only update contract state every 8 hours
      * @param _quoteToken   address of the quote token used for the Quote-Token/THEO liquidity pool
      */
-    function tokenPerformanceUpdate(address _quoteToken) public override {
+    function tokenPerformanceUpdate(address _quoteToken, address _bondDepository) public override {
         if (block.timestamp >= priceInfo.timeLastUpdated + 28800) {
             priceInfo.lastTokenPrice = priceInfo.currentTokenPrice;
-            priceInfo.currentTokenPrice = tokenValue(_quoteToken, 1);
+            priceInfo.currentTokenPrice = IBondCalculator(IBondDepository(_bondDepository).getTheoBondingCalculator()).valuation(_quoteToken, 1);
             priceInfo.timeLastUpdated = block.timestamp;
         }
     }
@@ -511,12 +512,11 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      * @return value_ uint256
      */
     function tokenValue(address _token, uint256 _amount) public view override returns (uint256 value_) {
-        require(
-            permissions[STATUS.LIQUIDITYTOKEN][_token] && bondCalculator[_token] != address(0),
-            "No Bonding Calculator"
-        );
-        require(_token != address(0), "No liquidity token");
-        value_ = IBondCalculator(bondCalculator[_token]).valuation(_token, _amount);
+        value_ = _amount.mul(10**IERC20Metadata(address(THEO)).decimals()).div(10**IERC20Metadata(_token).decimals());
+
+        if (permissions[STATUS.LIQUIDITYTOKEN][_token]) {
+            value_ = IBondCalculator(bondCalculator[_token]).valuation(_token, _amount);
+        }
     }
 
     /**

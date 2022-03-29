@@ -10,8 +10,7 @@ import "../Libraries/SafeERC20.sol";
 import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/IBondDepository.sol";
 import "../Interfaces/ITreasury.sol";
-
-import "hardhat/console.sol";
+import "../Interfaces/IBondCalculator.sol";
 
 /**
  * @title Theopetra Bond Depository
@@ -43,7 +42,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     // Queries
     mapping(address => uint256[]) public marketsForQuote; // market IDs for quote token
 
-    address private theoPool;
+    address private theoBondingCalculator;
 
     /* ======== CONSTRUCTOR ======== */
 
@@ -395,19 +394,19 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     /* ======== THEO POOL ======== */
 
     /**
-     * @notice                  get the address of the theo liquidity pool (`theoPool`)
+     * @notice                  get the address of the theo bonding calculator
      * @return                  address for theo liquidity pool
      */
-    function getTheoPool() public view returns (address) {
-        return theoPool;
+    function getTheoBondingCalculator() public view returns (address) {
+        return theoBondingCalculator;
     }
 
     /**
      * @notice             set the address for the theo liquidity pool
-     * @param _theoPool    address of the theo liquidity pool
+     * @param _theoBondingCalculator    address of the theo bonding calculator
      */
-    function setTheoPool(address _theoPool) public override onlyGuardian {
-        theoPool = _theoPool;
+    function setTheoBondingCalculator(address _theoBondingCalculator) public override onlyGuardian {
+        theoBondingCalculator = _theoBondingCalculator;
     }
 
     /* ======== EXTERNAL VIEW ======== */
@@ -443,8 +442,9 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * Drb, Dyb, deltaTokenPrice and deltaTreasuryYield are expressed as proportions (that is, they are a percentages in decimal form), with 9 decimals
      */
     function marketPrice(uint256 _id) public view override returns (uint256) {
+        require(theoBondingCalculator != address(0), "No bonding calculator");
         return
-            ((ITreasury(NoteKeeper.treasury).tokenValue(address(markets[_id].quoteToken), 1)) *
+            (IBondCalculator(theoBondingCalculator).valuation(address(markets[_id].quoteToken), 1) *
                 (10**9 - _bondRateVariable(_id))) / 10**9;
     }
 

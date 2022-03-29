@@ -56,6 +56,15 @@ const config: HardhatUserConfig = {
           },
         },
       },
+      {
+        version: '>=0.7.5 <=0.8.10',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 2000,
+          },
+        },
+      },
     ],
   },
   namedAccounts: {

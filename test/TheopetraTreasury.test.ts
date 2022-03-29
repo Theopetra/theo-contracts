@@ -12,7 +12,7 @@ import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
 import { setupUsers } from './utils';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.authority, CONTRACTS.treasury, MOCKS.yieldReporterMock]);
+  await deployments.fixture([CONTRACTS.authority, CONTRACTS.treasury, MOCKS.yieldReporterMock, MOCKS.bondDepoMock]);
   const addressZero = '0x0000000000000000000000000000000000000000';
   const { deployer: owner } = await getNamedAccounts();
   const contracts = {
@@ -22,6 +22,7 @@ const setup = deployments.createFixture(async () => {
     TheopetraAuthority: <TheopetraAuthority>await ethers.getContract(CONTRACTS.authority),
     YieldReporterMock: <YieldReporterMock>await ethers.getContract(MOCKS.yieldReporterMock),
     BondingCalculatorMock: await ethers.getContract(MOCKSWITHARGS.bondingCalculatorMock),
+    BondDepoMock: await ethers.getContract(MOCKS.bondDepoMock),
   };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
@@ -52,12 +53,9 @@ describe('TheopetraTreasury', () => {
 
   describe('Deposit', () => {
     it('Succeeds when depositor is a RESERVEDEPOSITOR and token is a RESERVETOKEN', async () => {
-      const { Treasury, UsdcTokenMock, BondingCalculatorMock, users } = await setup();
+      const { Treasury, UsdcTokenMock, users } = await setup();
       // approve the treasury to spend our token
       await users[0].UsdcTokenMock.approve(Treasury.address, 1000);
-
-      // Enable the Bonding Calculator: Depositing involves a call to `tokenValue`, which in turn needs the Bonding Calculator
-      await Treasury.enable(5, UsdcTokenMock.address, BondingCalculatorMock.address);
 
       // deposit the token into the treasury
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -96,18 +94,6 @@ describe('TheopetraTreasury', () => {
 
       await expect(Treasury.enable(11, YieldReporterMock.address, YieldReporterMock.address)).to.not.be.reverted;
     });
-
-    it('can set the address of a liquidity pool and the associated bonding calculator contract', async function () {
-      const { Treasury, BondingCalculatorMock, UsdcTokenMock } = await setup();
-
-      // const poolExampleAddress = '0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8';
-      const tokenAmount = 5;
-      const mockPriceFromSqrtPriceX96 = 242674; // To match BondingCalculatorMock value
-
-      await Treasury.enable(5, UsdcTokenMock.address, BondingCalculatorMock.address);
-      const tokenValueResponse = await Treasury.tokenValue(UsdcTokenMock.address, tokenAmount);
-      expect(tokenValueResponse).to.equal(tokenAmount * mockPriceFromSqrtPriceX96);
-    });
   });
 
   describe('deltaTreasuryYield', function () {
@@ -138,50 +124,17 @@ describe('TheopetraTreasury', () => {
       return Math.floor(Math.random() * (max - min + 1) + min);
     }
 
-    describe('tokenValue', function () {
-      it('should revert if the Bonding Calculator contract address is not set', async function () {
-        const { Treasury, UsdcTokenMock } = await setup();
-
-        const poolExampleAddress = '0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8';
-        const tokenAmount = 5;
-
-        await expect(Treasury.tokenValue(UsdcTokenMock.address, tokenAmount)).to.be.revertedWith(
-          'No Bonding Calculator'
-        );
-      });
-
-      it('should revert if the Bonding Calculator contract address is address zero', async function () {
-        const { Treasury, BondingCalculatorMock, addressZero } = await setup();
-
-        const poolExampleAddress = '0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8';
-        const tokenAmount = 5;
-
-        await Treasury.enable(5, poolExampleAddress, addressZero);
-
-        await expect(Treasury.tokenValue(poolExampleAddress, tokenAmount)).to.be.revertedWith('No Bonding Calculator');
-      });
-
-      it('should revert if the liquidity pool address is address zero', async function () {
-        const { Treasury, BondingCalculatorMock, addressZero } = await setup();
-
-        const tokenAmount = 5;
-
-        await Treasury.enable(5, addressZero, BondingCalculatorMock.address);
-
-        await expect(Treasury.tokenValue(addressZero, tokenAmount)).to.be.revertedWith('No liquidity token');
-      });
-    });
-
     describe('deltaTokenPrice', function () {
       it('should get the difference in token price', async function () {
-        const { Treasury, UsdcTokenMock, BondingCalculatorMock } = await setup();
+        const { Treasury, UsdcTokenMock, BondingCalculatorMock, BondDepoMock } = await setup();
         await expect(Treasury.deltaTokenPrice()).to.be.reverted; // Will revert if called before tokenPerformanceUpdate updates contract state, as currentTokenPrice will be zero
 
-        await Treasury.enable(5, UsdcTokenMock.address, BondingCalculatorMock.address);
+        // set the address of the mock bonding calculator on the mock bond depo
+        await BondDepoMock.setTheoBondingCalculator(BondingCalculatorMock.address);
 
         // Move forward 8 hours to allow tokenPerformanceUpdate to update contract state
         await moveTimeForward(60 * 60 * 8);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address, BondDepoMock.address);
 
         await expect(Treasury.deltaTokenPrice()).to.not.be.reverted;
         expect(await Treasury.deltaTokenPrice()).to.equal(1);
@@ -192,62 +145,63 @@ describe('TheopetraTreasury', () => {
       let Treasury: TheopetraTreasury;
       let UsdcTokenMock: any;
       let BondingCalculatorMock: any;
+      let BondDepoMock: any;
       beforeEach(async function () {
-        ({ Treasury, UsdcTokenMock, BondingCalculatorMock } = await setup());
+        ({ Treasury, UsdcTokenMock, BondingCalculatorMock, BondDepoMock } = await setup());
 
-        // Enable the bonding calculator for use in getting token price (via tokenPerformanceUpdate)
-        await Treasury.enable(5, UsdcTokenMock.address, BondingCalculatorMock.address);
+        // set the address of the mock bonding calculator on the mock bond depo
+        await BondDepoMock.setTheoBondingCalculator(BondingCalculatorMock.address);
       });
 
       it('can be called any time', async function () {
         await moveTimeForward(randomIntFromInterval(1, 10_000_000));
-        await expect(Treasury.tokenPerformanceUpdate(UsdcTokenMock.address)).to.not.be.reverted;
+        await expect(Treasury.tokenPerformanceUpdate(UsdcTokenMock.address, BondDepoMock.address)).to.not.be.reverted;
       });
 
       it('will not do anything if called immediately after contract creation', async function () {
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address, BondDepoMock.address);
         await expect(Treasury.deltaTokenPrice()).to.be.reverted; // Will revert if called before tokenPerformanceUpdate updates contract state, as currentTokenPrice will be zero
       });
 
       it('can be called every 8 hours', async function () {
         for (let i = 0; i < 3; i++) {
           await moveTimeForward(60 * 60 * 8);
-          await expect(Treasury.tokenPerformanceUpdate(UsdcTokenMock.address)).to.not.be.reverted;
+          await expect(Treasury.tokenPerformanceUpdate(UsdcTokenMock.address, BondDepoMock.address)).to.not.be.reverted;
         }
       });
 
       it('updates stored token prices only when called at or after 8 hours since contract creation or since the last successfull call', async function () {
         await moveTimeForward(60 * 60 * 8);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address, BondDepoMock.address);
         expect(await Treasury.deltaTokenPrice()).to.equal(1);
 
         // Move forward 5 hours
         await moveTimeForward(60 * 60 * 5);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address, BondDepoMock.address);
         expect(await Treasury.deltaTokenPrice()).to.equal(1);
 
         // Move forward 2 more hour (total of 7 hours)
         await moveTimeForward(60 * 60 * 2);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address, BondDepoMock.address);
         expect(await Treasury.deltaTokenPrice()).to.equal(1);
 
         // Move forward 1 more hour (total of 8 hours)
         await moveTimeForward(60 * 60 * 1);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address, BondDepoMock.address);
         expect(await Treasury.deltaTokenPrice()).to.equal(0);
       });
 
       it('updates stored token prices as expected when called at or beyond every 8 hours', async function () {
         await moveTimeForward(60 * 60 * 8);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address, BondDepoMock.address);
         expect(await Treasury.deltaTokenPrice()).to.equal(1);
 
         await moveTimeForward(60 * 60 * 9);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address, BondDepoMock.address);
         expect(await Treasury.deltaTokenPrice()).to.equal(0);
 
         await moveTimeForward(60 * 60 * 8);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address, BondDepoMock.address);
         expect(await Treasury.deltaTokenPrice()).to.equal(0);
       });
     });
