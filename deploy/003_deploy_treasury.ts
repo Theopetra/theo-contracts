@@ -1,9 +1,7 @@
-import hre from 'hardhat';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
 import { CONTRACTS, MOCKS } from '../utils/constants';
-import { TheopetraERC20Mock } from '../typechain-types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
@@ -14,7 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
   const Theo = await deployments.get(CONTRACTS.theoToken);
 
-  let args: any = [Theo.address, 0, TheopetraAuthority.address];
+  let args = [Theo.address, 0, TheopetraAuthority.address];
 
   // If on Hardhat network use mock THEO token
   if (chainId === '1337') {
