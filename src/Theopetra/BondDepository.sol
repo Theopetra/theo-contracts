@@ -432,9 +432,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
 
     /**
      * @notice             calculate current market price of quote token in base token (i.e. quote tokens per THEO)
-     * @dev                uses the Treasury's tokenValue method (using an amount of 1) to get the quote token value.
-     *                     tokenValue is the THEO value of the _amount of the quote token;
-     *                     therefore, we divide the value returned by tokenValue by _amount, to get the Quote-Token per THEO price
+     * @dev                uses the theoBondingCalculator.valuation method (using an amount of 1) to get the quote token value (Quote-Token per THEO).
      * @param _id          ID of market
      * @return             price for market in THEO decimals
      *
