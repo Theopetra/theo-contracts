@@ -465,7 +465,7 @@ describe('Bond depository', function () {
       const newTimestampInSeconds = latestBlock.timestamp + vesting / 2;
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
-      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, , , , matured_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(matured_).to.equal(false);
     });
@@ -482,7 +482,7 @@ describe('Bond depository', function () {
       const newTimestampInSeconds = latestBlock.timestamp + vesting * 10;
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
-      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, , , , matured_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(matured_).to.equal(true);
     });
@@ -501,8 +501,8 @@ describe('Bond depository', function () {
       // Second deposit
       await bob.BondDepository.deposit(bid, depositAmount, initialPrice * 1.01, bob.address, carol.address);
 
-      const [, firstMatured_] = await BondDepository.pendingFor(bob.address, 0);
-      const [, secondMatured_] = await BondDepository.pendingFor(bob.address, 1);
+      const [, , , , firstMatured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, , , , secondMatured_] = await BondDepository.pendingFor(bob.address, 1);
 
       expect(firstMatured_).to.equal(true);
       expect(secondMatured_).to.equal(false);
@@ -523,7 +523,7 @@ describe('Bond depository', function () {
       const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
 
       expect(bobNotesIndexes.length).to.equal(1);
-      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, , , , matured_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(matured_).to.equal(false);
 
@@ -541,7 +541,7 @@ describe('Bond depository', function () {
       const newTimestampInSeconds = latestBlock.timestamp + vesting / 2;
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
-      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, , , , matured_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(matured_).to.equal(false);
 
@@ -558,8 +558,8 @@ describe('Bond depository', function () {
       const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
 
       expect(bobNotesIndexes.length).to.equal(2);
-      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
-      const [, secondMatured_] = await BondDepository.pendingFor(bob.address, 1);
+      const [, , , , matured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, , , , secondMatured_] = await BondDepository.pendingFor(bob.address, 1);
 
       expect(matured_).to.equal(false);
       expect(secondMatured_).to.equal(false);
@@ -845,6 +845,122 @@ describe('Bond depository', function () {
 
         expect(Number(newMarketPrice)).to.equal(newExpectedPrice);
       });
+    });
+  });
+
+  describe('UI-related', function () {
+    beforeEach(async function () {
+      // Set the address of the bonding calculator
+      await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
+    });
+
+    it('allows a user to get the current bond discounts (Bond Rate, variable) for all live markets', async function () {
+      const [, , bob] = users;
+
+      // create a second market, so multiple markets are live
+      await BondDepository.create(
+        WETH9.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      );
+      const allLiveMarketsIds = await BondDepository.liveMarkets();
+
+      allLiveMarketsIds.forEach(async (id: number) => {
+        const marketBrv = await bob.BondDepository.bondRateVariable(id);
+        const expectedBrv = await expectedBondRateVariable(id);
+
+        expect(marketBrv).to.equal(expectedBrv);
+      });
+
+      for (let i = 0; i < allLiveMarketsIds.length; i++) {
+        const marketBrv = await bob.BondDepository.bondRateVariable(allLiveMarketsIds[i]);
+        const expectedBrv = await expectedBondRateVariable(allLiveMarketsIds[i]);
+
+        expect(marketBrv).to.equal(expectedBrv);
+      }
+    });
+
+    it('allows a user to get the locking (vesting) periods for all live markets', async function () {
+      const [, , bob] = users;
+
+      // create a second market, so multiple markets are live
+      await BondDepository.create(
+        WETH9.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      );
+      const allLiveMarketsIds = await BondDepository.liveMarkets();
+
+      for (let i = 0; i < allLiveMarketsIds.length; i++) {
+        const [, , marketVestingPeriod] = await bob.BondDepository.terms(allLiveMarketsIds[i]);
+        expect(await marketVestingPeriod).to.equal(vesting);
+      }
+    });
+
+    it('allows a user to buy and lock THEO at a discount, paying with USDC, with the THEO earned automatically being placed into staking', async function () {
+      const [, , bob] = users;
+      const initialBobBalance = await TheopetraERC20Mock.balanceOf(bob.address);
+      const initialStakingTheoBalance = await TheopetraERC20Mock.balanceOf(StakingMock.address);
+
+      // Buy the bond, in USDC market
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address);
+
+      // Check that bond (note) is made
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+      expect(bobNotesIndexes.length).to.equal(1);
+
+      // Check that THEO is locked (bond cannot be redeemed before maturity)
+      await bob.BondDepository.redeemAll(bob.address);
+      expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(initialBobBalance);
+
+      // Check that THEO is automatically staked
+      const newStakingTHEOBalance = await TheopetraERC20Mock.balanceOf(StakingMock.address);
+      expect(Number(initialStakingTheoBalance)).to.be.lessThan(Number(newStakingTHEOBalance));
+    });
+
+    it('allows a user to see details for all of their locked bonds, with: payout in sTHEO, purchase date, expiry date, time remaining', async function () {
+      const [, , bob] = users;
+      const initialTotalTheoSupply = await TheopetraERC20Mock.totalSupply();
+
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const currentTimestamp = latestBlock.timestamp;
+      // First deposit
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address);
+
+      // Second deposit
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address);
+
+      // Get indexes for all user's pending notes
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+      expect(bobNotesIndexes.length).to.equal(2);
+      // Payout is minted as THEO (and staked as sTHEO)
+      const newTotalTheoSupply = await TheopetraERC20Mock.totalSupply();
+      // Calculate expected payout: based on two identical deposits above
+      const expectedPayout = (newTotalTheoSupply - initialTotalTheoSupply) / 2;
+
+      for (let i = 0; i < bobNotesIndexes.length; i++) {
+        const [payout, createdAt, expiresAt, timeRemaining] = await BondDepository.pendingFor(
+          bob.address,
+          bobNotesIndexes[i]
+        );
+
+        expect(payout).to.equal(expectedPayout);
+
+        const currentTimestampLowerbound = currentTimestamp * 0.993;
+        const currentTimestampUpperbound = currentTimestamp * 1.01;
+
+        expect(createdAt).to.be.greaterThan(currentTimestampLowerbound).and.to.be.lessThan(currentTimestampUpperbound);
+        expect(expiresAt)
+          .to.be.greaterThan(currentTimestampLowerbound + vesting)
+          .and.to.be.lessThan(currentTimestampUpperbound + vesting);
+        expect(timeRemaining).to.equal(expiresAt - createdAt);
+      }
     });
   });
 });

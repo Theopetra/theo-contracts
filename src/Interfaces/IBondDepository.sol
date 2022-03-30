@@ -101,4 +101,6 @@ interface IBondDepository {
     function setDiscountRateBond(uint256 _id, int64 _discountRateBond) external;
 
     function setDiscountRateYield(uint256 _id, int64 _discountRateYield) external;
+
+    function bondRateVariable(uint256 _id) external view returns (uint256);
 }

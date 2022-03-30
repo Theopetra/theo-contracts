@@ -11,10 +11,12 @@ contract BondingCalculatorMock {
     // 0x1F98431c8aD98523631AE4a59f267346ea31F984 // Uniswapv3 factory
     // 0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8 // Example-only Uniswap V3 pool address for USDC/ETH
 
-    ITHEO public immutable THEO;
+    address public immutable theo;
+    address public immutable quoteToken;
 
-    constructor(address _theo) {
-        THEO = ITHEO(_theo);
+    constructor(address _theo, address _quoteToken) {
+        theo = _theo;
+        quoteToken = _quoteToken;
     }
 
     function getPoolFromFactory(
@@ -26,9 +28,10 @@ contract BondingCalculatorMock {
         return 0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8; // Just using an example address for this mock
     }
 
-    function valuation(address _token, uint256 _amount) public view returns (uint256 sqrtPriceX96) {
+    function valuation(address _theo, uint256 _amount) public view returns (uint256 sqrtPriceX96) {
+        require(_theo == theo, "Incorrect address for THEO");
         // Get address of the Uniswap pool for the token pair (i.e the Quote-Token/THEO pair)
-        getPoolFromFactory(0x1F98431c8aD98523631AE4a59f267346ea31F984, _token, address(THEO), 3000);
+        getPoolFromFactory(0x1F98431c8aD98523631AE4a59f267346ea31F984, quoteToken, address(_theo), 3000);
 
         // Uniswap pool address would be used to get a TWAP, or potentially just a spot price as a Uniswap sqrtPriceX96
 

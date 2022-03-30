@@ -409,6 +409,25 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         terms[_id].discountRateYield = _discountRateYield;
     }
 
+        /**
+     * @notice                  calculate bond rate variable (Brv)
+     * @dev                     see marketPrice for calculation details.
+     * @param _id               ID of market
+     */
+    function bondRateVariable(uint256 _id) public view override returns (uint256) {
+        int256 bondRateVariable = int64(terms[_id].bondRateFixed) +
+            ((int64(terms[_id].discountRateBond) * ITreasury(treasury).deltaTokenPrice()) / 10**9) + //deltaTokenPrice is 9 decimals
+            ((int64(terms[_id].discountRateYield) * ITreasury(treasury).deltaTreasuryYield()) / 10**9); // deltaTreasuryYield is 9 decimals
+
+        if (bondRateVariable <= 0) {
+            return 0;
+        } else if (bondRateVariable >= terms[_id].maxBondRateVariable) {
+            return uint256(uint64(terms[_id].maxBondRateVariable));
+        } else {
+            return bondRateVariable.toUint256();
+        }
+    }
+
     /* ======== EXTERNAL VIEW ======== */
 
     /**
@@ -447,8 +466,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
             revert("No bonding calculator");
         }
         return
-            (theoBondingCalculator.valuation(address(markets[_id].quoteToken), 1)) *
-                (10**9 - _bondRateVariable(_id)) / 10**9;
+            (theoBondingCalculator.valuation(address(FrontEndRewarder.theo), 1) *
+                (10**9 - bondRateVariable(_id))) / 10**9;
     }
 
     /**
@@ -607,24 +626,5 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
 
         active_ = secondsSince_ < info.timeToAdjusted;
         decay_ = active_ ? (info.change * secondsSince_) / info.timeToAdjusted : info.change;
-    }
-
-    /**
-     * @notice                  calculate bond rate variable (Brv)
-     * @dev                     see marketPrice for calculation details.
-     * @param _id               ID of market
-     */
-    function _bondRateVariable(uint256 _id) internal view returns (uint256) {
-        int256 bondRateVariable = int64(terms[_id].bondRateFixed) +
-            ((int64(terms[_id].discountRateBond) * ITreasury(treasury).deltaTokenPrice()) / 10**9) + //deltaTokenPrice is 9 decimals
-            ((int64(terms[_id].discountRateYield) * ITreasury(treasury).deltaTreasuryYield()) / 10**9); // deltaTreasuryYield is 9 decimals
-
-        if (bondRateVariable <= 0) {
-            return 0;
-        } else if (bondRateVariable >= terms[_id].maxBondRateVariable) {
-            return uint256(uint64(terms[_id].maxBondRateVariable));
-        } else {
-            return bondRateVariable.toUint256();
-        }
     }
 }

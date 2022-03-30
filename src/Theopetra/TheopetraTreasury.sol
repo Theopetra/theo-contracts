@@ -395,14 +395,13 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
 
     /**
      * @notice              update the current token price and previous (last) token price.
-     *                      Token price is calculated with `tokenValue` using the specified Quote Token
-     * @dev                 can be called at any time but will only update contract state every 8 hours
-     * @param _quoteToken   address of the quote token used for the Quote-Token/THEO liquidity pool
+     *                      Token price is calculated with the theoBondingCalculator, as set by the Governor
+     * @dev                 this method can be called at any time but will only update contract state every 8 hours
      */
-    function tokenPerformanceUpdate(address _quoteToken) public override {
+    function tokenPerformanceUpdate() public override {
         if (block.timestamp >= priceInfo.timeLastUpdated + 28800) {
             priceInfo.lastTokenPrice = priceInfo.currentTokenPrice;
-            priceInfo.currentTokenPrice = IBondCalculator(theoBondingCalculator).valuation(_quoteToken, 1);
+            priceInfo.currentTokenPrice = IBondCalculator(theoBondingCalculator).valuation(address(THEO), 1);
             priceInfo.timeLastUpdated = block.timestamp;
         }
     }

@@ -135,7 +135,7 @@ describe('TheopetraTreasury', () => {
 
         // Move forward 8 hours to allow tokenPerformanceUpdate to update contract state
         await moveTimeForward(60 * 60 * 8);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate();
 
         await expect(Treasury.deltaTokenPrice()).to.not.be.reverted;
         expect(await Treasury.deltaTokenPrice()).to.equal(1);
@@ -150,53 +150,53 @@ describe('TheopetraTreasury', () => {
 
       it('can be called any time', async function () {
         await moveTimeForward(randomIntFromInterval(1, 10_000_000));
-        await expect(Treasury.tokenPerformanceUpdate(UsdcTokenMock.address)).to.not.be.reverted;
+        await expect(Treasury.tokenPerformanceUpdate()).to.not.be.reverted;
       });
 
       it('will not do anything if called immediately after contract creation', async function () {
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate();
         await expect(Treasury.deltaTokenPrice()).to.be.reverted; // Will revert if called before tokenPerformanceUpdate updates contract state, as currentTokenPrice will be zero
       });
 
       it('can be called every 8 hours', async function () {
         for (let i = 0; i < 3; i++) {
           await moveTimeForward(60 * 60 * 8);
-          await expect(Treasury.tokenPerformanceUpdate(UsdcTokenMock.address)).to.not.be.reverted;
+          await expect(Treasury.tokenPerformanceUpdate()).to.not.be.reverted;
         }
       });
 
       it('updates stored token prices only when called at or after 8 hours since contract creation or since the last successfull call', async function () {
         await moveTimeForward(60 * 60 * 8);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate();
         expect(await Treasury.deltaTokenPrice()).to.equal(1);
 
         // Move forward 5 hours
         await moveTimeForward(60 * 60 * 5);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate();
         expect(await Treasury.deltaTokenPrice()).to.equal(1);
 
         // Move forward 2 more hour (total of 7 hours)
         await moveTimeForward(60 * 60 * 2);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate();
         expect(await Treasury.deltaTokenPrice()).to.equal(1);
 
         // Move forward 1 more hour (total of 8 hours)
         await moveTimeForward(60 * 60 * 1);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate();
         expect(await Treasury.deltaTokenPrice()).to.equal(0);
       });
 
       it('updates stored token prices as expected when called at or beyond every 8 hours', async function () {
         await moveTimeForward(60 * 60 * 8);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate();
         expect(await Treasury.deltaTokenPrice()).to.equal(1);
 
         await moveTimeForward(60 * 60 * 9);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate();
         expect(await Treasury.deltaTokenPrice()).to.equal(0);
 
         await moveTimeForward(60 * 60 * 8);
-        await Treasury.tokenPerformanceUpdate(UsdcTokenMock.address);
+        await Treasury.tokenPerformanceUpdate();
         expect(await Treasury.deltaTokenPrice()).to.equal(0);
       });
     });

@@ -23,8 +23,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     for (const key in MOCKSWITHARGS) {
       let args;
-      if (key === 'treasuryMock' || key === 'stakingMock' || key === 'bondingCalculatorMock') {
+      if (key === 'treasuryMock' || key === 'stakingMock') {
         args = [namedMockAddresses.TheopetraERC20Mock];
+      } else if (key === 'bondingCalculatorMock') {
+        args = [namedMockAddresses.TheopetraERC20Mock, namedMockAddresses.UsdcERC20Mock];
       }
       await deploy(MOCKSWITHARGS[key], {
         from: deployer,

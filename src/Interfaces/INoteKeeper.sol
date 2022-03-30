@@ -2,13 +2,20 @@
 pragma solidity >=0.7.5;
 
 interface INoteKeeper {
-    // Info for market note
+    /**
+     * @notice  Info for market note
+     * @dev     Note::payout is sTHEO remaining to be paid
+     *          Note::created is the time the Note was created
+     *          Note::matured is the timestamp when the Note is redeemable
+     *          Note::redeemed is time market was redeemed
+     *          Note::marketID is market ID of deposit. uint48 to avoid adding a slot.
+     */
     struct Note {
-        uint256 payout; // sTHEO remaining to be paid
-        uint48 created; // time market was created
-        uint48 matured; // timestamp when market is matured
-        uint48 redeemed; // time market was redeemed
-        uint48 marketID; // market ID of deposit. uint48 to avoid adding a slot.
+        uint256 payout;
+        uint48 created;
+        uint48 matured;
+        uint48 redeemed;
+        uint48 marketID;
     }
 
     function redeem(address _user, uint256[] memory _indexes) external returns (uint256);
@@ -21,5 +28,14 @@ interface INoteKeeper {
 
     function indexesFor(address _user) external view returns (uint256[] memory);
 
-    function pendingFor(address _user, uint256 _index) external view returns (uint256 payout_, bool matured_);
+    function pendingFor(address _user, uint256 _index)
+        external
+        view
+        returns (
+            uint256 payout_,
+            uint48 created_,
+            uint48 expiry_,
+            uint48 timeRemaining_,
+            bool matured_
+        );
 }
