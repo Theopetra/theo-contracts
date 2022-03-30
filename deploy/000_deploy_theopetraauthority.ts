@@ -9,7 +9,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   await deploy(CONTRACTS.authority, {
     from: deployer,
-    args: [deployer, deployer, deployer, deployer, deployer],
+    args: [deployer, deployer, deployer, deployer, deployer, deployer],
     log: true,
   });
 };
