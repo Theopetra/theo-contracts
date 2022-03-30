@@ -9,12 +9,14 @@ interface ITheopetraAuthority {
     event PolicyPushed(address indexed from, address indexed to, bool _effectiveImmediately);
     event ManagerPushed(address indexed from, address indexed to, bool _effectiveImmediately);
     event VaultPushed(address indexed from, address indexed to, bool _effectiveImmediately);
+    event SignerPushed(address indexed from, address indexed to, bool _effectiveImmediately);
 
     event GovernorPulled(address indexed from, address indexed to);
     event GuardianPulled(address indexed from, address indexed to);
     event PolicyPulled(address indexed from, address indexed to);
     event ManagerPulled(address indexed from, address indexed to);
     event VaultPulled(address indexed from, address indexed to);
+    event SignerPulled(address indexed from, address indexed to);
 
     /* ========== VIEW ========== */
 
@@ -27,4 +29,6 @@ interface ITheopetraAuthority {
     function manager() external view returns (address);
 
     function vault() external view returns (address);
+
+    function whitelistSigner() external view returns (address);
 }

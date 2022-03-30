@@ -1,6 +1,6 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } from 'hardhat';
-// import { TheopetraBondDepository } from '../../next-app/src/typechain';
+import { TheopetraBondDepository } from '../typechain-types';
 import { setupUsers } from './utils';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
 
@@ -20,7 +20,7 @@ const setup = deployments.createFixture(async function () {
 
   const contracts = {
     TheopetraAuthority: await ethers.getContract(CONTRACTS.authority),
-    BondDepository: await ethers.getContract(CONTRACTS.bondDepo),
+    BondDepository: <TheopetraBondDepository>await ethers.getContract(CONTRACTS.bondDepo),
     sTheoMock: await ethers.getContract(MOCKS.sTheoMock),
     StakingMock: await ethers.getContract(MOCKSWITHARGS.stakingMock),
     TheopetraERC20Mock: await ethers.getContract(MOCKS.theoTokenMock),
@@ -43,7 +43,7 @@ describe('Bond depository', function () {
   const buffer = 2e5;
   const capacity = 10000e9;
   const capacityInQuote = false;
-  const depositAmount = '10000000000000000000000'; // 10,000 (1e22)
+  const depositAmount = '100000000'; // 1e8, equivalent to 100 USDC (6 decimals for USDC)
   const depositInterval = 60 * 60 * 4;
   const fixedTerm = true;
   const initialPrice = 400e9;

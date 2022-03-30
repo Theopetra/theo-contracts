@@ -6,6 +6,7 @@ export const CONTRACTS: Record<string, string> = {
   sTheo: 'sTheopetra',
   distributor: 'StakingDistributor',
   treasury: 'TheopetraTreasury',
+  whitelistBondDepo: 'WhitelistTheopetraBondDepository',
 };
 
 export const MOCKS: Record<string, string> = {
@@ -13,6 +14,8 @@ export const MOCKS: Record<string, string> = {
   usdcTokenMock: 'UsdcERC20Mock',
   sTheoMock: 'sTheoMock',
   WETH9: 'WETH9',
+  aggregatorMockETH: 'AggregatorMockETH',
+  aggregatorMockUSDC: 'AggregatorMockUSDC',
 };
 
 export const MOCKSWITHARGS: Record<string, string> = {
