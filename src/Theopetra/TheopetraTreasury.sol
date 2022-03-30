@@ -546,10 +546,16 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         return THEO.totalSupply() - theoDebt;
     }
 
+    /**
+     * @notice  calculate the proportional change (i.e. a percentage as a decimal) in token price, with 9 decimals
+     * @dev     calculated as (currentPrice - lastPrice) / lastPrice
+     *           using 9 decimals for the price values and for return value.
+     * @return  int256 proportional change in treasury yield. 9 decimals
+     */
     function deltaTokenPrice() public view override returns (int256) {
         return
-            ((priceInfo.currentTokenPrice.toInt256()).sub(priceInfo.lastTokenPrice.toInt256())).div(
-                priceInfo.currentTokenPrice.toInt256()
+            ((priceInfo.currentTokenPrice.toInt256()).sub(priceInfo.lastTokenPrice.toInt256()) * 10**9).div(
+                priceInfo.lastTokenPrice.toInt256()
             );
     }
 
