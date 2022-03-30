@@ -7,5 +7,5 @@ interface IYieldReporter {
   function currentYield() external view returns (int256);
   function getYieldById(uint256 id) external view returns (int256);
 
-  function reportYield(int256 _amount) external returns (int256);
+  function reportYield(int256 _amount) external returns (uint256);
 }

@@ -10,29 +10,54 @@ import "../Interfaces/IYieldReporter.sol";
 
 contract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {
 
-    int256 private prevYield;
-    int256 private currYield;
+    /* ======== STATE VARIABLES ======== */
 
+    mapping(uint256 => int256) private yields;
+    uint256 private currentIndex;
+
+    string private OUT_OF_BOUNDS = "OUT_OF_BOUNDS";
+
+    /* ======== CONSTRUCTOR ======== */
 
     constructor(
         ITheopetraAuthority _authority
     ) TheopetraAccessControlled(_authority) {
-        // do nothing
+        // initialize yield 0 to 0
+        currentIndex = 0;
+        yields[currentIndex] = 0;
+    }
+
+    function decimals() external pure returns (int256) {
+        return 9;
     }
 
     function lastYield() external view returns (int256) {
-        return prevYield;
+        return currentIndex > 0 ? yields[currentIndex - 1] : int256(0);
+    }
+
+    function getCurrentIndex() external view returns (uint256) {
+        return currentIndex;
     }
 
     function currentYield() external view returns (int256) {
-        return currYield;
+        // constructor and solidity defaults allow this to return 0 before
+        // any yields are reported
+        return yields[currentIndex];
     }
 
-    function getYieldById(uint256 id) external view returns (int256) {
-        return 0;
+    function getYieldById(
+        uint256 id
+    ) external view returns (int256) {
+        // don't allow requiring a yield past the current index
+        require(id > currentIndex, OUT_OF_BOUNDS);
+        return yields[id];
     }
 
-    function reportYield(int256 _amount) external onlyPolicy returns (int256) {
-        return 0;
+    function reportYield(
+        int256 _amount
+    ) external onlyPolicy returns (uint256) {
+        yields[++currentIndex] = _amount;
+        emit ReportYield(currentIndex, _amount);
+        return currentIndex;
     }
 }
