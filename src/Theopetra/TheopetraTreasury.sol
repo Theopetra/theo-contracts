@@ -559,7 +559,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      *           using 9 decimals for the yield values and for return value.
      *           example: ((10_000_000_000 - 15_000_000_000)*(10**9)) / 15_000_000_000 = -333333333
      *           -333333333 is equivalent to the proportion -0.333333333 (that is, -33.3333333%)
-     * @return  int256 percentage change in treasury yield. 9 decimals
+     * @return  int256 proportional change in treasury yield. 9 decimals
      */
     function deltaTreasuryYield() public view override returns (int256) {
         require(address(yieldReporter) != address(0), "Zero address: YieldReporter");
