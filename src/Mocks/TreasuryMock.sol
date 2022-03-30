@@ -38,5 +38,4 @@ contract TreasuryMock {
     function setTheoBondingCalculator(address _theoBondingCalculator) public {
         theoBondingCalculator = IBondCalculator(_theoBondingCalculator);
     }
-
 }

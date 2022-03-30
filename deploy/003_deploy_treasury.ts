@@ -19,11 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // If on Hardhat network use mock THEO token
   if (chainId === '1337') {
     const TheopetraERC20Mock = await deployments.get(MOCKS.theoTokenMock);
-    args = [
-      TheopetraERC20Mock.address,
-      0,
-      TheopetraAuthority.address,
-    ];
+    args = [TheopetraERC20Mock.address, 0, TheopetraAuthority.address];
   }
 
   await deploy(CONTRACTS.treasury, {

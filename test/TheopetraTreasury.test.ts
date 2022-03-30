@@ -54,8 +54,17 @@ describe('TheopetraTreasury', () => {
   let addressZero: any;
 
   beforeEach(async function () {
-    ({ Treasury, UsdcTokenMock, BondingCalculatorMock, YieldReporterMock, TheopetraAuthority, addressZero, users, owner } = await setup());
-  })
+    ({
+      Treasury,
+      UsdcTokenMock,
+      BondingCalculatorMock,
+      YieldReporterMock,
+      TheopetraAuthority,
+      addressZero,
+      users,
+      owner,
+    } = await setup());
+  });
 
   describe('Deployment', () => {
     it('deploys as expected', async () => {
@@ -229,5 +238,5 @@ describe('TheopetraTreasury', () => {
       await expect(bob.Treasury.setTheoBondingCalculator(BondingCalculatorMock.address)).to.not.be.reverted;
       expect(await Treasury.getTheoBondingCalculator()).to.equal(BondingCalculatorMock.address);
     });
-  })
+  });
 });

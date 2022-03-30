@@ -409,7 +409,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         terms[_id].discountRateYield = _discountRateYield;
     }
 
-        /**
+    /**
      * @notice                  calculate bond rate variable (Brv)
      * @dev                     see marketPrice for calculation details.
      * @param _id               ID of market
@@ -462,12 +462,12 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      */
     function marketPrice(uint256 _id) public view override returns (uint256) {
         IBondCalculator theoBondingCalculator = ITreasury(NoteKeeper.treasury).getTheoBondingCalculator();
-        if (address(theoBondingCalculator) == address(0)){
+        if (address(theoBondingCalculator) == address(0)) {
             revert("No bonding calculator");
         }
         return
-            (theoBondingCalculator.valuation(address(FrontEndRewarder.theo), 1) *
-                (10**9 - bondRateVariable(_id))) / 10**9;
+            (theoBondingCalculator.valuation(address(FrontEndRewarder.theo), 1) * (10**9 - bondRateVariable(_id))) /
+            10**9;
     }
 
     /**
