@@ -4,27 +4,45 @@ pragma solidity >=0.7.5;
 import "./IERC20.sol";
 
 interface IWhitelistBondDepository {
-    // Info about each type of market
+
+    /**
+     * @notice      Info about each type of market
+     * @dev         Market::capacity is capacity remaining
+     *              Market::quoteToken is token to accept as payment
+     *              Market::priceFeed is address of the price consumer, to return the USD value for the quote token when deposits are made
+     *              Market::capacityInQuote is in payment token (true) or in THEO (false, default)
+     *              Market::sold is base tokens out
+     *              Market::purchased quote tokens in
+     *              Market::usdPricePerTHEO is 9 decimal USD value for each THEO bond
+     */
     struct Market {
-        uint256 capacity; // capacity remaining
-        IERC20 quoteToken; // token to accept as payment
-        address priceFeed; // address of the price consumer, to return the USD value for the quote token when deposits are made
-        bool capacityInQuote; // capacity limit is in payment token (true) or in THEO (false, default)
-        uint64 sold; // base tokens out
-        uint256 purchased; // quote tokens in
-        uint256 usdPricePerTHEO; // 9 decimal USD value for each THEO bond
+        uint256 capacity;
+        IERC20 quoteToken;
+        address priceFeed;
+        bool capacityInQuote;
+        uint64 sold;
+        uint256 purchased;
+        uint256 usdPricePerTHEO;
     }
 
-    // Info for creating new markets
+    /**
+     * @notice      Info for creating new markets
+     * @dev         Terms::fixedTerm is fixed term or fixed expiration
+     *              Terms::vesting is length of time from deposit to maturity if fixed-term
+     *              Terms::conclusion is timestamp when market no longer offered (doubles as time when market matures if fixed-expiry)
+     */
     struct Terms {
-        bool fixedTerm; // fixed term or fixed expiration
-        uint48 vesting; // length of time from deposit to maturity if fixed-term
-        uint48 conclusion; // timestamp when market no longer offered (doubles as time when market matures if fixed-expiry)
+        bool fixedTerm;
+        uint48 vesting;
+        uint48 conclusion;
     }
 
-    // Additional info about market.
+    /**
+     * @notice      Additional info about market
+     * @dev         Metadata::quoteDecimals is decimals of quote token
+     */
     struct Metadata {
-        uint8 quoteDecimals; // decimals of quote token
+        uint8 quoteDecimals;
     }
 
     struct DepositInfo {
@@ -52,12 +70,21 @@ interface IWhitelistBondDepository {
         bytes calldata signature
     ) external returns (DepositInfo memory depositInfo);
 
+    /**
+     * @notice create market
+     * @param _quoteToken IERC20 is the token used to deposit
+     * @param _priceFeed address is address of the price consumer, to return the USD value for the quote token when deposits are made
+     * @param _market uint256[2] is [capacity, fixed bond price (9 decimals) USD per THEO]
+     * @param _booleans bool[2] is [capacity in quote, fixed term]
+     * @param _terms uint256[2] is [vesting, conclusion]
+     * @return id_ uint256 is ID of the market
+     */
     function create(
-        IERC20 _quoteToken, // token used to deposit
-        address _priceFeed, // address of the price consumer, to return the USD value for the quote token when deposits are made
-        uint256[2] memory _market, // [capacity, fixed bond price (9 decimals) USD per THEO]
-        bool[2] memory _booleans, // [capacity in quote, fixed term]
-        uint256[2] memory _terms // [vesting, conclusion]
+        IERC20 _quoteToken,
+        address _priceFeed,
+        uint256[2] memory _market,
+        bool[2] memory _booleans,
+        uint256[2] memory _terms
     ) external returns (uint256 id_);
 
     function close(uint256 _id) external;
