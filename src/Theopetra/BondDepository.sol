@@ -42,6 +42,13 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     // Queries
     mapping(address => uint256[]) public marketsForQuote; // market IDs for quote token
 
+    /* ======== STRUCTS ======== */
+
+    struct PriceInfo {
+        uint256 price;
+        uint48 bondRateVariable;
+    }
+
     /* ======== CONSTRUCTOR ======== */
 
     constructor(
@@ -85,6 +92,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     {
         Market storage market = markets[_id];
         Terms memory term = terms[_id];
+        PriceInfo memory priceInfo;
         uint48 currentTime = uint48(block.timestamp);
 
         // Markets end at a defined timestamp
@@ -96,8 +104,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
 
         // Users input a maximum price, which protects them from price changes after
         // entering the mempool. max price is a slippage mitigation measure
-        uint256 price = marketPrice(_id);
-        require(price <= _maxPrice, "Depository: more than max price");
+        priceInfo.price = marketPrice(_id);
+        require(priceInfo.price <= _maxPrice, "Depository: more than max price");
 
         /**
          * payout for the deposit = amount / price
@@ -109,7 +117,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
          *
          * 1e18 = THEO decimals (9) + price decimals (9)
          */
-        payout_ = ((_amount * 1e18) / price) / (10**metadata[_id].quoteDecimals);
+        payout_ = ((_amount * 1e18) / priceInfo.price) / (10**metadata[_id].quoteDecimals);
 
         // markets have a max payout amount, capping size because deposits
         // do not experience slippage. max payout is recalculated upon tuning
@@ -151,15 +159,16 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         // incrementing total debt raises the price of the next bond
         market.totalDebt += uint64(payout_);
 
-        emit Bond(_id, _amount, price);
+        emit Bond(_id, _amount, priceInfo.price);
 
         /**
          * user data is stored as Notes. these are isolated array entries
          * storing the amount due, the time created, the time when payout
-         * is redeemable, the time when payout was redeemed, and the ID
-         * of the market deposited into
+         * is redeemable, the time when payout was redeemed, the ID
+         * of the market deposited into, and the Bond Rate Variable (Brv) discount on the bond
          */
-        index_ = addNote(_user, payout_, uint48(expiry_), uint48(_id), _referral);
+        priceInfo.bondRateVariable = uint48(bondRateVariable(_id));
+        index_ = addNote(_user, payout_, uint48(expiry_), uint48(_id), _referral, priceInfo.bondRateVariable);
 
         // transfer payment to treasury
         market.quoteToken.safeTransferFrom(msg.sender, address(treasury), _amount);
@@ -443,7 +452,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * where
      * p = price
      * cmv = current market value
-     * Brv = bond rate, variable
+     * Brv = bond rate, variable. This is a proportion (that is, a percentage in its decimal form), with 9 decimals
      *
      * Brv = Brf + Bcrb + Bcyb
      *

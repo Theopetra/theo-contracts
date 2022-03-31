@@ -924,7 +924,7 @@ describe('Bond depository', function () {
       expect(Number(initialStakingTheoBalance)).to.be.lessThan(Number(newStakingTHEOBalance));
     });
 
-    it('allows a user to see details for all of their locked bonds, with: payout in sTHEO, purchase date, expiry date, time remaining', async function () {
+    it('allows a user to see details for all of their locked bonds, with: payout in sTHEO, purchase date, expiry date, time remaining and discount', async function () {
       const [, , bob] = users;
       const initialTotalTheoSupply = await TheopetraERC20Mock.totalSupply();
 
@@ -945,7 +945,7 @@ describe('Bond depository', function () {
       const expectedPayout = (newTotalTheoSupply - initialTotalTheoSupply) / 2;
 
       for (let i = 0; i < bobNotesIndexes.length; i++) {
-        const [payout, createdAt, expiresAt, timeRemaining] = await BondDepository.pendingFor(
+        const [payout, createdAt, expiresAt, timeRemaining, marketId, discount] = await BondDepository.pendingFor(
           bob.address,
           bobNotesIndexes[i]
         );
@@ -960,6 +960,9 @@ describe('Bond depository', function () {
           .to.be.greaterThan(currentTimestampLowerbound + vesting)
           .and.to.be.lessThan(currentTimestampUpperbound + vesting);
         expect(timeRemaining).to.equal(expiresAt - createdAt);
+
+        const expectedBrv = await expectedBondRateVariable(bid);
+        expect(discount).to.equal(expectedBrv);
       }
     });
   });

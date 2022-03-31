@@ -16,6 +16,7 @@ interface INoteKeeper {
         uint48 matured;
         uint48 redeemed;
         uint48 marketID;
+        uint48 discount;
     }
 
     function redeem(address _user, uint256[] memory _indexes) external returns (uint256);
@@ -36,6 +37,7 @@ interface INoteKeeper {
             uint48 created_,
             uint48 expiry_,
             uint48 timeRemaining_,
-            bool matured_
+            bool matured_,
+            uint48 discount_
         );
 }
