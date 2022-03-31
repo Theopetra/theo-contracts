@@ -54,10 +54,11 @@ describe('Theopetra Yield Reporter', function () {
       expect(lastYield).to.equal(0);
     });
 
-    it('returns 0 when only 1 yield has been reported', async function () {
-      await waitFor(TheopetraYieldReporter.reportYield(50_000_000_000));
+    it('returns current yield when only 1 yield has been reported', async function () {
+      const amount = 50_000_000_000;
+      await waitFor(TheopetraYieldReporter.reportYield(amount));
       const lastYield = await TheopetraYieldReporter.lastYield();
-      expect(lastYield).to.equal(0);
+      expect(lastYield).to.equal(amount);
     });
 
     it('returns the previous value when more than 1 yield has been reported', async function () {

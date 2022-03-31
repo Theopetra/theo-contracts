@@ -20,7 +20,7 @@ contract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {
     /**
      * @notice current yield ID
      */
-    uint256 private currentIndex;
+    uint256 private currentIndex = 0;
 
     string private OUT_OF_BOUNDS = "OUT_OF_BOUNDS";
 
@@ -30,7 +30,6 @@ contract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {
         ITheopetraAuthority _authority
     ) TheopetraAccessControlled(_authority) {
         // initialize yield 0 to 0
-        currentIndex = 0;
         yields[currentIndex] = 0;
     }
 
@@ -47,7 +46,8 @@ contract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {
      * @return int256  previous yield value
      */
     function lastYield() external view returns (int256) {
-        return currentIndex > 0 ? yields[currentIndex - 1] : int256(0);
+        if (currentIndex == 0) return 0;
+        return currentIndex == 1 ? yields[1] : yields[currentIndex - 1];
     }
 
     /**
