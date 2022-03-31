@@ -401,6 +401,16 @@ describe('Bond depository', function () {
       const newStakingTHEOBalance = await TheopetraERC20Mock.balanceOf(StakingMock.address);
       expect(Number(initialStakingTheoBalance)).to.be.lessThan(Number(newStakingTHEOBalance));
     });
+
+    it('should emit a Bond event containing bond market id, amount and price', async function () {
+      const [, , bob] = users;
+
+      const price = await BondDepository.marketPrice(bid);
+
+      await expect(bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address))
+        .to.emit(BondDepository, 'Bond')
+        .withArgs(bid, depositAmount, price);
+    });
   });
 
   describe('Close market', function () {
