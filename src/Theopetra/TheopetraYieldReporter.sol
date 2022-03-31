@@ -22,6 +22,8 @@ contract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {
      */
     uint256 private currentIndex = 0;
 
+    /* ======== CONSTANTS ======== */
+
     string private OUT_OF_BOUNDS = "OUT_OF_BOUNDS";
 
     /* ======== CONSTRUCTOR ======== */
@@ -44,6 +46,7 @@ contract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {
     /**
      * @notice returns the previous yield value or 0 if no previous yield
      * @return int256  previous yield value
+     * @dev If there is only 1 yield reported, the current yield is returned
      */
     function lastYield() external view returns (int256) {
         if (currentIndex == 0) return 0;
