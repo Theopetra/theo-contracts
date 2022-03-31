@@ -16,7 +16,7 @@ contract YieldReporterMock is IYieldReporter {
         return 10_000_000_000;
     }
 
-    function reportYield(int256 _amount) external override returns (int256) {
+    function reportYield(int256 _amount) external override returns (uint256) {
         return 10_000_000_000;
     }
 }
