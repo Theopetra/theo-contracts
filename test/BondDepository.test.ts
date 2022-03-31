@@ -43,10 +43,10 @@ const setup = deployments.createFixture(async function () {
 describe('Bond depository', function () {
   const bid = 0;
   const buffer = 2e5;
-  const capacity = '100000000000000'; // 1e14
+  const capacity = '10000000000000000'; // 1e16
   const capacityInQuote = false;
   const depositAmount = '100000000'; // 1e8, equivalent to 100 USDC (6 decimals for USDC)
-  const depositInterval = 60 * 60 * 4;
+  const depositInterval = 60 * 60 * 24 * 30;
   const fixedTerm = true;
   const initialPrice = 400e9;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
