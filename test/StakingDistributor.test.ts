@@ -36,6 +36,7 @@ const getContracts = async (): Promise<TheoContracts> => {
 };
 
 const setup = deployments.createFixture(async () => {
+  await deployments.fixture([CONTRACTS.distributor, MOCKSWITHARGS.stakingMock]);
   const { deployer: owner } = await getNamedAccounts();
   const contracts = await getContracts();
 
@@ -48,7 +49,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe('Distributor', function () {
+describe.only('Distributor', function () {
   const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
 
   describe('Deployment', function () {
@@ -192,4 +193,23 @@ describe('Distributor', function () {
       );
     });
   });
+
+  describe('reward schedule', function () {
+    it('can add a starting rate when adding a recipient', async function () {
+      const { Distributor, StakingMock }: any = await setup();
+      const startingRate = 2000;
+
+      await expect(Distributor.addRecipient(StakingMock.address, startingRate)).to.not.be.reverted;
+    });
+
+
+    it('stores the starting rate', async function () {
+      const { Distributor, StakingMock }: any = await setup();
+      const startingRate = 2000;
+
+      await Distributor.addRecipient(StakingMock.address, startingRate);
+      const [, start,] = await Distributor.info(0);
+      expect(start).to.equal(startingRate);
+    })
+  })
 });

@@ -14,14 +14,14 @@ interface IDistributor {
 
     function setBounty(uint256 _bounty) external;
 
-    function addRecipient(address _recipient, uint256 _rewardRate) external;
+    function addRecipient(address _recipient, uint64 _startRate, int64 _scrs, int64 _scys) external;
 
     function removeRecipient(uint256 _index) external;
 
-    function setAdjustment(
-        uint256 _index,
-        bool _add,
-        uint256 _rate,
-        uint256 _target
-    ) external;
+    // function setAdjustment(
+    //     uint256 _index,
+    //     bool _add,
+    //     uint256 _rate,
+    //     uint256 _target
+    // ) external;
 }

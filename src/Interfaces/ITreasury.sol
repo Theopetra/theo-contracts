@@ -23,4 +23,8 @@ interface ITreasury {
     function excessReserves() external view returns (uint256);
 
     function baseSupply() external view returns (uint256);
+
+    function deltaTokenPrice() external view returns (int256);
+
+    function deltaTreasuryYield() external view returns (int256);
 }

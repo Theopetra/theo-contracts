@@ -32,8 +32,17 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     /* ====== STRUCTS ====== */
 
+    /**
+        @notice starting rate and recipient for rewards
+        @dev    Info::start is the starting rate for rewards in ten-thousandsths (2000 = 0.2%);
+                Info::recipient is the recipient staking contract for rewards
+                Info::scrs is the Control Return for Staking (see nextRewardRate)
+                Info::scys is the Control Treasury for Staking (see nextRewardRate)
+     */
     struct Info {
-        uint256 rate; // in ten-thousandths ( 5000 = 0.5% )
+        uint64 start;
+        int64 scrs;
+        int64 scys;
         address recipient;
     }
     Info[] public info;
@@ -68,16 +77,20 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     /**
         @notice send epoch reward to staking contract
+        @dev    distribute sets the next epoch block, then distributes rewards to each recipient
+                (minting and sending from the treasury)
+                It then adjusts SCrs and SCys (see `adjust`), ahead of the next distribution
      */
     function distribute() external override returns (bool) {
         require(msg.sender == staking, "Only staking");
         if (nextEpochBlock <= block.number) {
-            nextEpochBlock = nextEpochBlock.add(epochLength); // set next epoch block
+            nextEpochBlock = nextEpochBlock.add(epochLength); //
 
             // distribute rewards to each recipient
             for (uint256 i = 0; i < info.length; i++) {
-                if (info[i].rate > 0) {
-                    ITreasury(treasury).mint(info[i].recipient, nextRewardAt(info[i].rate)); // mint and send from treasury
+                uint256 apyVariable = apyVariable(i);
+                if (apyVariable > 0) {
+                    ITreasury(treasury).mint(info[i].recipient, nextRewardAt(apyVariable));
                     adjust(i); // check for adjustment
                 }
             }
@@ -100,35 +113,38 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     /* ====== INTERNAL FUNCTIONS ====== */
 
     /**
-        @notice increment reward rate for collector
+     * @notice adjust Bond Control Return for Staking (SCrs) Bond Control Treasury for Staking (SCys)
+     * @dev
      */
     function adjust(uint256 _index) internal {
-        Adjust memory adjustment = adjustments[_index];
-        if (adjustment.rate != 0) {
-            if (adjustment.add) {
-                // if rate should increase
-                info[_index].rate = info[_index].rate.add(adjustment.rate); // raise rate
-                if (info[_index].rate >= adjustment.target) {
-                    // if target met
-                    adjustments[_index].rate = 0; // turn off adjustment
-                    info[_index].rate = adjustment.target; // set to target
-                }
-            } else {
-                // if rate should decrease
-                if (info[_index].rate > adjustment.rate) {
-                    // protect from underflow
-                    info[_index].rate = info[_index].rate.sub(adjustment.rate); // lower rate
-                } else {
-                    info[_index].rate = 0;
-                }
 
-                if (info[_index].rate <= adjustment.target) {
-                    // if target met
-                    adjustments[_index].rate = 0; // turn off adjustment
-                    info[_index].rate = adjustment.target; // set to target
-                }
-            }
-        }
+        info[_index].scrs = 1_000_000_000;
+        info[_index].scys = 2_000_000_000;
+        // Adjust memory adjustment = adjustments[_index];
+        // if (adjustment.rate != 0) {
+        //     if (adjustment.add) {
+        //         // if rate should increase
+        //         info[_index].rate = info[_index].rate.add(adjustment.rate); // raise rate
+        //         if (info[_index].rate >= adjustment.target) {
+        //             // if target met
+        //             adjustments[_index].rate = 0; // turn off adjustment
+        //             info[_index].rate = adjustment.target; // set to target
+        //         }
+        //     } else {
+        //         // if rate should decrease
+        //         if (info[_index].rate > adjustment.rate) {
+        //             // protect from underflow
+        //             info[_index].rate = info[_index].rate.sub(adjustment.rate); // lower rate
+        //         } else {
+        //             info[_index].rate = 0;
+        //         }
+        //         if (info[_index].rate <= adjustment.target) {
+        //             // if target met
+        //             adjustments[_index].rate = 0; // turn off adjustment
+        //             info[_index].rate = adjustment.target; // set to target
+        //         }
+        //     }
+        // }
     }
 
     /* ====== VIEW FUNCTIONS ====== */
@@ -144,17 +160,27 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     /**
         @notice view function for next reward for specified address
+        @dev    APYvariable, passed into `nextRewardAt` is calculated as:
+                APYfixed + SCrs + SCys
+                Where APYfixed is the fixed starting rate,
+                SCrs is the Control Return for Staking
+                SCys is Control Treasury for Staking
         @param _recipient address
-        @return uint
+        @return uint256
      */
     function nextRewardFor(address _recipient) public view override returns (uint256) {
         uint256 reward;
         for (uint256 i = 0; i < info.length; i++) {
             if (info[i].recipient == _recipient) {
-                reward = nextRewardAt(info[i].rate);
+                reward = nextRewardAt(apyVariable(i));
             }
         }
         return reward;
+    }
+
+    function nextRewardRate(uint256 _index) internal {
+        int256 deltaTokenPrice = ITreasury(treasury).deltaTokenPrice();
+        int256 deltaTreasuryYield = ITreasury(treasury).deltaTreasuryYield();
     }
 
     /* ====== POLICY FUNCTIONS ====== */
@@ -171,12 +197,12 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     /**
         @notice adds recipient for distributions
         @param _recipient address
-        @param _rewardRate uint
+        @param _startRate uint
      */
-    function addRecipient(address _recipient, uint256 _rewardRate) external override onlyGovernor {
+    function addRecipient(address _recipient, uint64 _startRate, int64 _scrs, int64 _scys) external override onlyGovernor {
         require(_recipient != address(0));
-        require(_rewardRate <= rateDenominator, "Rate cannot exceed denominator");
-        info.push(Info({ recipient: _recipient, rate: _rewardRate }));
+        require(_startRate <= rateDenominator, "Rate cannot exceed denominator");
+        info.push(Info({ recipient: _recipient, start: _startRate, scrs: _scrs, scys: _scys }));
     }
 
     /**
@@ -190,36 +216,43 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         );
         require(info[_index].recipient != address(0), "Recipient does not exist");
         info[_index].recipient = address(0);
-        info[_index].rate = 0;
+        info[_index].start = 0;
+        info[_index].scrs = 0;
+        info[_index].scys = 0;
     }
 
-    /**
-        @notice set adjustment info for a collector's reward rate
-        @param _index uint
-        @param _add bool
-        @param _rate uint
-        @param _target uint
-     */
-    function setAdjustment(
-        uint256 _index,
-        bool _add,
-        uint256 _rate,
-        uint256 _target
-    ) external override {
-        require(
-            msg.sender == authority.governor() || msg.sender == authority.guardian(),
-            "Caller is not governor or guardian"
-        );
-        require(info[_index].recipient != address(0), "Recipient does not exist");
+    // /**
+    //     @notice set adjustment info for a collector's reward rate
+    //     @param _index uint
+    //     @param _add bool
+    //     @param _rate uint
+    //     @param _target uint
+    //  */
+    // function setAdjustment(
+    //     uint256 _index,
+    //     bool _add,
+    //     uint256 _rate,
+    //     uint256 _target
+    // ) external override {
+    //     require(
+    //         msg.sender == authority.governor() || msg.sender == authority.guardian(),
+    //         "Caller is not governor or guardian"
+    //     );
+    //     require(info[_index].recipient != address(0), "Recipient does not exist");
 
-        if (msg.sender == authority.guardian()) {
-            require(_rate <= info[_index].rate.mul(25).div(1000), "Limiter: cannot adjust by >2.5%");
-        }
+    //     if (msg.sender == authority.guardian()) {
+    //         require(_rate <= info[_index].rate.mul(25).div(1000), "Limiter: cannot adjust by >2.5%");
+    //     }
 
-        if (!_add) {
-            require(_rate <= info[_index].rate, "Cannot decrease rate by more than it already is");
-        }
+    //     if (!_add) {
+    //         require(_rate <= info[_index].rate, "Cannot decrease rate by more than it already is");
+    //     }
 
-        adjustments[_index] = Adjust({ add: _add, rate: _rate, target: _target });
+    //     adjustments[_index] = Adjust({ add: _add, rate: _rate, target: _target });
+    // }
+
+    function apyVariable(uint256 i) internal view returns (uint256) {
+        int256 apyVariable = int128(info[i].start) + info[i].scrs + info[i].scys;
+        return apyVariable > 0 ? uint256(apyVariable) : 0;
     }
 }

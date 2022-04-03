@@ -3,6 +3,8 @@ pragma solidity ^0.7.5;
 
 import "../Libraries/SafeMath.sol";
 import "../Libraries/SafeERC20.sol";
+import "../Libraries/SignedSafeMath.sol";
+import "../Libraries/SafeCast.sol";
 
 import "../Interfaces/IERC20.sol";
 import "../Interfaces/IERC20Metadata.sol";
@@ -10,6 +12,7 @@ import "../Interfaces/ITHEO.sol";
 import "../Interfaces/IsTHEO.sol";
 import "../Interfaces/IBondCalculator.sol";
 import "../Interfaces/ITreasury.sol";
+import "../Interfaces/IYieldReporter.sol";
 
 import "../Types/TheopetraAccessControlled.sol";
 
@@ -17,6 +20,8 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     /* ========== DEPENDENCIES ========== */
 
     using SafeMath for uint256;
+    using SafeCast for uint256;
+    using SignedSafeMath for int256;
     using SafeERC20 for IERC20;
 
     /* ========== EVENTS ========== */
@@ -56,10 +61,18 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         bool executed;
     }
 
+    struct PriceInfo {
+        int256 deltaTreasuryYield;
+        uint256 timeLastUpdated;
+        uint256 lastTokenPrice;
+        uint256 currentTokenPrice;
+    }
+
     /* ========== STATE VARIABLES ========== */
 
     ITHEO public immutable THEO;
     IsTHEO public sTHEO;
+    IYieldReporter private yieldReporter;
 
     mapping(STATUS => address[]) public registry;
     mapping(STATUS => mapping(address => bool)) public permissions;
@@ -72,6 +85,8 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     uint256 public theoDebt;
     Queue[] public permissionQueue;
     uint256 public immutable blocksNeededForQueue;
+
+    PriceInfo private priceInfo;
 
     bool public timelockEnabled;
     bool public initialized;
@@ -492,5 +507,33 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      */
     function baseSupply() external view override returns (uint256) {
         return THEO.totalSupply() - theoDebt;
+    }
+
+    /**
+     * @notice  calculate the proportional change (i.e. a percentage as a decimal) in token price, with 9 decimals
+     * @dev     calculated as (currentPrice - lastPrice) / lastPrice
+     *           using 9 decimals for the price values and for return value.
+     * @return  int256 proportional change in treasury yield. 9 decimals
+     */
+    function deltaTokenPrice() public view override returns (int256) {
+        return
+            ((priceInfo.currentTokenPrice.toInt256()).sub(priceInfo.lastTokenPrice.toInt256()) * 10**9).div(
+                priceInfo.lastTokenPrice.toInt256()
+            );
+    }
+
+    /**
+     * @notice  calculate the proportional change (i.e. a percentage as a decimal) in treasury yield, with 9 decimals
+     * @dev     calculated as (currentYield - lastYield) / lastYield
+     *           using 9 decimals for the yield values and for return value.
+     *           example: ((10_000_000_000 - 15_000_000_000)*(10**9)) / 15_000_000_000 = -333333333
+     *           -333333333 is equivalent to the proportion -0.333333333 (that is, -33.3333333%)
+     * @return  int256 proportional change in treasury yield. 9 decimals
+     */
+    function deltaTreasuryYield() public view override returns (int256) {
+        require(address(yieldReporter) != address(0), "Zero address: YieldReporter");
+        return
+            (((IYieldReporter(yieldReporter).currentYield()).sub(IYieldReporter(yieldReporter).lastYield())) * 10**9)
+                .div(IYieldReporter(yieldReporter).lastYield());
     }
 }
