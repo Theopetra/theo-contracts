@@ -112,7 +112,7 @@ describe.only('Distributor', function () {
     });
   });
 
-  describe('access control', function () {
+  describe.skip('access control', function () {
     it('will revert if distribute is called from an account other than the staking contract', async function () {
       const { Distributor }: any = await setup();
 
@@ -149,7 +149,7 @@ describe.only('Distributor', function () {
     });
   });
 
-  describe('limiters', function () {
+  describe.skip('limiters', function () {
     it('will revert if a call is made to set bounty higher than 2e9', async function () {
       const { Distributor }: any = await setup();
 
@@ -194,7 +194,40 @@ describe.only('Distributor', function () {
     });
   });
 
-  describe('reward schedule', function () {
+  describe('Add recipient', function () {
+    let deltaTokenPrice: number;
+    let deltaTreasuryYield: number;
+
+    beforeEach(async function () {
+      const {TreasuryMock} = await getContracts();
+      deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
+      deltaTreasuryYield= await TreasuryMock.deltaTreasuryYield();
+    })
+
+    it('stores information on start rate, SCrs and SCys', async function () {
+      const { Distributor, StakingMock }: any = await setup();
+
+      const expectedStartRate = 5000; // rateDenominator for Distributor is 1000000
+      const expectedDrs = 10_000_000 // 1%
+      const expectedDys = 20_000_000 // 2%
+      await Distributor.addRecipient(StakingMock.address, expectedStartRate, expectedDrs, expectedDys);
+
+      const [startStored, scrs, scys, drs, dys, recipient] = await Distributor.info(0);
+      const expectedSCrs = (expectedDrs * deltaTokenPrice) / 10**9;
+      const expectedSCys = (expectedDys * deltaTreasuryYield) / 10**9;
+
+      expect(startStored).to.equal(expectedStartRate);
+      expect(Number(scrs)).to.equal(expectedSCrs);
+      expect(Number(scys)).to.equal(expectedSCys);
+      expect(Number(drs)).to.equal(expectedDrs);
+      expect(Number(dys)).to.equal(expectedDys);
+      expect(recipient).to.equal(StakingMock.address);
+    });
+
+
+  })
+
+  describe.skip('reward schedule', function () {
     it('can add a starting rate when adding a recipient', async function () {
       const { Distributor, StakingMock }: any = await setup();
       const startingRate = 2000;

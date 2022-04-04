@@ -36,13 +36,18 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @notice starting rate and recipient for rewards
         @dev    Info::start is the starting rate for rewards in ten-thousandsths (2000 = 0.2%);
                 Info::recipient is the recipient staking contract for rewards
-                Info::scrs is the Control Return for Staking (see nextRewardRate)
-                Info::scys is the Control Treasury for Staking (see nextRewardRate)
+                Info::scrs is the Control Return for Staking (see nextRewardRate), with 9 decimals
+                Info::scys is the Control Treasury for Staking (see nextRewardRate), with 9 decimals
+                Info::drs is the Discount Rate Return Staking. The discount rate applied to the fluctuation of the token price, as a proportion (that is, a percentage in its decimal form), with 9 decimals
+                Info::dys is the discount rate applied to the fluctuation of the treasury yield, as a proportion (that is, a percentage in its decimal form), with 9 decimals
+
      */
     struct Info {
-        uint64 start;
-        int64 scrs;
-        int64 scys;
+        uint256 start;
+        int256 scrs;
+        int256 scys;
+        int256 drs;
+        int256 dys;
         address recipient;
     }
     Info[] public info;
@@ -117,34 +122,8 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
      * @dev
      */
     function adjust(uint256 _index) internal {
-
-        info[_index].scrs = 1_000_000_000;
-        info[_index].scys = 2_000_000_000;
-        // Adjust memory adjustment = adjustments[_index];
-        // if (adjustment.rate != 0) {
-        //     if (adjustment.add) {
-        //         // if rate should increase
-        //         info[_index].rate = info[_index].rate.add(adjustment.rate); // raise rate
-        //         if (info[_index].rate >= adjustment.target) {
-        //             // if target met
-        //             adjustments[_index].rate = 0; // turn off adjustment
-        //             info[_index].rate = adjustment.target; // set to target
-        //         }
-        //     } else {
-        //         // if rate should decrease
-        //         if (info[_index].rate > adjustment.rate) {
-        //             // protect from underflow
-        //             info[_index].rate = info[_index].rate.sub(adjustment.rate); // lower rate
-        //         } else {
-        //             info[_index].rate = 0;
-        //         }
-        //         if (info[_index].rate <= adjustment.target) {
-        //             // if target met
-        //             adjustments[_index].rate = 0; // turn off adjustment
-        //             info[_index].rate = adjustment.target; // set to target
-        //         }
-        //     }
-        // }
+        info[_index].scrs = (info[_index].drs * ITreasury(treasury).deltaTokenPrice()) / 10**9;
+        info[_index].scys = (info[_index].dys * ITreasury(treasury).deltaTreasuryYield()) / 10**9;
     }
 
     /* ====== VIEW FUNCTIONS ====== */
@@ -196,13 +175,20 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     /**
         @notice adds recipient for distributions
+        @dev    _scrs and _scys are both with 9 decimals. Their calculation includes division by 10**9, as multiplicands also each have 9 decimals.
         @param _recipient address
-        @param _startRate uint
+        @param _startRate uint256
+        @param _drs       uint256 9 decimal Discount Rate Return Staking. The discount rate applied to the fluctuation of the token price, as a proportion (that is, a percentage in its decimal form), with 9 decimals
+        @param _dys       uint256 9 decimial discount rate applied to the fluctuation of the treasury yield, as a proportion (that is, a percentage in its decimal form), with 9 decimals
      */
-    function addRecipient(address _recipient, uint64 _startRate, int64 _scrs, int64 _scys) external override onlyGovernor {
+    function addRecipient(address _recipient, uint256 _startRate, int256 _drs, int256 _dys) external override onlyGovernor {
         require(_recipient != address(0));
         require(_startRate <= rateDenominator, "Rate cannot exceed denominator");
-        info.push(Info({ recipient: _recipient, start: _startRate, scrs: _scrs, scys: _scys }));
+
+        int256 _scrs = (_drs * ITreasury(treasury).deltaTokenPrice()) / 10**9;
+        int256 _scys = (_dys * ITreasury(treasury).deltaTreasuryYield()) / 10**9;
+
+        info.push(Info({ recipient: _recipient, start: _startRate, scrs: _scrs, scys: _scys, drs: _drs, dys: _dys }));
     }
 
     /**

@@ -14,7 +14,7 @@ interface IDistributor {
 
     function setBounty(uint256 _bounty) external;
 
-    function addRecipient(address _recipient, uint64 _startRate, int64 _scrs, int64 _scys) external;
+    function addRecipient(address _recipient, uint256 _startRate, int256 _drs, int256 _dys) external;
 
     function removeRecipient(uint256 _index) external;
 
