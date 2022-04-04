@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity 0.7.5;
+pragma solidity ^0.8.0;
 
 interface IDistributor {
     function distribute() external returns (bool);
@@ -14,7 +14,7 @@ interface IDistributor {
 
     function setBounty(uint256 _bounty) external;
 
-    function addRecipient(address _recipient, uint256 _startRate, int256 _drs, int256 _dys) external;
+    function addRecipient(address _recipient, uint256 _startRate, int256 _drs, int256 _dys, bool _locked) external;
 
     function removeRecipient(uint256 _index) external;
 

@@ -204,15 +204,16 @@ describe.only('Distributor', function () {
       deltaTreasuryYield= await TreasuryMock.deltaTreasuryYield();
     })
 
-    it('stores information on start rate, SCrs and SCys', async function () {
+    it('stores information on start rate, SCrs, SCys, Drs, Dys and whether the staking pool is locked', async function () {
       const { Distributor, StakingMock }: any = await setup();
 
       const expectedStartRate = 5000; // rateDenominator for Distributor is 1000000
       const expectedDrs = 10_000_000 // 1%
       const expectedDys = 20_000_000 // 2%
-      await Distributor.addRecipient(StakingMock.address, expectedStartRate, expectedDrs, expectedDys);
+      const isLocked = false;
+      await Distributor.addRecipient(StakingMock.address, expectedStartRate, expectedDrs, expectedDys, isLocked);
 
-      const [startStored, scrs, scys, drs, dys, recipient] = await Distributor.info(0);
+      const [startStored, scrs, scys, drs, dys, recipient, locked] = await Distributor.info(0);
       const expectedSCrs = (expectedDrs * deltaTokenPrice) / 10**9;
       const expectedSCys = (expectedDys * deltaTreasuryYield) / 10**9;
 
@@ -222,6 +223,7 @@ describe.only('Distributor', function () {
       expect(Number(drs)).to.equal(expectedDrs);
       expect(Number(dys)).to.equal(expectedDys);
       expect(recipient).to.equal(StakingMock.address);
+      expect(locked).to.equal(isLocked);
     });
 
 

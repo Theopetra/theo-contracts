@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity 0.7.5;
+pragma solidity ^0.8.0;
 
 import "../Types/TheopetraAccessControlled.sol";
 
-import "../Libraries/SafeMath.sol";
 import "../Libraries/SafeERC20.sol";
 
 import "../Interfaces/IDistributor.sol";
@@ -11,7 +10,6 @@ import "../Interfaces/IsTHEO.sol";
 import "../Interfaces/ITHEO.sol";
 
 contract TheopetraStaking is TheopetraAccessControlled {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using SafeERC20 for IsTHEO;
     using SafeERC20 for ITHEO;
@@ -86,13 +84,13 @@ contract TheopetraStaking is TheopetraAccessControlled {
             }
 
             warmupInfo[_recipient] = Claim({
-                deposit: info.deposit.add(_amount),
-                gons: info.gons.add(IsTHEO(sTHEO).gonsForBalance(_amount)),
-                expiry: epoch.number.add(warmupPeriod),
+                deposit: info.deposit + _amount,
+                gons: info.gons + IsTHEO(sTHEO).gonsForBalance(_amount),
+                expiry: epoch.number + warmupPeriod,
                 lock: info.lock
             });
 
-            gonsInWarmup = gonsInWarmup.add(IsTHEO(sTHEO).gonsForBalance(_amount));
+            gonsInWarmup = gonsInWarmup + IsTHEO(sTHEO).gonsForBalance(_amount);
 
             return _amount;
         }
@@ -112,7 +110,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         if (epoch.number >= info.expiry && info.expiry != 0) {
             delete warmupInfo[_recipient];
 
-            gonsInWarmup = gonsInWarmup.sub(info.gons);
+            gonsInWarmup = gonsInWarmup - info.gons;
 
             return _send(_recipient, IsTHEO(sTHEO).balanceForGons(info.gons));
         }
@@ -127,7 +125,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         Claim memory info = warmupInfo[msg.sender];
         delete warmupInfo[msg.sender];
 
-        gonsInWarmup = gonsInWarmup.sub(info.gons);
+        gonsInWarmup = gonsInWarmup - info.gons;
 
         IERC20(THEO).safeTransfer(msg.sender, info.deposit);
     }
@@ -158,7 +156,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         }
 
         IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
-        amount_ = amount_.add(bounty);
+        amount_ = amount_ + bounty;
 
         require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
         ITHEO(THEO).safeTransfer(_to, amount_);
@@ -173,7 +171,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         if (epoch.endBlock <= block.number) {
             IsTHEO(sTHEO).rebase(epoch.distribute, epoch.number);
 
-            epoch.endBlock = epoch.endBlock.add(epoch.length);
+            epoch.endBlock = epoch.endBlock + epoch.length;
             epoch.number++;
 
             if (distributor != address(0)) {
@@ -184,10 +182,10 @@ contract TheopetraStaking is TheopetraAccessControlled {
             uint256 balance = contractBalance();
             uint256 staked = IsTHEO(sTHEO).circulatingSupply();
 
-            if (balance <= staked.add(bounty)) {
+            if (balance <= staked + bounty) {
                 epoch.distribute = 0;
             } else {
-                epoch.distribute = balance.sub(staked).sub(bounty);
+                epoch.distribute = balance - staked - bounty;
             }
         }
         return bounty;
@@ -198,7 +196,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @return uint
      */
     function contractBalance() public view returns (uint256) {
-        return IERC20(THEO).balanceOf(address(this)).add(totalBonus);
+        return IERC20(THEO).balanceOf(address(this)) + totalBonus;
     }
 
     /**
@@ -207,7 +205,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
      */
     function giveLockBonus(uint256 _amount) external {
         require(msg.sender == locker);
-        totalBonus = totalBonus.add(_amount);
+        totalBonus = totalBonus + _amount;
         IERC20(sTHEO).safeTransfer(locker, _amount);
     }
 
@@ -217,7 +215,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
      */
     function returnLockBonus(uint256 _amount) external {
         require(msg.sender == locker);
-        totalBonus = totalBonus.sub(_amount);
+        totalBonus = totalBonus - _amount;
         IERC20(sTHEO).safeTransferFrom(locker, address(this), _amount);
     }
 

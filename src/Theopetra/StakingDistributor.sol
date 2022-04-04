@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity 0.7.5;
+pragma solidity ^0.8.0;
 
 import "../Types/TheopetraAccessControlled.sol";
 
 import "../Libraries/SafeERC20.sol";
-import "../Libraries/SafeMath.sol";
 
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IERC20.sol";
@@ -13,7 +12,6 @@ import "../Interfaces/IDistributor.sol";
 contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     /* ========== DEPENDENCIES ========== */
 
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     /* ====== VARIABLES ====== */
@@ -49,6 +47,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         int256 drs;
         int256 dys;
         address recipient;
+        bool locked;
     }
     Info[] public info;
 
@@ -89,7 +88,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     function distribute() external override returns (bool) {
         require(msg.sender == staking, "Only staking");
         if (nextEpochBlock <= block.number) {
-            nextEpochBlock = nextEpochBlock.add(epochLength); //
+            nextEpochBlock = nextEpochBlock + epochLength; //
 
             // distribute rewards to each recipient
             for (uint256 i = 0; i < info.length; i++) {
@@ -99,6 +98,11 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
                     adjust(i); // check for adjustment
                 }
             }
+
+            // Check for wind-down in start percentage and max
+            // if timestamp > nextEpochTime and startPercentage >6% then:
+            // reduce start percentage
+            // update nextEpochTime to be nextEpochTime + epochLength
             return true;
         } else {
             return false;
@@ -134,7 +138,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @return uint
      */
     function nextRewardAt(uint256 _rate) public view override returns (uint256) {
-        return IERC20(THEO).totalSupply().mul(_rate).div(rateDenominator);
+        return IERC20(THEO).totalSupply() * (_rate) / (rateDenominator);
     }
 
     /**
@@ -180,15 +184,16 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @param _startRate uint256
         @param _drs       uint256 9 decimal Discount Rate Return Staking. The discount rate applied to the fluctuation of the token price, as a proportion (that is, a percentage in its decimal form), with 9 decimals
         @param _dys       uint256 9 decimial discount rate applied to the fluctuation of the treasury yield, as a proportion (that is, a percentage in its decimal form), with 9 decimals
+        @param _locked    bool is the staking tranche locked or unlocked
      */
-    function addRecipient(address _recipient, uint256 _startRate, int256 _drs, int256 _dys) external override onlyGovernor {
+    function addRecipient(address _recipient, uint256 _startRate, int256 _drs, int256 _dys, bool _locked) external override onlyGovernor {
         require(_recipient != address(0));
         require(_startRate <= rateDenominator, "Rate cannot exceed denominator");
 
         int256 _scrs = (_drs * ITreasury(treasury).deltaTokenPrice()) / 10**9;
         int256 _scys = (_dys * ITreasury(treasury).deltaTreasuryYield()) / 10**9;
 
-        info.push(Info({ recipient: _recipient, start: _startRate, scrs: _scrs, scys: _scys, drs: _drs, dys: _dys }));
+        info.push(Info({ recipient: _recipient, start: _startRate, scrs: _scrs, scys: _scys, drs: _drs, dys: _dys, locked: _locked }));
     }
 
     /**
@@ -238,7 +243,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     // }
 
     function apyVariable(uint256 i) internal view returns (uint256) {
-        int256 apyVariable = int128(info[i].start) + info[i].scrs + info[i].scys;
+        int256 apyVariable = int256(info[i].start) + info[i].scrs + info[i].scys;
         return apyVariable > 0 ? uint256(apyVariable) : 0;
     }
 }
