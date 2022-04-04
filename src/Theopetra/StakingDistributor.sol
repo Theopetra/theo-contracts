@@ -81,8 +81,8 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     /**
         @notice send epoch reward to staking contract
-        @dev    distribute sets the next epoch block, then distributes rewards to each recipient
-                (minting and sending from the treasury)
+        @dev    distribute can only be called by a Staking contract (and the Staking contract will only call if its epoch is over)
+                This method distributes rewards to each recipient (minting and sending from the treasury)
                 It then adjusts SCrs and SCys (see `adjust`), ahead of the next distribution
      */
     function distribute() external override returns (bool) {
