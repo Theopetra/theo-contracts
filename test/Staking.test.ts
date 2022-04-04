@@ -51,10 +51,13 @@ describe('Staking', function () {
     await sTheoMock.mint(Staking.address, '1000000000000000000000');
   });
 
-  describe('Deployment', function () {
-    const epochLengthInBlocks = 2000; // Same value as used in deployment script for Hardhat network deployment
+  describe('Deployment', async function () {
+    const epochLength = 2000; // Same value as used in deployment script for Hardhat network deployment
     const firstEpochNumber = 1; // Same value as used in deployment script for Hardhat network deployment
-    const firstEpochBlock = 10000; // Same value as used in deployment script for Hardhat network deployment
+
+    const currentBlock = await ethers.provider.send("eth_blockNumber", []);
+    const blockTimestamp = (await ethers.provider.getBlock(currentBlock)).timestamp;
+    const firstEpochTime = blockTimestamp + 10000;
 
     it('can be deployed', async function () {
       await setup();
@@ -66,9 +69,9 @@ describe('Staking', function () {
 
       const epoch = await Staking.epoch();
 
-      expect(epoch._length).to.equal(BigNumber.from(epochLengthInBlocks));
+      expect(epoch._length).to.equal(BigNumber.from(epochLength));
       expect(epoch.number).to.equal(BigNumber.from(firstEpochNumber));
-      expect(epoch.endBlock).to.equal(BigNumber.from(firstEpochBlock));
+      expect(epoch.end).to.equal(BigNumber.from(firstEpochTime));
 
       expect(await TheopetraAuthority.governor()).to.equal(owner);
     });
@@ -80,9 +83,9 @@ describe('Staking', function () {
           args: [
             addressZero,
             owner,
-            epochLengthInBlocks,
+            epochLength,
             firstEpochNumber,
-            firstEpochBlock,
+            firstEpochTime,
             TheopetraAuthority.address,
           ],
         })
@@ -96,9 +99,9 @@ describe('Staking', function () {
           args: [
             owner,
             addressZero,
-            epochLengthInBlocks,
+            epochLength,
             firstEpochNumber,
-            firstEpochBlock,
+            firstEpochTime,
             TheopetraAuthority.address,
           ],
         })

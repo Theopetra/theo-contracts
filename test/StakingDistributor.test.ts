@@ -49,7 +49,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe.only('Distributor', function () {
+describe('Distributor', function () {
   const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
 
   describe('Deployment', function () {

@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
+import { ethers } from "hardhat";
 
 import { CONTRACTS, MOCKS } from '../utils/constants';
 
@@ -12,16 +13,19 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
     const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
 
-    let epochLengthInBlocks;
+    let epochLength;
     let firstEpochNumber;
-    let firstEpochBlock;
+    let firstEpochTime;
     let args: any = [];
 
     // If on Hardhat network, use the following values for testing
     if (chainId === '1337') {
-      epochLengthInBlocks = '2000';
+      epochLength = '2000';
       firstEpochNumber = '1';
-      firstEpochBlock = '10000'; // Sets the rebase far enough in the future to not hit it in tests
+
+      const currentBlock = await ethers.provider.send("eth_blockNumber", []);
+      const blockTimestamp = (await ethers.provider.getBlock(currentBlock)).timestamp;
+      firstEpochTime = blockTimestamp + 10000; // set the rebase far enough in the future to not hit it in tests
 
       // Update args with addresses of already-deployed mocks
       const namedMockAddresses: Record<any, any> = {};
@@ -36,9 +40,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       args = [
         TheopetraERC20Mock,
         sTheoMock,
-        epochLengthInBlocks,
+        epochLength,
         firstEpochNumber,
-        firstEpochBlock,
+        firstEpochTime,
         TheopetraAuthority.address,
       ];
     }

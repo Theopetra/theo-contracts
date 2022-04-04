@@ -20,7 +20,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
     struct Epoch {
         uint256 length;
         uint256 number;
-        uint256 endBlock;
+        uint256 end;
         uint256 distribute;
     }
     Epoch public epoch;
@@ -40,7 +40,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         address _sTHEO,
         uint256 _epochLength,
         uint256 _firstEpochNumber,
-        uint256 _firstEpochBlock,
+        uint256 _firstEpochTime,
         address _authority
     ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {
         require(_THEO != address(0), "Invalid address");
@@ -48,7 +48,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         require(_sTHEO != address(0), "Invalid address");
         sTHEO = _sTHEO;
 
-        epoch = Epoch({ length: _epochLength, number: _firstEpochNumber, endBlock: _firstEpochBlock, distribute: 0 });
+        epoch = Epoch({ length: _epochLength, number: _firstEpochNumber, end: _firstEpochTime, distribute: 0 });
     }
 
     struct Claim {
@@ -168,10 +168,10 @@ contract TheopetraStaking is TheopetraAccessControlled {
      */
     function rebase() public returns (uint256) {
         uint256 bounty;
-        if (epoch.endBlock <= block.number) {
+        if (epoch.end <= block.timestamp) {
             IsTHEO(sTHEO).rebase(epoch.distribute, epoch.number);
 
-            epoch.endBlock = epoch.endBlock + epoch.length;
+            epoch.end = epoch.end + epoch.length;
             epoch.number++;
 
             if (distributor != address(0)) {
