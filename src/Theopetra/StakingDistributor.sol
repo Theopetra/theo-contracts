@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity ^0.8.0;
+pragma solidity >= 0.7.0 <= 0.8.0;
 
 import "../Types/TheopetraAccessControlled.sol";
 
 import "../Libraries/SafeERC20.sol";
+import "../Libraries/SafeMath.sol";
+import "../Libraries/SignedSafeMath.sol";
 
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IERC20.sol";
@@ -13,6 +15,8 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     /* ========== DEPENDENCIES ========== */
 
     using SafeERC20 for IERC20;
+    using SafeMath for uint256;
+    using SignedSafeMath for int256;
 
     /* ====== VARIABLES ====== */
 
@@ -88,7 +92,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     function distribute() external override returns (bool) {
         require(msg.sender == staking, "Only staking");
         if (nextEpochBlock <= block.number) {
-            nextEpochBlock = nextEpochBlock + epochLength; //
+            nextEpochBlock = nextEpochBlock.add(epochLength);
 
             // distribute rewards to each recipient
             for (uint256 i = 0; i < info.length; i++) {
@@ -126,8 +130,8 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
      * @dev
      */
     function adjust(uint256 _index) internal {
-        info[_index].scrs = (info[_index].drs * ITreasury(treasury).deltaTokenPrice()) / 10**9;
-        info[_index].scys = (info[_index].dys * ITreasury(treasury).deltaTreasuryYield()) / 10**9;
+        info[_index].scrs = (info[_index].drs.mul(ITreasury(treasury).deltaTokenPrice())).div(10**9);
+        info[_index].scys = (info[_index].dys.mul(ITreasury(treasury).deltaTreasuryYield())).div(10**9);
     }
 
     /* ====== VIEW FUNCTIONS ====== */
@@ -138,7 +142,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @return uint
      */
     function nextRewardAt(uint256 _rate) public view override returns (uint256) {
-        return IERC20(THEO).totalSupply() * (_rate) / (rateDenominator);
+        return IERC20(THEO).totalSupply().mul(_rate).div(rateDenominator);
     }
 
     /**
@@ -190,8 +194,8 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         require(_recipient != address(0));
         require(_startRate <= rateDenominator, "Rate cannot exceed denominator");
 
-        int256 _scrs = (_drs * ITreasury(treasury).deltaTokenPrice()) / 10**9;
-        int256 _scys = (_dys * ITreasury(treasury).deltaTreasuryYield()) / 10**9;
+        int256 _scrs = (_drs.mul(ITreasury(treasury).deltaTokenPrice())).div(10**9);
+        int256 _scys = (_dys.mul(ITreasury(treasury).deltaTreasuryYield())).div(10**9);
 
         info.push(Info({ recipient: _recipient, start: _startRate, scrs: _scrs, scys: _scys, drs: _drs, dys: _dys, locked: _locked }));
     }
@@ -243,7 +247,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     // }
 
     function apyVariable(uint256 i) internal view returns (uint256) {
-        int256 apyVariable = int256(info[i].start) + info[i].scrs + info[i].scys;
+        int256 apyVariable = int256(info[i].start).add(info[i].scrs).add(info[i].scys);
         return apyVariable > 0 ? uint256(apyVariable) : 0;
     }
 }
