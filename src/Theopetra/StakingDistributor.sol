@@ -4,10 +4,11 @@ pragma solidity >=0.7.5 <=0.8.10;
 import "../Types/TheopetraAccessControlled.sol";
 
 import "../Libraries/SafeERC20.sol";
-import "../Libraries/SafeMath.sol";
-import "../Libraries/SignedSafeMath.sol";
-import "../Libraries/SafeCast.sol";
-// import "../Libraries/ABDKMathQuad.sol";
+import "../Libraries/ABDKMathQuad.sol";
+
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/SignedSafeMath.sol";
 
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IERC20.sol";
