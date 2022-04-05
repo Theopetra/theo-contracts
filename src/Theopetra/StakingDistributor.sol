@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity >=0.7.0 <=0.8.0;
+pragma solidity >=0.7.5 <=0.8.10;
 
 import "../Types/TheopetraAccessControlled.sol";
 
@@ -7,6 +7,7 @@ import "../Libraries/SafeERC20.sol";
 import "../Libraries/SafeMath.sol";
 import "../Libraries/SignedSafeMath.sol";
 import "../Libraries/SafeCast.sol";
+// import "../Libraries/ABDKMathQuad.sol";
 
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IERC20.sol";

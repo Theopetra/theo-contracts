@@ -49,7 +49,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe.only('Distributor', function () {
+describe('Distributor', function () {
   const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
   const epochLength = 60 * 60 * 24 * 365; // seconds (for 365 days)
   const expectedStartRate = 40000; // 4%, rateDenominator for Distributor is 1000000
