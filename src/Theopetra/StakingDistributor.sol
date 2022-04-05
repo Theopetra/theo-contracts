@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity >= 0.7.0 <= 0.8.0;
+pragma solidity >=0.7.0 <=0.8.0;
 
 import "../Types/TheopetraAccessControlled.sol";
 
@@ -24,8 +24,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     ITreasury private immutable treasury;
     address private immutable staking;
 
-    uint256 public immutable epochLength;
-    uint256 public nextEpochBlock;
+    uint48 public immutable epochLength;
 
     mapping(uint256 => Adjust) public adjustments;
     uint256 public override bounty;
@@ -42,7 +41,8 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
                 Info::scys is the Control Treasury for Staking (see nextRewardRate), with 9 decimals
                 Info::drs is the Discount Rate Return Staking. The discount rate applied to the fluctuation of the token price, as a proportion (that is, a percentage in its decimal form), with 9 decimals
                 Info::dys is the discount rate applied to the fluctuation of the treasury yield, as a proportion (that is, a percentage in its decimal form), with 9 decimals
-
+                Info::locked is whether the staking tranche is locked (true) or unlocked (false)
+                Info::nextEpochTime is the timestamp for the next epoch, when wind-down will be applied to the starting reward rate and the maximum reward rate
      */
     struct Info {
         uint256 start;
@@ -52,6 +52,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         int256 dys;
         address recipient;
         bool locked;
+        uint48 nextEpochTime;
     }
     Info[] public info;
 
@@ -66,8 +67,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     constructor(
         address _treasury,
         address _theo,
-        uint256 _epochLength,
-        uint256 _nextEpochBlock,
+        uint48 _epochLength,
         ITheopetraAuthority _authority,
         address _staking
     ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {
@@ -78,7 +78,6 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         require(_staking != address(0), "Zero address: Staking");
         staking = _staking;
         epochLength = _epochLength;
-        nextEpochBlock = _nextEpochBlock;
     }
 
     /* ====== PUBLIC FUNCTIONS ====== */
@@ -88,28 +87,29 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @dev    distribute can only be called by a Staking contract (and the Staking contract will only call if its epoch is over)
                 This method distributes rewards to each recipient (minting and sending from the treasury)
                 It then adjusts SCrs and SCys (see `adjust`), ahead of the next distribution
+                If the current time is greater than `nextEpochTime`, the starting rate is wound-down, and the `nextEpochTime` is updated.
+                Wind-down occurs according to the schedules for unlocked and locked tranches where:
+                Locked tranches wind-down by 1.5% per epoch (that is, per year) to a minimum of 6% (60000 -- see also `rateDenominator`)
+                Unlocked tranches wind-down by 0.5% per epoch (that is, per year) to a minimum of 2% (20000)
      */
     function distribute() external override returns (bool) {
         require(msg.sender == staking, "Only staking");
-        if (nextEpochBlock <= block.number) {
-            nextEpochBlock = nextEpochBlock.add(epochLength);
 
-            // distribute rewards to each recipient
-            for (uint256 i = 0; i < info.length; i++) {
-                uint256 apyVariable = apyVariable(i);
-                if (apyVariable > 0) {
-                    ITreasury(treasury).mint(info[i].recipient, nextRewardAt(apyVariable));
-                    adjust(i); // check for adjustment
-                }
+        // distribute rewards to each recipient
+        for (uint256 i = 0; i < info.length; i++) {
+            uint256 apyVariable = apyVariable(i);
+            if (apyVariable > 0) {
+                ITreasury(treasury).mint(info[i].recipient, nextRewardAt(apyVariable));
+                adjust(i);
             }
-
-            // Check for wind-down in start percentage and max
-            // if timestamp > nextEpochTime and startPercentage >6% then:
-            // reduce start percentage
-            // update nextEpochTime to be nextEpochTime + epochLength
-            return true;
-        } else {
-            return false;
+            if (info[i].nextEpochTime <= block.timestamp) {
+                if (info[i].locked == false && info[i].start > 20000) {
+                    info[i].start = info[i].start.sub(5000);
+                } else if (info[i].locked == true && info[i].start > 60000) {
+                    info[i].start = info[i].start.sub(15000);
+                }
+                info[i].nextEpochTime = uint48(uint256(info[i].nextEpochTime).add(uint256(epochLength)));
+            }
         }
     }
 
@@ -184,20 +184,38 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     /**
         @notice adds recipient for distributions
         @dev    _scrs and _scys are both with 9 decimals. Their calculation includes division by 10**9, as multiplicands also each have 9 decimals.
+                When a recipient is added, the epochLength and current block timestamp is used to calculate when the next epoch should occur
         @param _recipient address
         @param _startRate uint256
         @param _drs       uint256 9 decimal Discount Rate Return Staking. The discount rate applied to the fluctuation of the token price, as a proportion (that is, a percentage in its decimal form), with 9 decimals
         @param _dys       uint256 9 decimial discount rate applied to the fluctuation of the treasury yield, as a proportion (that is, a percentage in its decimal form), with 9 decimals
         @param _locked    bool is the staking tranche locked or unlocked
      */
-    function addRecipient(address _recipient, uint256 _startRate, int256 _drs, int256 _dys, bool _locked) external override onlyGovernor {
+    function addRecipient(
+        address _recipient,
+        uint256 _startRate,
+        int256 _drs,
+        int256 _dys,
+        bool _locked
+    ) external override onlyGovernor {
         require(_recipient != address(0));
         require(_startRate <= rateDenominator, "Rate cannot exceed denominator");
 
         int256 _scrs = (_drs.mul(ITreasury(treasury).deltaTokenPrice())).div(10**9);
         int256 _scys = (_dys.mul(ITreasury(treasury).deltaTreasuryYield())).div(10**9);
 
-        info.push(Info({ recipient: _recipient, start: _startRate, scrs: _scrs, scys: _scys, drs: _drs, dys: _dys, locked: _locked }));
+        info.push(
+            Info({
+                recipient: _recipient,
+                start: _startRate,
+                scrs: _scrs,
+                scys: _scys,
+                drs: _drs,
+                dys: _dys,
+                locked: _locked,
+                nextEpochTime: uint48((block.timestamp).add(uint256(epochLength)))
+            })
+        );
     }
 
     /**

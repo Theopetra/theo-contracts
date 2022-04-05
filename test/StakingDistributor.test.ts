@@ -49,8 +49,13 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe('Distributor', function () {
+describe.only('Distributor', function () {
   const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
+  const epochLength = 60 * 60 * 24 * 365; // seconds (for 365 days)
+  const expectedStartRate = 40000; // 4%, rateDenominator for Distributor is 1000000
+  const expectedDrs = 10_000_000; // 1%
+  const expectedDys = 20_000_000; // 2%
+  const isLocked = false;
 
   describe('Deployment', function () {
     it('can be deployed', async function () {
@@ -60,15 +65,12 @@ describe('Distributor', function () {
     it('will revert if address zero is used as the Treasury address', async function () {
       const [owner] = await ethers.getSigners();
       const { TheopetraERC20Mock, TheopetraAuthority, StakingMock } = await getContracts();
-      const epochLength = 2000;
-      const nextEpochBlock = 10;
 
       await expect(
         new StakingDistributor__factory(owner).deploy(
           addressZero,
           TheopetraERC20Mock.address,
           epochLength,
-          nextEpochBlock,
           TheopetraAuthority.address,
           StakingMock.address
         )
@@ -78,15 +80,12 @@ describe('Distributor', function () {
     it('will revert if address zero is used as the theo token address', async function () {
       const [owner] = await ethers.getSigners();
       const { TreasuryMock, TheopetraAuthority, StakingMock } = await getContracts();
-      const epochLength = 2000;
-      const nextEpochBlock = 10;
 
       await expect(
         new StakingDistributor__factory(owner).deploy(
           TreasuryMock.address,
           addressZero,
           epochLength,
-          nextEpochBlock,
           TheopetraAuthority.address,
           StakingMock.address
         )
@@ -104,7 +103,6 @@ describe('Distributor', function () {
           TreasuryMock.address,
           TheopetraERC20Mock.address,
           epochLength,
-          nextEpochBlock,
           TheopetraAuthority.address,
           addressZero
         )
@@ -112,7 +110,7 @@ describe('Distributor', function () {
     });
   });
 
-  describe.skip('access control', function () {
+  describe('access control', function () {
     it('will revert if distribute is called from an account other than the staking contract', async function () {
       const { Distributor }: any = await setup();
 
@@ -129,7 +127,9 @@ describe('Distributor', function () {
       const { users }: any = await setup();
       const [, alice] = users;
 
-      await expect(alice.Distributor.addRecipient(alice.address, 5000)).to.be.revertedWith('UNAUTHORIZED');
+      await expect(
+        alice.Distributor.addRecipient(alice.address, expectedStartRate, expectedDrs, expectedDys, isLocked)
+      ).to.be.revertedWith('UNAUTHORIZED');
     });
 
     it('will revert if a call to remove recipient for distributions is made from an account other than the governor or guardian', async function () {
@@ -139,7 +139,7 @@ describe('Distributor', function () {
       await expect(alice.Distributor.removeRecipient(0)).to.be.revertedWith('Caller is not governor or guardian');
     });
 
-    it('will revert if a call to set adjustment info is made from an account other than the governor or guardian', async function () {
+    it.skip('will revert if a call to set adjustment info is made from an account other than the governor or guardian', async function () {
       const { users } = await setup();
       const [, alice] = users;
 
@@ -199,23 +199,21 @@ describe('Distributor', function () {
     let deltaTreasuryYield: number;
 
     beforeEach(async function () {
-      const {TreasuryMock} = await getContracts();
+      const { TreasuryMock } = await getContracts();
       deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
-      deltaTreasuryYield= await TreasuryMock.deltaTreasuryYield();
-    })
+      deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
+    });
 
-    it('stores information on start rate, SCrs, SCys, Drs, Dys and whether the staking pool is locked', async function () {
+    it('stores the correct information for the staking pool', async function () {
       const { Distributor, StakingMock }: any = await setup();
 
-      const expectedStartRate = 5000; // rateDenominator for Distributor is 1000000
-      const expectedDrs = 10_000_000 // 1%
-      const expectedDys = 20_000_000 // 2%
-      const isLocked = false;
       await Distributor.addRecipient(StakingMock.address, expectedStartRate, expectedDrs, expectedDys, isLocked);
 
-      const [startStored, scrs, scys, drs, dys, recipient, locked] = await Distributor.info(0);
-      const expectedSCrs = (expectedDrs * deltaTokenPrice) / 10**9;
-      const expectedSCys = (expectedDys * deltaTreasuryYield) / 10**9;
+      const [startStored, scrs, scys, drs, dys, recipient, locked, nextEpochTime] = await Distributor.info(0);
+      const expectedSCrs = (expectedDrs * deltaTokenPrice) / 10 ** 9;
+      const expectedSCys = (expectedDys * deltaTreasuryYield) / 10 ** 9;
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const expectedNextEpochTime = latestBlock.timestamp + epochLength;
 
       expect(startStored).to.equal(expectedStartRate);
       expect(Number(scrs)).to.equal(expectedSCrs);
@@ -224,10 +222,160 @@ describe('Distributor', function () {
       expect(Number(dys)).to.equal(expectedDys);
       expect(recipient).to.equal(StakingMock.address);
       expect(locked).to.equal(isLocked);
+      expect(nextEpochTime).to.equal(expectedNextEpochTime);
+    });
+  });
+
+  describe('distribute', function () {
+    let Distributor: any;
+    let staking: any;
+    let owner: any;
+
+    async function moveToNextEpoch() {
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const newTimestampInSeconds = latestBlock.timestamp + epochLength * 1.001;
+      await ethers.provider.send('evm_mine', [newTimestampInSeconds]); // move past the next epoch time
+    }
+
+    beforeEach(async function () {
+      [owner, staking] = await ethers.getSigners();
+      const { TreasuryMock, TheopetraERC20Mock, TheopetraAuthority } = await getContracts();
+
+      Distributor = await new StakingDistributor__factory(owner).deploy(
+        TreasuryMock.address,
+        TheopetraERC20Mock.address,
+        epochLength,
+        TheopetraAuthority.address,
+        staking.address
+      );
     });
 
+    it('can be called', async function () {
+      await expect(Distributor.connect(staking).distribute()).to.not.be.reverted;
+    });
 
-  })
+    describe('unlocked pool', function () {
+      beforeEach(async function () {
+        // Add recipient: Unlocked pool
+        await Distributor.addRecipient(staking.address, expectedStartRate, expectedDrs, expectedDys, isLocked);
+      });
+      it('will update the next epoch if the current time is beyond the next epoch time', async function () {
+        const [, , , , , , , initialNextEpoch] = await Distributor.info(0);
+        const latestBlock = await ethers.provider.getBlock('latest');
+
+        // provide upper- and lower-bounds, as timestamps are a bit inaccurate with tests
+        const lowerBound = latestBlock.timestamp * 0.999 + epochLength;
+        const upperBound = latestBlock.timestamp * 1.001 + epochLength;
+        expect(Number(initialNextEpoch)).to.be.greaterThan(lowerBound);
+        expect(Number(initialNextEpoch)).to.be.lessThan(upperBound);
+
+        const newTimestampInSeconds = latestBlock.timestamp + epochLength * 2;
+        await ethers.provider.send('evm_mine', [newTimestampInSeconds]); // move past the next epoch time
+
+        await Distributor.connect(staking).distribute();
+
+        const [, , , , , , , newNextEpoch] = await Distributor.info(0);
+
+        const newLowerBound = latestBlock.timestamp * 0.999 + epochLength * 2;
+        const newUpperBound = latestBlock.timestamp * 1.001 + epochLength * 2;
+        expect(Number(newNextEpoch)).to.be.greaterThan(newLowerBound);
+        expect(Number(newNextEpoch)).to.be.lessThan(newUpperBound);
+        expect(Number(newNextEpoch) - Number(initialNextEpoch)).to.equal(epochLength);
+      });
+
+      it('will reduce the starting rate of an unlocked pool by 0.5% if the current time is beyond the next epoch', async function () {
+        const [initialStartRate] = await Distributor.info(0);
+        expect(initialStartRate).to.equal(expectedStartRate);
+
+        await moveToNextEpoch();
+
+        await Distributor.connect(staking).distribute();
+
+        const [newStartRate] = await Distributor.info(0);
+        expect(newStartRate).to.equal(expectedStartRate - 5000); // rate denominator is 1_000_000
+      });
+
+      it('will repeatedly reduce the starting rate of an unlocked pool by 0.5% if the current time is beyond the next epoch', async function () {
+        await moveToNextEpoch();
+        const expectedRateReduction = 5000;
+
+        await Distributor.connect(staking).distribute();
+        const [newStartRate1] = await Distributor.info(0);
+        expect(newStartRate1).to.equal(expectedStartRate - expectedRateReduction);
+
+        await moveToNextEpoch();
+        await Distributor.connect(staking).distribute();
+        const [newStartRate2] = await Distributor.info(0);
+        expect(newStartRate2).to.equal(expectedStartRate - expectedRateReduction * 2);
+
+        await moveToNextEpoch();
+        await Distributor.connect(staking).distribute();
+        const [newStartRate3] = await Distributor.info(0);
+        expect(newStartRate3).to.equal(expectedStartRate - expectedRateReduction * 3);
+        expect(newStartRate3).to.equal(25000); // 2.5%, based on starting at 4% and 0.5% reduction per epoch (per year)
+      });
+
+      it('will not reduce the starting rate of a unlocked pool lower than 2%', async function () {
+        for (let i = 0; i < 6; i++) {
+          await moveToNextEpoch();
+          await Distributor.connect(staking).distribute();
+        }
+        const [newStartRate] = await Distributor.info(0);
+        expect(newStartRate).to.equal(20000);
+      });
+    });
+
+    describe('locked pool', function () {
+      const expectedStartRateLocked = 120000; // 12%, rateDenominator for Distributor is 1000000
+      const expectedRateReduction = 15000;
+      beforeEach(async function () {
+        // Add new recipient: a locked pool
+        await Distributor.addRecipient(staking.address, expectedStartRateLocked, expectedDrs, expectedDys, true);
+      });
+      it('will reduce the starting rate of a locked pool by 1.5% if the current time is beyond the next epoch', async function () {
+
+        const [initialStartRate] = await Distributor.info(0);
+        expect(initialStartRate).to.equal(expectedStartRateLocked);
+
+        await moveToNextEpoch();
+
+        await Distributor.connect(staking).distribute();
+
+        const [newStartRate] = await Distributor.info(0);
+        expect(newStartRate).to.equal(expectedStartRateLocked - expectedRateReduction);
+      });
+
+      it('will repeatedly reduce the starting rate of a locked pool by 1.5% if the current time is beyond the next epoch', async function () {
+        await moveToNextEpoch();
+        const expectedRateReduction = 15000;
+
+        await Distributor.connect(staking).distribute();
+        const [newStartRate1] = await Distributor.info(0);
+        expect(newStartRate1).to.equal(expectedStartRateLocked - expectedRateReduction);
+
+        await moveToNextEpoch();
+        await Distributor.connect(staking).distribute();
+        const [newStartRate2] = await Distributor.info(0);
+        expect(newStartRate2).to.equal(expectedStartRateLocked - expectedRateReduction * 2);
+
+        await moveToNextEpoch();
+        await Distributor.connect(staking).distribute();
+        const [newStartRate3] = await Distributor.info(0);
+        expect(newStartRate3).to.equal(expectedStartRateLocked - expectedRateReduction * 3);
+        expect(newStartRate3).to.equal(75000); // 2.5%, based on starting at 4% and 0.5% reduction per epoch (per year)
+      });
+
+      it('will not reduce the starting rate of a locked pool lower than 6%', async function () {
+        for (let i = 0; i < 6; i++) {
+          await moveToNextEpoch();
+          await Distributor.connect(staking).distribute();
+        }
+        const [newStartRate] = await Distributor.info(0);
+        expect(newStartRate).to.equal(60000);
+      });
+    });
+
+  });
 
   describe.skip('reward schedule', function () {
     it('can add a starting rate when adding a recipient', async function () {
@@ -237,14 +385,13 @@ describe('Distributor', function () {
       await expect(Distributor.addRecipient(StakingMock.address, startingRate)).to.not.be.reverted;
     });
 
-
     it('stores the starting rate', async function () {
       const { Distributor, StakingMock }: any = await setup();
       const startingRate = 2000;
 
       await Distributor.addRecipient(StakingMock.address, startingRate);
-      const [, start,] = await Distributor.info(0);
+      const [, start] = await Distributor.info(0);
       expect(start).to.equal(startingRate);
-    })
-  })
+    });
+  });
 });
