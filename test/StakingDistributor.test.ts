@@ -370,6 +370,16 @@ describe('Distributor', function () {
     })
   });
 
+  describe('deriveRate', function () {
+    it.only('calculates a rate for a specified APY', async function () {
+      const apyVariable =  10_000_000 // 1%
+
+      const expectedZ = Math.floor((Math.log((0.01+1)) / 1095) * 10**18);
+      const derivedZ = await Distributor.deriveRate(apyVariable);
+      expect(Number(derivedZ)).to.equal(expectedZ)
+    })
+  })
+
   describe('removeRecipient', function () {
     beforeEach(async function () {
       await Distributor.addRecipient(StakingMock.address, expectedStartRate, expectedDrs, expectedDys, isLocked);

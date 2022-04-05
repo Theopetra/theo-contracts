@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity >=0.7.5 <=0.8.10;
 
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/SignedSafeMath.sol";
+
 import "../Types/TheopetraAccessControlled.sol";
 
 import "../Libraries/SafeERC20.sol";
 import "../Libraries/ABDKMathQuad.sol";
-
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/utils/math/SignedSafeMath.sol";
 
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IERC20.sol";
@@ -35,8 +35,8 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     uint256 private immutable rateDenominator = 1_000_000;
 
-    // bytes16 private immutable n = ABDKMathQuad.fromUInt(1095);
-    // bytes16 private one = ABDKMathQuad.fromUInt(1);
+    bytes16 private immutable n = ABDKMathQuad.fromUInt(1095);
+    bytes16 private one = ABDKMathQuad.fromUInt(1_000_000_000);
 
     /* ====== STRUCTS ====== */
 
@@ -235,5 +235,34 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     function setDiscountRateYield(uint256 _index, int256 _dys) public override onlyPolicy {
         info[_index].dys = _dys;
+    }
+
+    /**
+     * @dev derives the rate for a given apy for the next Epoch.
+     * @param _apy The apy to calculate the rate for.
+     * @return rate The for the given apy.
+     */
+    function deriveRate(uint256 _apy) public view returns (uint256) {
+        // z = ln(APY+1)/1095
+        // z = ln((APYwith9Decimals)+(10**9)) / 1095 - ((ln(10**9) * 10**9) / 1095)
+        bytes16 z = ABDKMathQuad.sub(
+            ABDKMathQuad.div(
+                ABDKMathQuad.mul(ABDKMathQuad.ln(
+                    ABDKMathQuad.add(ABDKMathQuad.fromUInt(_apy), one)
+                        ), one),
+                        n),
+            ABDKMathQuad.div(ABDKMathQuad.mul(ABDKMathQuad.ln(one), one), n)
+        );
+
+        return ABDKMathQuad.toUInt(ABDKMathQuad.mul(z, one));
+        // e^z or e^(ln(apy+1)/1095)
+        // bytes16 eToTheZ = ABDKMathQuad.exp(z);
+
+        // return ABDKMathQuad.toUInt(
+        //     ABDKMathQuad.mul(
+        //         ABDKMathQuad.sub(ABDKMathQuad.mul(n, eToTheZ), n),  // 1095 * e^(ln(apy+1)/1095) - 1095
+        //         ABDKMathQuad.fromUInt(1_000_000_000) // 6 decimal places -- we can mess with this
+        //     )
+        // );
     }
 }
