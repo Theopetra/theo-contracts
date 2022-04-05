@@ -33,14 +33,15 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     uint256 private immutable rateDenominator = 1_000_000;
 
+    // bytes16 private immutable n = ABDKMathQuad.fromUInt(1095);
+    // bytes16 private one = ABDKMathQuad.fromUInt(1);
+
     /* ====== STRUCTS ====== */
 
     /**
         @notice starting rate and recipient for rewards
         @dev    Info::start is the starting rate for rewards in ten-thousandsths (2000 = 0.2%);
                 Info::recipient is the recipient staking contract for rewards
-                Info::scrs is the Control Return for Staking (see nextRewardRate), with 9 decimals
-                Info::scys is the Control Treasury for Staking (see nextRewardRate), with 9 decimals
                 Info::drs is the Discount Rate Return Staking. The discount rate applied to the fluctuation of the token price, as a proportion (that is, a percentage in its decimal form), with 9 decimals
                 Info::dys is the discount rate applied to the fluctuation of the treasury yield, as a proportion (that is, a percentage in its decimal form), with 9 decimals
                 Info::locked is whether the staking tranche is locked (true) or unlocked (false)
@@ -48,8 +49,6 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
      */
     struct Info {
         uint256 start;
-        int256 scrs;
-        int256 scys;
         int256 drs;
         int256 dys;
         address recipient;
@@ -88,7 +87,6 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @notice send epoch reward to staking contract
         @dev    distribute can only be called by a Staking contract (and the Staking contract will only call if its epoch is over)
                 This method distributes rewards to each recipient (minting and sending from the treasury)
-                It then adjusts SCrs and SCys (see `adjust`), ahead of the next distribution
                 If the current time is greater than `nextEpochTime`, the starting rate is wound-down, and the `nextEpochTime` is updated.
                 Wind-down occurs according to the schedules for unlocked and locked tranches where:
                 Locked tranches wind-down by 1.5% per epoch (that is, per year) to a minimum of 6% (60000 -- see also `rateDenominator`)
@@ -102,7 +100,6 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
             uint256 _rate = nextRewardRate(i);
             if (_rate > 0) {
                 ITreasury(treasury).mint(info[i].recipient, nextRewardAt(_rate));
-                adjust(i);
             }
             if (info[i].nextEpochTime <= block.timestamp) {
                 if (info[i].locked == false && info[i].start > 20000) {
@@ -125,17 +122,6 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         return bounty;
     }
 
-    /* ====== INTERNAL FUNCTIONS ====== */
-
-    /**
-     * @notice adjust Bond Control Return for Staking (SCrs) Bond Control Treasury for Staking (SCys)
-     * @dev
-     */
-    function adjust(uint256 _index) internal {
-        info[_index].scrs = (info[_index].drs.mul(ITreasury(treasury).deltaTokenPrice())).div(10**9);
-        info[_index].scys = (info[_index].dys.mul(ITreasury(treasury).deltaTreasuryYield())).div(10**9);
-    }
-
     /* ====== VIEW FUNCTIONS ====== */
 
     /**
@@ -149,11 +135,6 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     /**
         @notice view function for next reward for specified address
-        @dev    APYvariable, passed into `nextRewardAt` is calculated as:
-                APYfixed + SCrs + SCys
-                Where APYfixed is the fixed starting rate,
-                SCrs is the Control Return for Staking
-                SCys is Control Treasury for Staking
         @param _recipient address
         @return uint256
      */
@@ -169,15 +150,19 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     /**
      * @notice calculate the next reward rate
-       @dev    the minimum APYvariable is zero
+       @dev `apyVariable`, is calculated as: APYfixed + SCrs + SCys
+            Where APYfixed is the fixed starting rate,
+            SCrs is the Control Return for Staking (with 9 decimals): SCrs = Drs * deltaTokenPrice
+            SCys is Control Treasury for Staking (with 9 decimals): SCys = Dys * deltaTreasuryYield
+            The minimum APYvariable is zero
      * @param _index uint256
      */
     function nextRewardRate(uint256 _index) public view override returns (uint256) {
-        int256 apyVariable = (info[_index].start.toInt256()).add((ITreasury(treasury).deltaTokenPrice().mul(info[_index].drs)).div(10**9)).add(
-                (ITreasury(treasury).deltaTreasuryYield().mul(info[_index].dys)).div(10**9)
-            );
+        int256 apyVariable = (info[_index].start.toInt256())
+            .add((ITreasury(treasury).deltaTokenPrice().mul(info[_index].drs)).div(10**9))
+            .add((ITreasury(treasury).deltaTreasuryYield().mul(info[_index].dys)).div(10**9));
 
-        if(apyVariable > 0){
+        if (apyVariable > 0) {
             return uint256(apyVariable);
         } else {
             return 0;
@@ -197,8 +182,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     /**
         @notice adds recipient for distributions
-        @dev    _scrs and _scys are both with 9 decimals. Their calculation includes division by 10**9, as multiplicands also each have 9 decimals.
-                When a recipient is added, the epochLength and current block timestamp is used to calculate when the next epoch should occur
+        @dev    When a recipient is added, the epochLength and current block timestamp is used to calculate when the next epoch should occur
         @param _recipient address
         @param _startRate uint256
         @param _drs       uint256 9 decimal Discount Rate Return Staking. The discount rate applied to the fluctuation of the token price, as a proportion (that is, a percentage in its decimal form), with 9 decimals
@@ -215,15 +199,10 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         require(_recipient != address(0));
         require(_startRate <= rateDenominator, "Rate cannot exceed denominator");
 
-        int256 _scrs = (_drs.mul(ITreasury(treasury).deltaTokenPrice())).div(10**9);
-        int256 _scys = (_dys.mul(ITreasury(treasury).deltaTreasuryYield())).div(10**9);
-
         info.push(
             Info({
                 recipient: _recipient,
                 start: _startRate,
-                scrs: _scrs,
-                scys: _scys,
                 drs: _drs,
                 dys: _dys,
                 locked: _locked,
@@ -244,39 +223,9 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         require(info[_index].recipient != address(0), "Recipient does not exist");
         info[_index].recipient = address(0);
         info[_index].start = 0;
-        info[_index].scrs = 0;
-        info[_index].scys = 0;
+        info[_index].drs = 0;
+        info[_index].dys = 0;
     }
-
-    // /**
-    //     @notice set adjustment info for a collector's reward rate
-    //     @param _index uint
-    //     @param _add bool
-    //     @param _rate uint
-    //     @param _target uint
-    //  */
-    // function setAdjustment(
-    //     uint256 _index,
-    //     bool _add,
-    //     uint256 _rate,
-    //     uint256 _target
-    // ) external override {
-    //     require(
-    //         msg.sender == authority.governor() || msg.sender == authority.guardian(),
-    //         "Caller is not governor or guardian"
-    //     );
-    //     require(info[_index].recipient != address(0), "Recipient does not exist");
-
-    //     if (msg.sender == authority.guardian()) {
-    //         require(_rate <= info[_index].rate.mul(25).div(1000), "Limiter: cannot adjust by >2.5%");
-    //     }
-
-    //     if (!_add) {
-    //         require(_rate <= info[_index].rate, "Cannot decrease rate by more than it already is");
-    //     }
-
-    //     adjustments[_index] = Adjust({ add: _add, rate: _rate, target: _target });
-    // }
 
     function setDiscountRateStaking(uint256 _index, int256 _drs) public override onlyPolicy {
         info[_index].drs = _drs;
