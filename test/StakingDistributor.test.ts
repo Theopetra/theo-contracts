@@ -226,7 +226,7 @@ describe.only('Distributor', function () {
     });
   });
 
-  describe('distribute', function () {
+  describe.only('distribute', function () {
     let Distributor: any;
     let staking: any;
     let owner: any;
@@ -377,21 +377,59 @@ describe.only('Distributor', function () {
 
   });
 
-  describe.skip('reward schedule', function () {
-    it('can add a starting rate when adding a recipient', async function () {
-      const { Distributor, StakingMock }: any = await setup();
-      const startingRate = 2000;
+  describe.only('Discount Rates (Drs, Dys)', function (){
+    let Distributor: any;
+    let StakingMock: any;
+    let users: any;
+    beforeEach(async function () {
+      ({ Distributor, StakingMock, users } = await setup() as any);
+      await Distributor.addRecipient(StakingMock.address, expectedStartRate, expectedDrs, expectedDys, isLocked);
+    })
 
-      await expect(Distributor.addRecipient(StakingMock.address, startingRate)).to.not.be.reverted;
+    it('can update the Discount Rate Return Staking (Drs)', async function(){
+      const [, , , drs, ] = await Distributor.info(0);
+      expect(Number(drs)).to.equal(expectedDrs);
+
+      const newExpectedDrs = 5_000_000; // 0.5%
+      await Distributor.setDiscountRateStaking(0, newExpectedDrs);
+      const [, , , newDrs, ] = await Distributor.info(0);
+      expect(Number(newDrs)).to.equal(newExpectedDrs);
     });
 
-    it('stores the starting rate', async function () {
-      const { Distributor, StakingMock }: any = await setup();
-      const startingRate = 2000;
+    it('will revert if a call is made to update the Discount Rate Return Staking (Drs) from an account that is not the policy holder', async function(){
+      const [,alice] = users;
 
-      await Distributor.addRecipient(StakingMock.address, startingRate);
-      const [, start] = await Distributor.info(0);
-      expect(start).to.equal(startingRate);
+      const [, , , drs, ] = await Distributor.info(0);
+      expect(Number(drs)).to.equal(expectedDrs);
+
+      await expect(alice.Distributor.setDiscountRateStaking(0, 5000000)).to.be.revertedWith('UNAUTHORIZED');
+      const [, , , newDrs, ] = await Distributor.info(0);
+      expect(Number(newDrs)).to.equal(expectedDrs);
     });
+
+    it('can update the Discount Rate Return Yield (Dys)', async function(){
+      const [, , , , dys,] = await Distributor.info(0);
+      expect(Number(dys)).to.equal(expectedDys);
+
+      const newExpectedDys = 40_000_000; // 4%
+      await Distributor.setDiscountRateYield(0, newExpectedDys);
+      const [, , , , newDys,] = await Distributor.info(0);
+      expect(Number(newDys)).to.equal(newExpectedDys);
+    });
+  })
+
+  describe.only('nextRewardRate', function () {
+    let Distributor: any;
+    let StakingMock: any;
+    let users: any;
+    beforeEach(async function () {
+      ({ Distributor, StakingMock, users } = await setup() as any);
+      await Distributor.addRecipient(StakingMock.address, expectedStartRate, expectedDrs, expectedDys, isLocked);
+    })
+    it('calculates an APY, variable', async function (){
+      // Using values to match deltaTokenPrice and deltaTreasuryYield in TreasuryMock
+      const expectedAPY = expectedStartRate + ((expectedDrs * 100_000_000) / 10**9) + ((expectedDys * 200_000_000) / 10**9)
+      expect(await Distributor.nextRewardRate(0)).to.equal(expectedAPY);
+    })
   });
 });

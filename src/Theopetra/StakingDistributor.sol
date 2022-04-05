@@ -6,6 +6,7 @@ import "../Types/TheopetraAccessControlled.sol";
 import "../Libraries/SafeERC20.sol";
 import "../Libraries/SafeMath.sol";
 import "../Libraries/SignedSafeMath.sol";
+import "../Libraries/SafeCast.sol";
 
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IERC20.sol";
@@ -17,6 +18,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
     using SignedSafeMath for int256;
+    using SafeCast for uint256;
 
     /* ====== VARIABLES ====== */
 
@@ -97,9 +99,9 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
         // distribute rewards to each recipient
         for (uint256 i = 0; i < info.length; i++) {
-            uint256 apyVariable = apyVariable(i);
-            if (apyVariable > 0) {
-                ITreasury(treasury).mint(info[i].recipient, nextRewardAt(apyVariable));
+            uint256 _rate = nextRewardRate(i);
+            if (_rate > 0) {
+                ITreasury(treasury).mint(info[i].recipient, nextRewardAt(_rate));
                 adjust(i);
             }
             if (info[i].nextEpochTime <= block.timestamp) {
@@ -159,15 +161,27 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         uint256 reward;
         for (uint256 i = 0; i < info.length; i++) {
             if (info[i].recipient == _recipient) {
-                reward = nextRewardAt(apyVariable(i));
+                reward = nextRewardAt(nextRewardRate(i));
             }
         }
         return reward;
     }
 
-    function nextRewardRate(uint256 _index) internal {
-        int256 deltaTokenPrice = ITreasury(treasury).deltaTokenPrice();
-        int256 deltaTreasuryYield = ITreasury(treasury).deltaTreasuryYield();
+    /**
+     * @notice calculate the next reward rate
+       @dev    the minimum APYvariable is zero
+     * @param _index uint256
+     */
+    function nextRewardRate(uint256 _index) public view override returns (uint256) {
+        int256 apyVariable = (info[_index].start.toInt256()).add((ITreasury(treasury).deltaTokenPrice().mul(info[_index].drs)).div(10**9)).add(
+                (ITreasury(treasury).deltaTreasuryYield().mul(info[_index].dys)).div(10**9)
+            );
+
+        if(apyVariable > 0){
+            return uint256(apyVariable);
+        } else {
+            return 0;
+        }
     }
 
     /* ====== POLICY FUNCTIONS ====== */
@@ -264,8 +278,11 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     //     adjustments[_index] = Adjust({ add: _add, rate: _rate, target: _target });
     // }
 
-    function apyVariable(uint256 i) internal view returns (uint256) {
-        int256 apyVariable = int256(info[i].start).add(info[i].scrs).add(info[i].scys);
-        return apyVariable > 0 ? uint256(apyVariable) : 0;
+    function setDiscountRateStaking(uint256 _index, int256 _drs) public override onlyPolicy {
+        info[_index].drs = _drs;
+    }
+
+    function setDiscountRateYield(uint256 _index, int256 _dys) public override onlyPolicy {
+        info[_index].dys = _dys;
     }
 }
