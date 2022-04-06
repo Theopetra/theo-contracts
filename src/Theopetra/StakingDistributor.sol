@@ -153,19 +153,24 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     /**
      * @notice calculate the next reward rate
        @dev `apyVariable`, is calculated as: APYfixed + SCrs + SCys
-            Where APYfixed is the fixed starting rate,
+            Where APYfixed is the fixed starting rate, with 9 decimals (hence the multiplicand of 1000, as the rate denominator is 1000000)
             SCrs is the Control Return for Staking (with 9 decimals): SCrs = Drs * deltaTokenPrice
             SCys is Control Treasury for Staking (with 9 decimals): SCys = Dys * deltaTreasuryYield
             The minimum APYvariable is zero
+            The returned rate is limited to a maximum of 1.5 times the fixed starting rate (in locked and unlocked tranches).
+            A multiplicand of 1000 is needed in calculating `maxRate` because the fixed starting rate is with 6 decimals, but reward rate returned is with 9 decimals
      * @param _index uint256
+     * @return uint256 The reward rate. 9 decimals
      */
     function nextRewardRate(uint256 _index) public view override returns (uint256) {
-        int256 apyVariable = (info[_index].start.toInt256())
+        int256 apyVariable = (info[_index].start.toInt256() * 1000)
             .add((ITreasury(treasury).deltaTokenPrice().mul(info[_index].drs)).div(10**9))
             .add((ITreasury(treasury).deltaTreasuryYield().mul(info[_index].dys)).div(10**9));
 
         if (apyVariable > 0) {
-            return uint256(apyVariable);
+            uint256 _rate = deriveRate(uint256(apyVariable));
+            uint256 maxRate = (info[_index].start * 15 / 10) * 1000;
+                return _rate < maxRate ? _rate : maxRate;
         } else {
             return 0;
         }
@@ -245,7 +250,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
      *         1095 is: 365(days) * 24(hours) / 8(hours per performance update)
      *         apyProportion is a proportion (that is, a percentage in its decimal form), calculated using the param _apy
      * @param _apy The APY to calculate the rate for. 9 decimals
-     * @return rate The rate for the given APY. 9 decimals
+     * @return rate uint256 The rate for the given APY. 9 decimals
      */
     function deriveRate(uint256 _apy) public view returns (uint256) {
         bytes16 apyProportion = ABDKMathQuad.div(ABDKMathQuad.fromUInt(_apy), ABDKMathQuad.fromUInt(1_000_000_000));

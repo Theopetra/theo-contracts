@@ -61,9 +61,9 @@ describe.only('Distributor', function () {
   let StakingMock: any;
   let users: any;
   beforeEach(async function () {
-    ({ Distributor, StakingMock, users } = await setup() as any);
+    ({ Distributor, StakingMock, users } = (await setup()) as any);
     await Distributor.addRecipient(StakingMock.address, expectedStartRate, expectedDrs, expectedDys, isLocked);
-  })
+  });
 
   describe('Deployment', function () {
     it('can be deployed', async function () {
@@ -167,9 +167,9 @@ describe.only('Distributor', function () {
 
     it('limits the reward rate for a new recipient to be less than or equal to 100%', async function () {
       // rateDenominator for Distributor is 1000000
-      await expect(Distributor.addRecipient(StakingMock.address, 1000001, expectedDrs, expectedDys, isLocked, )).to.be.revertedWith(
-        'Rate cannot exceed denominator'
-      );
+      await expect(
+        Distributor.addRecipient(StakingMock.address, 1000001, expectedDrs, expectedDys, isLocked)
+      ).to.be.revertedWith('Rate cannot exceed denominator');
     });
   });
 
@@ -282,7 +282,6 @@ describe.only('Distributor', function () {
         await DistributorNew.addRecipient(staking.address, expectedStartRateLocked, expectedDrs, expectedDys, true);
       });
       it('will reduce the starting rate of a locked pool by 1.5% if the current time is beyond the next epoch', async function () {
-
         const [initialStartRate] = await DistributorNew.info(0);
         expect(initialStartRate).to.equal(expectedStartRateLocked);
 
@@ -323,62 +322,183 @@ describe.only('Distributor', function () {
         expect(newStartRate).to.equal(60000);
       });
     });
-
   });
 
-  describe('Discount Rates (Drs, Dys)', function (){
-    it('can update the Discount Rate Return Staking (Drs)', async function(){
-      const [, drs,] = await Distributor.info(0);
+  describe('Discount Rates (Drs, Dys)', function () {
+    it('can update the Discount Rate Return Staking (Drs)', async function () {
+      const [, drs] = await Distributor.info(0);
       expect(Number(drs)).to.equal(expectedDrs);
 
       const newExpectedDrs = 5_000_000; // 0.5%
       await Distributor.setDiscountRateStaking(0, newExpectedDrs);
-      const [, newDrs, ] = await Distributor.info(0);
+      const [, newDrs] = await Distributor.info(0);
       expect(Number(newDrs)).to.equal(newExpectedDrs);
     });
 
-    it('will revert if a call is made to update the Discount Rate Return Staking (Drs) from an account that is not the policy holder', async function(){
-      const [,alice] = users;
+    it('will revert if a call is made to update the Discount Rate Return Staking (Drs) from an account that is not the policy holder', async function () {
+      const [, alice] = users;
 
-      const [, drs,] = await Distributor.info(0);
+      const [, drs] = await Distributor.info(0);
       expect(Number(drs)).to.equal(expectedDrs);
 
       await expect(alice.Distributor.setDiscountRateStaking(0, 5000000)).to.be.revertedWith('UNAUTHORIZED');
-      const [, newDrs, ] = await Distributor.info(0);
+      const [, newDrs] = await Distributor.info(0);
       expect(Number(newDrs)).to.equal(expectedDrs);
     });
 
-    it('can update the Discount Rate Return Yield (Dys)', async function(){
-      const [, , dys,] = await Distributor.info(0);
+    it('can update the Discount Rate Return Yield (Dys)', async function () {
+      const [, , dys] = await Distributor.info(0);
       expect(Number(dys)).to.equal(expectedDys);
 
       const newExpectedDys = 40_000_000; // 4%
       await Distributor.setDiscountRateYield(0, newExpectedDys);
-      const [, , newDys,] = await Distributor.info(0);
+      const [, , newDys] = await Distributor.info(0);
       expect(Number(newDys)).to.equal(newExpectedDys);
     });
-  })
+  });
 
   describe('nextRewardRate', function () {
+    function expectedRate(expectedStartRate: number, expectedDrs: number, expectedDys: number): number {
+      // Using values to match deltaTokenPrice and deltaTreasuryYield in TreasuryMock
+      const expectedAPY =
+        (expectedStartRate * 1000) + (expectedDrs * 100_000_000) / 10 ** 9 + (expectedDys * 200_000_000) / 10 ** 9;
+
+      return Math.floor((1095 * Math.exp(Math.log(expectedAPY / 10 ** 9 + 1) / 1095) - 1095) * 10 ** 9);
+    }
+
     beforeEach(async function () {
       await Distributor.addRecipient(StakingMock.address, expectedStartRate, expectedDrs, expectedDys, isLocked);
-    })
-    it('calculates an APY, variable', async function (){
-      // Using values to match deltaTokenPrice and deltaTreasuryYield in TreasuryMock
-      const expectedAPY = expectedStartRate + ((expectedDrs * 100_000_000) / 10**9) + ((expectedDys * 200_000_000) / 10**9)
-      expect(await Distributor.nextRewardRate(0)).to.equal(expectedAPY);
-    })
+    });
+
+    describe.only('unlocked pool', function () {
+      it('returns the correct reward rate for an unlocked pool', async function () {
+        const actualRate = await Distributor.nextRewardRate(0);
+
+        expect(actualRate).to.equal(expectedRate(expectedStartRate, expectedDrs, expectedDys));
+      });
+
+      it('returns the correct reward rate for a another unlocked pool', async function () {
+        const secondPoolExpectedStart = 40000; // 4%, rateDenominator for Distributor is 1000000
+        const secondPoolExpectedDrs = 150_000_000; // 15%
+        const secondPoolExpectedDys = 30_000_000; // 3%
+
+        await Distributor.addRecipient(
+          StakingMock.address,
+          secondPoolExpectedStart,
+          secondPoolExpectedDrs,
+          secondPoolExpectedDys,
+          isLocked
+        );
+        const [, drs, dys] = await Distributor.info(2);
+        expect(drs).to.equal(secondPoolExpectedDrs);
+        expect(dys).to.equal(secondPoolExpectedDys);
+
+        const actualRate = await Distributor.nextRewardRate(2);
+
+        expect(actualRate).to.equal(
+          expectedRate(secondPoolExpectedStart, secondPoolExpectedDrs, secondPoolExpectedDys)
+        );
+      });
+
+      it('returns the maximum rate if the reward rate exceeds the maximum rate', async function () {
+        const secondPoolExpectedStart = 40000; // 4%, rateDenominator for Distributor is 1000000
+        const secondPoolExpectedDrs = 1_000_000_000; // 100% set high to attempt to breach max rate
+        const secondPoolExpectedDys = 1_00_000_000; // 100% set high to attempt to breach max rate
+
+        await Distributor.addRecipient(
+          StakingMock.address,
+          secondPoolExpectedStart,
+          secondPoolExpectedDrs,
+          secondPoolExpectedDys,
+          isLocked
+        );
+        const [, drs, dys] = await Distributor.info(2);
+        expect(drs).to.equal(secondPoolExpectedDrs);
+        expect(dys).to.equal(secondPoolExpectedDys);
+
+        const actualRate = await Distributor.nextRewardRate(2);
+
+        // expectedRate function does not account for maximum rate limits.
+        // So, use expectedRate as a check that, without limits, the rate would exceed the maximum
+        const expectedWithoutLimit = expectedRate(
+          secondPoolExpectedStart,
+          secondPoolExpectedDrs,
+          secondPoolExpectedDys
+        );
+        const expectedMaxRate = 60_000_000; // 6%
+        expect(expectedWithoutLimit).to.be.greaterThan(expectedMaxRate);
+
+        expect(actualRate).to.equal(expectedMaxRate);
+      });
+    });
+
+    describe.only('locked pool', function () {
+      it('returns the correct reward rate for locked pool', async function () {
+        const secondPoolExpectedStart = 120000; // 12%, rateDenominator for Distributor is 1000000
+        const secondPoolExpectedDrs = 55_000_000; // 5.5%
+        const secondPoolExpectedDys = 33_000_000; // 3.3%
+
+        await Distributor.addRecipient(
+          StakingMock.address,
+          secondPoolExpectedStart,
+          secondPoolExpectedDrs,
+          secondPoolExpectedDys,
+          true
+        );
+        const [, drs, dys] = await Distributor.info(2);
+        expect(drs).to.equal(secondPoolExpectedDrs);
+        expect(dys).to.equal(secondPoolExpectedDys);
+
+        const actualRate = await Distributor.nextRewardRate(2);
+
+        expect(actualRate).to.equal(
+          expectedRate(secondPoolExpectedStart, secondPoolExpectedDrs, secondPoolExpectedDys)
+        );
+      });
+
+      it('returns the maximum rate if the reward rate exceeds the maximum rate', async function () {
+        const secondPoolExpectedStart = 120000; // 12%, rateDenominator for Distributor is 1000000
+        const secondPoolExpectedDrs = 1_000_000_000; // 100% set high to attempt to breach max rate
+        const secondPoolExpectedDys = 1_00_000_000; // 100% set high to attempt to breach max rate
+
+        await Distributor.addRecipient(
+          StakingMock.address,
+          secondPoolExpectedStart,
+          secondPoolExpectedDrs,
+          secondPoolExpectedDys,
+          true
+        );
+        const [, drs, dys] = await Distributor.info(2);
+        expect(drs).to.equal(secondPoolExpectedDrs);
+        expect(dys).to.equal(secondPoolExpectedDys);
+
+        const actualRate = await Distributor.nextRewardRate(2);
+
+        // expectedRate function does not account for maximum rate limits.
+        // So, use expectedRate as a check that, without limits, the rate would exceed the maximum
+        const expectedWithoutLimit = expectedRate(
+          secondPoolExpectedStart,
+          secondPoolExpectedDrs,
+          secondPoolExpectedDys
+        );
+
+        const expectedMaxRate = 180_000_000; // 18%
+        expect(expectedWithoutLimit).to.be.greaterThan(expectedMaxRate);
+
+        expect(actualRate).to.equal(expectedMaxRate);
+      });
+    });
   });
 
   describe('deriveRate', function () {
     it('calculates a rate for a specified APY', async function () {
-      const apyVariable =  10_000_000 // 1%
+      const apyVariable = 10_000_000; // 1%
 
-      const expectedRate = Math.floor((1095 * Math.exp(Math.log((0.01+1)) / 1095)-1095) * 10**9);
+      const expectedRate = Math.floor((1095 * Math.exp(Math.log(0.01 + 1) / 1095) - 1095) * 10 ** 9);
       const actualRate = await Distributor.deriveRate(apyVariable);
       expect(Number(actualRate)).to.equal(expectedRate);
-    })
-  })
+    });
+  });
 
   describe('removeRecipient', function () {
     beforeEach(async function () {
@@ -388,7 +508,7 @@ describe.only('Distributor', function () {
     it('will set the recipient, start rate, Drs and Dys to zero', async function () {
       await Distributor.removeRecipient(0);
 
-      const [startStored, drs, dys, recipient, ] = await Distributor.info(0);
+      const [startStored, drs, dys, recipient] = await Distributor.info(0);
 
       expect(startStored).to.equal(0);
       expect(Number(drs)).to.equal(0);
@@ -400,6 +520,6 @@ describe.only('Distributor', function () {
       const [, alice] = users;
 
       await expect(alice.Distributor.removeRecipient(0)).to.be.revertedWith('Caller is not governor or guardian');
-    })
-  })
+    });
+  });
 });
