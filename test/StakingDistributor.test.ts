@@ -4,10 +4,10 @@ import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardh
 import {
   StakingDistributor__factory,
   StakingDistributor,
-  STheoMock,
   TheopetraAuthority,
   TreasuryMock,
   TheopetraERC20Mock,
+  StakingMock
 } from '../typechain-types';
 
 import { setupUsers } from './utils';
@@ -28,7 +28,7 @@ const getContracts = async (): Promise<TheoContracts> => {
 
   return {
     Distributor: <StakingDistributor>await ethers.getContract(CONTRACTS.distributor),
-    StakingMock: <STheoMock>await ethers.getContract(MOCKSWITHARGS.stakingMock),
+    StakingMock: <StakingMock>await ethers.getContract(MOCKSWITHARGS.stakingMock),
     TheopetraAuthority: <TheopetraAuthority>await ethers.getContract(CONTRACTS.authority),
     TreasuryMock: <TreasuryMock>await ethers.getContract(MOCKSWITHARGS.treasuryMock),
     TheopetraERC20Mock: <TheopetraERC20Mock>await ethers.getContract(MOCKS.theoTokenMock),
@@ -58,9 +58,9 @@ describe('Distributor', function () {
   const expectedDys = 20_000_000; // 2%
   const isLocked = false;
 
-  let Distributor: any;
-  let StakingMock: any;
-  let TheopetraERC20Mock: any;
+  let Distributor: StakingDistributor;
+  let StakingMock: StakingMock;
+  let TheopetraERC20Mock: TheopetraERC20Mock;
   let users: any;
 
   function expectedRate(expectedStartRate: number, expectedDrs: number, expectedDys: number): number {
@@ -114,8 +114,6 @@ describe('Distributor', function () {
     it('will revert if address zero is used as the Staking address', async function () {
       const [owner] = await ethers.getSigners();
       const { TreasuryMock, TheopetraERC20Mock, TheopetraAuthority } = await getContracts();
-      const epochLength = 2000;
-      const nextEpochBlock = 10;
 
       await expect(
         new StakingDistributor__factory(owner).deploy(
@@ -183,7 +181,6 @@ describe('Distributor', function () {
     });
 
     it('limits the reward rate for a new recipient to be less than or equal to 100%', async function () {
-      // rateDenominator for Distributor is 1000000
       await expect(
         Distributor.addRecipient(StakingMock.address, 1_000_000_001, expectedDrs, expectedDys, isLocked)
       ).to.be.revertedWith('Rate cannot exceed denominator');
@@ -205,7 +202,7 @@ describe('Distributor', function () {
       [owner, staking] = await ethers.getSigners();
       const { TreasuryMock, TheopetraERC20Mock, TheopetraAuthority } = await getContracts();
 
-      // Deploy a new Distributor using a staking address can call distribute
+      // Deploy a new Distributor using a staking address that can call the distribute method
       DistributorNew = await new StakingDistributor__factory(owner).deploy(
         TreasuryMock.address,
         TheopetraERC20Mock.address,
@@ -450,7 +447,7 @@ describe('Distributor', function () {
 
       it('returns the maximum rate if the reward rate exceeds the maximum rate', async function () {
         const secondPoolExpectedDrs = 1_000_000_000; // 100% set high to attempt to breach max rate
-        const secondPoolExpectedDys = 1_00_000_000; // 100% set high to attempt to breach max rate
+        const secondPoolExpectedDys = 1_000_000_000; // 100% set high to attempt to breach max rate
 
         await Distributor.addRecipient(
           StakingMock.address,

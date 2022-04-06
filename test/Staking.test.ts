@@ -52,7 +52,7 @@ describe('Staking', function () {
   });
 
   describe('Deployment', async function () {
-    const epochLength = 2000; // Same value as used in deployment script for Hardhat network deployment
+    const epochLength = 8 * 60 * 60; // Same value as used in deployment script for Hardhat network deployment
     const firstEpochNumber = 1; // Same value as used in deployment script for Hardhat network deployment
 
     it('can be deployed', async function () {

@@ -47,13 +47,13 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     /* ====== STRUCTS ====== */
 
     /**
-        @notice starting rate and recipient for rewards
+        @notice information for rewards to recipients
         @dev    Info::start is the starting rate for rewards in ten-thousandsths (2000 = 0.2%);
-                Info::recipient is the recipient staking contract for rewards
                 Info::drs is the Discount Rate Return Staking. The discount rate applied to the fluctuation of the token price, as a proportion (that is, a percentage in its decimal form), with 9 decimals
                 Info::dys is the discount rate applied to the fluctuation of the treasury yield, as a proportion (that is, a percentage in its decimal form), with 9 decimals
+                Info::recipient is the recipient staking contract for rewards
                 Info::locked is whether the staking tranche is locked (true) or unlocked (false)
-                Info::nextEpochTime is the timestamp for the next epoch, when wind-down will be applied to the starting reward rate and the maximum reward rate
+                Info::nextEpochTime is the timestamp for the next epoch, when wind-down will next be applied to the starting reward rate and the maximum reward rate
      */
     struct Info {
         uint256 start;
@@ -103,7 +103,6 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     function distribute() external override returns (bool) {
         require(msg.sender == staking, "Only staking");
 
-        // distribute rewards to each recipient
         for (uint256 i = 0; i < info.length; i++) {
             uint256 _rate = nextRewardRate(i);
             if (_rate > 0) {
@@ -164,8 +163,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
             Where APYfixed is the fixed starting rate, with 9 decimals
             SCrs is the Control Return for Staking (with 9 decimals): SCrs = Drs * deltaTokenPrice
             SCys is Control Treasury for Staking (with 9 decimals): SCys = Dys * deltaTreasuryYield
-            The minimum APYvariable is zero
-            The returned rate is limited to a maximum of 1.5 times the fixed starting rate (in locked and unlocked tranches).
+            The returned rate is limited to a minimum of zero and a maximum of 1.5 times the fixed starting rate (in locked and unlocked tranches).
      * @param _index uint256
      * @return uint256 The reward rate. 9 decimals
      */
@@ -258,7 +256,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
      *         apyProportion is a proportion (that is, a percentage in its decimal form), calculated using the param _apy
      *         0x401cdcd6500000000000000000000000 is the byte representation of 10**9
      * @param _apy The APY to calculate the rate for. 9 decimals
-     * @return rate uint256 The rate for the given APY. 9 decimals
+     * @return uint256 The rate for the given APY. 9 decimals
      */
     function deriveRate(uint256 _apy) public view returns (uint256) {
         bytes16 apyProportion = ABDKMathQuad.div(ABDKMathQuad.fromUInt(_apy), 0x401cdcd6500000000000000000000000);

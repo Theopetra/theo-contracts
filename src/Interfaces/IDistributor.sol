@@ -23,11 +23,4 @@ interface IDistributor {
     function setDiscountRateStaking(uint256 _index, int256 _drs) external;
 
     function setDiscountRateYield(uint256 _index, int256 _dys) external;
-
-    // function setAdjustment(
-    //     uint256 _index,
-    //     bool _add,
-    //     uint256 _rate,
-    //     uint256 _target
-    // ) external;
 }

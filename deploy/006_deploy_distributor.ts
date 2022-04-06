@@ -13,18 +13,18 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
     const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
 
-    let epochLengthInBlocks;
+    let epochLength;
     let args: any = [];
 
     // If on Hardhat network, use the following values for testing
     if (chainId === '1337') {
-      epochLengthInBlocks = 60 * 60 * 24 * 365;
+      epochLength = 60 * 60 * 24 * 365;
 
       const { TheopetraERC20Mock, TreasuryMock, StakingMock } = await getNamedMockAddresses(hre);
       args = [
         TreasuryMock,
         TheopetraERC20Mock,
-        epochLengthInBlocks,
+        epochLength,
         TheopetraAuthority.address,
         StakingMock,
       ];

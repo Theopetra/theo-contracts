@@ -20,7 +20,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
     // If on Hardhat network, use the following values for testing
     if (chainId === '1337') {
-      epochLength = '2000';
+      epochLength = 8 * 60 * 60;
       firstEpochNumber = '1';
 
       const currentBlock = await ethers.provider.send("eth_blockNumber", []);
