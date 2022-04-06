@@ -33,7 +33,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     mapping(uint256 => Adjust) public adjustments;
     uint256 public override bounty;
 
-    uint256 private immutable rateDenominator = 1_000_000;
+    uint256 private immutable rateDenominator = 1_000_000_000;
 
     bytes16 private immutable n = ABDKMathQuad.fromUInt(1095);
     bytes16 private one = ABDKMathQuad.fromUInt(1);
@@ -91,8 +91,8 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
                 This method distributes rewards to each recipient (minting and sending from the treasury)
                 If the current time is greater than `nextEpochTime`, the starting rate is wound-down, and the `nextEpochTime` is updated.
                 Wind-down occurs according to the schedules for unlocked and locked tranches where:
-                Locked tranches wind-down by 1.5% per epoch (that is, per year) to a minimum of 6% (60000 -- see also `rateDenominator`)
-                Unlocked tranches wind-down by 0.5% per epoch (that is, per year) to a minimum of 2% (20000)
+                Locked tranches wind-down by 1.5% per epoch (that is, per year) to a minimum of 6% (60_000_000 -- see also `rateDenominator`)
+                Unlocked tranches wind-down by 0.5% per epoch (that is, per year) to a minimum of 2% (20_000_000)
      */
     function distribute() external override returns (bool) {
         require(msg.sender == staking, "Only staking");
@@ -104,19 +104,21 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
                 ITreasury(treasury).mint(info[i].recipient, nextRewardAt(_rate));
             }
             if (info[i].nextEpochTime <= block.timestamp) {
-                if (info[i].locked == false && info[i].start > 20000) {
-                    info[i].start = info[i].start.sub(5000);
-                } else if (info[i].locked == true && info[i].start > 60000) {
-                    info[i].start = info[i].start.sub(15000);
+                if (info[i].locked == false && info[i].start > 20_000_000) {
+                    info[i].start = info[i].start.sub(5_000_000);
+                } else if (info[i].locked == true && info[i].start > 60_000_000) {
+                    info[i].start = info[i].start.sub(15_000_000);
                 }
                 info[i].nextEpochTime = uint48(uint256(info[i].nextEpochTime).add(uint256(epochLength)));
             }
         }
     }
 
+    /**
+        @dev If the distributor bounty is > 0, mint it for the staking contract.
+     */
     function retrieveBounty() external override returns (uint256) {
         require(msg.sender == staking, "Only staking");
-        // If the distributor bounty is > 0, mint it for the staking contract.
         if (bounty > 0) {
             treasury.mint(address(staking), bounty);
         }
@@ -132,7 +134,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @return uint
      */
     function nextRewardAt(uint256 _rate) public view override returns (uint256) {
-        return IERC20(THEO).totalSupply().mul(_rate).div(10**9);
+        return IERC20(THEO).totalSupply().mul(_rate).div(rateDenominator);
     }
 
     /**
@@ -153,23 +155,22 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     /**
      * @notice calculate the next reward rate
        @dev `apyVariable`, is calculated as: APYfixed + SCrs + SCys
-            Where APYfixed is the fixed starting rate, with 9 decimals (hence the multiplicand of 1000, as the rate denominator is 1000000)
+            Where APYfixed is the fixed starting rate, with 9 decimals
             SCrs is the Control Return for Staking (with 9 decimals): SCrs = Drs * deltaTokenPrice
             SCys is Control Treasury for Staking (with 9 decimals): SCys = Dys * deltaTreasuryYield
             The minimum APYvariable is zero
             The returned rate is limited to a maximum of 1.5 times the fixed starting rate (in locked and unlocked tranches).
-            A multiplicand of 1000 is needed in calculating `maxRate` because the fixed starting rate is with 6 decimals, but reward rate returned is with 9 decimals
      * @param _index uint256
      * @return uint256 The reward rate. 9 decimals
      */
     function nextRewardRate(uint256 _index) public view override returns (uint256) {
-        int256 apyVariable = (info[_index].start.toInt256() * 1000)
+        int256 apyVariable = (info[_index].start.toInt256())
             .add((ITreasury(treasury).deltaTokenPrice().mul(info[_index].drs)).div(10**9))
             .add((ITreasury(treasury).deltaTreasuryYield().mul(info[_index].dys)).div(10**9));
 
         if (apyVariable > 0) {
             uint256 _rate = deriveRate(uint256(apyVariable));
-            uint256 maxRate = ((info[_index].start * 15) / 10) * 1000;
+            uint256 maxRate = (info[_index].start * 15) / 10;
             return _rate < maxRate ? _rate : maxRate;
         } else {
             return 0;
@@ -191,7 +192,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @notice adds recipient for distributions
         @dev    When a recipient is added, the epochLength and current block timestamp is used to calculate when the next epoch should occur
         @param _recipient address
-        @param _startRate uint256
+        @param _startRate uint256 9 decimal starting rate
         @param _drs       uint256 9 decimal Discount Rate Return Staking. The discount rate applied to the fluctuation of the token price, as a proportion (that is, a percentage in its decimal form), with 9 decimals
         @param _dys       uint256 9 decimial discount rate applied to the fluctuation of the treasury yield, as a proportion (that is, a percentage in its decimal form), with 9 decimals
         @param _locked    bool is the staking tranche locked or unlocked
