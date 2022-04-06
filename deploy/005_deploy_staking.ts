@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { ethers } from "hardhat";
+import { ethers } from 'hardhat';
 
 import { CONTRACTS, MOCKS } from '../utils/constants';
 
@@ -23,7 +23,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       epochLength = 8 * 60 * 60;
       firstEpochNumber = '1';
 
-      const currentBlock = await ethers.provider.send("eth_blockNumber", []);
+      const currentBlock = await ethers.provider.send('eth_blockNumber', []);
       const blockTimestamp = (await ethers.provider.getBlock(currentBlock)).timestamp;
       firstEpochTime = blockTimestamp + 10000; // set the rebase far enough in the future to not hit it in tests
 
@@ -37,14 +37,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         }
       }
       const { TheopetraERC20Mock, sTheoMock } = namedMockAddresses;
-      args = [
-        TheopetraERC20Mock,
-        sTheoMock,
-        epochLength,
-        firstEpochNumber,
-        firstEpochTime,
-        TheopetraAuthority.address,
-      ];
+      args = [TheopetraERC20Mock, sTheoMock, epochLength, firstEpochNumber, firstEpochTime, TheopetraAuthority.address];
     }
 
     await deploy(CONTRACTS.staking, {

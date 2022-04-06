@@ -7,7 +7,7 @@ import {
   TheopetraAuthority,
   TreasuryMock,
   TheopetraERC20Mock,
-  StakingMock
+  StakingMock,
 } from '../typechain-types';
 
 import { setupUsers } from './utils';
@@ -303,7 +303,7 @@ describe('Distributor', function () {
 
         await DistributorNew.connect(staking).distribute();
         const calculatedExpectedRate = expectedRate(expectedStartRateUnlocked, expectedDrs, expectedDys);
-        const expectedTheoToMint = Math.floor((Number(initialTheoToMint)*calculatedExpectedRate) / 10**9) // rateDenominator is 1_000_000_000
+        const expectedTheoToMint = Math.floor((Number(initialTheoToMint) * calculatedExpectedRate) / 10 ** 9); // rateDenominator is 1_000_000_000
         expect(Number(await TheopetraERC20Mock.totalSupply())).to.equal(Number(initialTheoToMint) + expectedTheoToMint);
         expect(Number(await TheopetraERC20Mock.balanceOf(staking.address))).to.equal(Number(expectedTheoToMint));
       });
@@ -403,7 +403,7 @@ describe('Distributor', function () {
         const newExpectedDys = 17_500_000; // 1.75%
         await Distributor.setDiscountRateStaking(0, newExpectedDrs);
         await Distributor.setDiscountRateYield(0, newExpectedDys);
-        const [,newDrs, newDys] = await Distributor.info(0);
+        const [, newDrs, newDys] = await Distributor.info(0);
         expect(newDrs).to.equal(newExpectedDrs);
         expect(newDys).to.equal(newExpectedDys);
 

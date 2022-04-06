@@ -4,15 +4,13 @@ import { setupUsers, waitFor } from './utils';
 import { CONTRACTS } from '../utils/constants';
 
 const setup = deployments.createFixture(async function () {
-  await deployments.fixture([
-    CONTRACTS.yieldReporter,
-  ]);
+  await deployments.fixture([CONTRACTS.yieldReporter]);
 
   const { deployer: owner } = await getNamedAccounts();
 
   const contracts = {
     TheopetraYieldReporter: await ethers.getContract(CONTRACTS.yieldReporter),
-  }
+  };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
@@ -29,10 +27,7 @@ describe('Theopetra Yield Reporter', function () {
   let owner: any;
 
   beforeEach(async function () {
-    ({
-      TheopetraYieldReporter,
-      owner,
-    } = await setup());
+    ({ TheopetraYieldReporter, owner } = await setup());
   });
 
   describe('Deployment', function () {
@@ -90,8 +85,7 @@ describe('Theopetra Yield Reporter', function () {
   describe('getYieldById', function () {
     it('should revert when requested ID greater than current ID', async function () {
       await waitFor(TheopetraYieldReporter.reportYield(50_000_000_000));
-      await expect(TheopetraYieldReporter.getYieldById(2))
-        .to.be.revertedWith('OUT_OF_BOUNDS');
+      await expect(TheopetraYieldReporter.getYieldById(2)).to.be.revertedWith('OUT_OF_BOUNDS');
     });
 
     it('should return 0 for ID 0', async function () {
@@ -100,12 +94,7 @@ describe('Theopetra Yield Reporter', function () {
     });
 
     it('returns the yield value of the requested ID', async function () {
-      const amounts = [
-        0,
-        50_000_000_000,
-        100_000_000_000,
-        150_000_000_000,
-      ];
+      const amounts = [0, 50_000_000_000, 100_000_000_000, 150_000_000_000];
 
       await waitFor(TheopetraYieldReporter.reportYield(amounts[1]));
       await waitFor(TheopetraYieldReporter.reportYield(amounts[2]));
@@ -135,7 +124,7 @@ describe('Theopetra Yield Reporter', function () {
     it('should return the currentIndex', async function () {
       const currentIndex = await TheopetraYieldReporter.callStatic.reportYield(50_000_000_000);
 
-      expect(Number( currentIndex)).to.equal(1);
+      expect(Number(currentIndex)).to.equal(1);
     });
 
     it('should emit a ReportYield event with the new ID and amount', async function () {
@@ -152,11 +141,7 @@ describe('Theopetra Yield Reporter', function () {
       const { users } = await setup();
       const [, alice] = users;
 
-      await expect(
-        alice.TheopetraYieldReporter.reportYield(
-          1,
-        )
-      ).to.be.revertedWith('UNAUTHORIZED');
-    })
+      await expect(alice.TheopetraYieldReporter.reportYield(1)).to.be.revertedWith('UNAUTHORIZED');
+    });
   });
 });

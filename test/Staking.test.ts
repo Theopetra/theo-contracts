@@ -83,14 +83,7 @@ describe('Staking', function () {
       await expect(
         deployments.deploy(CONTRACTS.staking, {
           from: owner,
-          args: [
-            addressZero,
-            owner,
-            epochLength,
-            firstEpochNumber,
-            firstEpochTime,
-            TheopetraAuthority.address,
-          ],
+          args: [addressZero, owner, epochLength, firstEpochNumber, firstEpochTime, TheopetraAuthority.address],
         })
       ).to.be.revertedWith('Invalid address');
     });
@@ -102,14 +95,7 @@ describe('Staking', function () {
       await expect(
         deployments.deploy(CONTRACTS.staking, {
           from: owner,
-          args: [
-            owner,
-            addressZero,
-            epochLength,
-            firstEpochNumber,
-            firstEpochTime,
-            TheopetraAuthority.address,
-          ],
+          args: [owner, addressZero, epochLength, firstEpochNumber, firstEpochTime, TheopetraAuthority.address],
         })
       ).to.be.revertedWith('Invalid address');
     });
