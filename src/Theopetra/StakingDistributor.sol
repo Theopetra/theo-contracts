@@ -132,7 +132,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @return uint
      */
     function nextRewardAt(uint256 _rate) public view override returns (uint256) {
-        return IERC20(THEO).totalSupply().mul(_rate).div(rateDenominator);
+        return IERC20(THEO).totalSupply().mul(_rate).div(10**9);
     }
 
     /**
@@ -169,8 +169,8 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
         if (apyVariable > 0) {
             uint256 _rate = deriveRate(uint256(apyVariable));
-            uint256 maxRate = (info[_index].start * 15 / 10) * 1000;
-                return _rate < maxRate ? _rate : maxRate;
+            uint256 maxRate = ((info[_index].start * 15) / 10) * 1000;
+            return _rate < maxRate ? _rate : maxRate;
         } else {
             return 0;
         }
