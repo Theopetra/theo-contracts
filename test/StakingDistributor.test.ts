@@ -49,7 +49,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe('Distributor', function () {
+describe.only('Distributor', function () {
   const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
   const epochLength = 60 * 60 * 24 * 365; // seconds (for 365 days)
   const expectedStartRate = 40000; // 4%, rateDenominator for Distributor is 1000000
@@ -371,12 +371,12 @@ describe('Distributor', function () {
   });
 
   describe('deriveRate', function () {
-    it.only('calculates a rate for a specified APY', async function () {
+    it('calculates a rate for a specified APY', async function () {
       const apyVariable =  10_000_000 // 1%
 
-      const expectedZ = Math.floor((Math.log((0.01+1)) / 1095) * 10**18);
-      const derivedZ = await Distributor.deriveRate(apyVariable);
-      expect(Number(derivedZ)).to.equal(expectedZ)
+      const expectedRate = Math.floor((1095 * Math.exp(Math.log((0.01+1)) / 1095)-1095) * 10**9);
+      const actualRate = await Distributor.deriveRate(apyVariable);
+      expect(Number(actualRate)).to.equal(expectedRate);
     })
   })
 

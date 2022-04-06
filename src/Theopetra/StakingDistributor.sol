@@ -36,7 +36,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     uint256 private immutable rateDenominator = 1_000_000;
 
     bytes16 private immutable n = ABDKMathQuad.fromUInt(1095);
-    bytes16 private one = ABDKMathQuad.fromUInt(1_000_000_000);
+    bytes16 private one = ABDKMathQuad.fromUInt(1);
 
     /* ====== STRUCTS ====== */
 
@@ -238,31 +238,26 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     }
 
     /**
-     * @dev derives the rate for a given apy for the next Epoch.
-     * @param _apy The apy to calculate the rate for.
-     * @return rate The for the given apy.
+     * @notice derives the rate for a given apy for the next Epoch.
+     * @dev    the rate is calculated as:
+     *         1095 * e^z - 1095
+     *         z = ln(apyProportion + 1) / 1095
+     *         1095 is: 365(days) * 24(hours) / 8(hours per performance update)
+     *         apyProportion is a proportion (that is, a percentage in its decimal form), calculated using the param _apy
+     * @param _apy The APY to calculate the rate for. 9 decimals
+     * @return rate The rate for the given APY. 9 decimals
      */
     function deriveRate(uint256 _apy) public view returns (uint256) {
-        // z = ln(APY+1)/1095
-        // z = ln((APYwith9Decimals)+(10**9)) / 1095 - ((ln(10**9) * 10**9) / 1095)
-        bytes16 z = ABDKMathQuad.sub(
-            ABDKMathQuad.div(
-                ABDKMathQuad.mul(ABDKMathQuad.ln(
-                    ABDKMathQuad.add(ABDKMathQuad.fromUInt(_apy), one)
-                        ), one),
-                        n),
-            ABDKMathQuad.div(ABDKMathQuad.mul(ABDKMathQuad.ln(one), one), n)
-        );
+        bytes16 apyProportion = ABDKMathQuad.div(ABDKMathQuad.fromUInt(_apy), ABDKMathQuad.fromUInt(1_000_000_000));
+        bytes16 z = ABDKMathQuad.div(ABDKMathQuad.ln(ABDKMathQuad.add(apyProportion, one)), n);
+        bytes16 eToTheZ = ABDKMathQuad.exp(z);
 
-        return ABDKMathQuad.toUInt(ABDKMathQuad.mul(z, one));
-        // e^z or e^(ln(apy+1)/1095)
-        // bytes16 eToTheZ = ABDKMathQuad.exp(z);
-
-        // return ABDKMathQuad.toUInt(
-        //     ABDKMathQuad.mul(
-        //         ABDKMathQuad.sub(ABDKMathQuad.mul(n, eToTheZ), n),  // 1095 * e^(ln(apy+1)/1095) - 1095
-        //         ABDKMathQuad.fromUInt(1_000_000_000) // 6 decimal places -- we can mess with this
-        //     )
-        // );
+        return
+            ABDKMathQuad.toUInt(
+                ABDKMathQuad.mul(
+                    ABDKMathQuad.sub(ABDKMathQuad.mul(n, eToTheZ), n),
+                    ABDKMathQuad.fromUInt(1_000_000_000)
+                )
+            );
     }
 }
