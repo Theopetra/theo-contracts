@@ -49,7 +49,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe.only('Distributor', function () {
+describe('Distributor', function () {
   const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
   const epochLength = 60 * 60 * 24 * 365; // seconds (for 365 days)
   const expectedStartRateUnlocked = 40_000_000; // 4%, rateDenominator for Distributor is 1_000_000_000
@@ -159,9 +159,15 @@ describe.only('Distributor', function () {
     });
   });
 
-  describe('Add recipient', function () {
+  describe('addRecipient', function () {
     it('stores the correct information for the staking pool', async function () {
-      await Distributor.addRecipient(StakingMock.address, expectedStartRateUnlocked, expectedDrs, expectedDys, isLocked);
+      await Distributor.addRecipient(
+        StakingMock.address,
+        expectedStartRateUnlocked,
+        expectedDrs,
+        expectedDys,
+        isLocked
+      );
 
       const [startStored, drs, dys, recipient, locked, nextEpochTime] = await Distributor.info(0);
       const latestBlock = await ethers.provider.getBlock('latest');
@@ -216,10 +222,16 @@ describe.only('Distributor', function () {
     describe('unlocked pool', function () {
       beforeEach(async function () {
         // Add recipient: Unlocked pool
-        await DistributorNew.addRecipient(staking.address, expectedStartRateUnlocked, expectedDrs, expectedDys, isLocked);
+        await DistributorNew.addRecipient(
+          staking.address,
+          expectedStartRateUnlocked,
+          expectedDrs,
+          expectedDys,
+          isLocked
+        );
       });
 
-      it('will update the next epoch if the current time is beyond the next epoch time', async function () {
+      it('will update the next epoch time if the current time is beyond the next epoch time', async function () {
         const [, , , , , initialNextEpoch] = await DistributorNew.info(0);
         const latestBlock = await ethers.provider.getBlock('latest');
 
@@ -282,6 +294,21 @@ describe.only('Distributor', function () {
         }
         const [newStartRate] = await DistributorNew.info(0);
         expect(newStartRate).to.equal(20_000_000);
+      });
+
+      // TODO: Will need to change this in future if/when nextRewardAt changes (currently still uses THEO total supply)
+      it('will mint the expected amount of THEO, to the Staking contract', async function () {
+        const initialTheoToMint = '1000000'; // 1e6
+        await TheopetraERC20Mock.mint(owner.address, initialTheoToMint);
+        expect(Number(await TheopetraERC20Mock.totalSupply())).to.equal(Number(initialTheoToMint));
+
+        expect(await TheopetraERC20Mock.balanceOf(staking.address)).to.equal(0);
+
+        await DistributorNew.connect(staking).distribute();
+        const calculatedExpectedRate = expectedRate(expectedStartRateUnlocked, expectedDrs, expectedDys);
+        const expectedTheoToMint = Math.floor((Number(initialTheoToMint)*calculatedExpectedRate) / 10**9) // rateDenominator is 1_000_000_000
+        expect(Number(await TheopetraERC20Mock.totalSupply())).to.equal(Number(initialTheoToMint) + expectedTheoToMint);
+        expect(Number(await TheopetraERC20Mock.balanceOf(staking.address))).to.equal(Number(expectedTheoToMint));
       });
     });
 
@@ -367,17 +394,36 @@ describe.only('Distributor', function () {
   });
 
   describe('nextRewardRate', function () {
-
-
-    beforeEach(async function () {
-      await Distributor.addRecipient(StakingMock.address, expectedStartRateUnlocked, expectedDrs, expectedDys, isLocked);
-    });
-
     describe('unlocked pool', function () {
       it('returns the correct reward rate for an unlocked pool', async function () {
         const actualRate = await Distributor.nextRewardRate(0);
 
         expect(actualRate).to.equal(expectedRate(expectedStartRateUnlocked, expectedDrs, expectedDys));
+      });
+
+      it('returns the correct reward rate after the Drs and Dys have been changed', async function () {
+        const newExpectedDrs = 30_000_000; // 3%
+        const newExpectedDys = 17_500_000; // 1.75%
+        await Distributor.setDiscountRateStaking(0, newExpectedDrs);
+        await Distributor.setDiscountRateYield(0, newExpectedDys);
+        const [,newDrs, newDys] = await Distributor.info(0);
+        expect(newDrs).to.equal(newExpectedDrs);
+        expect(newDys).to.equal(newExpectedDys);
+
+        const actualRate = await Distributor.nextRewardRate(0);
+
+        expect(actualRate).to.equal(expectedRate(expectedStartRateUnlocked, newExpectedDrs, newExpectedDys));
+      });
+
+      it('returns 0 if APYvariable is less than zero', async function () {
+        const newExpectedDrs = -200_000_000; // -20%, sufficiently large negative to cause negative APY
+        const newExpectedDys = -200_000_000; // -20%, sufficiently large negative to cause negative APY
+        await Distributor.setDiscountRateStaking(0, newExpectedDrs);
+        await Distributor.setDiscountRateYield(0, newExpectedDys);
+
+        const actualRate = await Distributor.nextRewardRate(0);
+
+        expect(actualRate).to.equal(0);
       });
 
       it('returns the correct reward rate for a another unlocked pool', async function () {
@@ -391,11 +437,11 @@ describe.only('Distributor', function () {
           secondPoolExpectedDys,
           isLocked
         );
-        const [, drs, dys] = await Distributor.info(2);
+        const [, drs, dys] = await Distributor.info(1);
         expect(drs).to.equal(secondPoolExpectedDrs);
         expect(dys).to.equal(secondPoolExpectedDys);
 
-        const actualRate = await Distributor.nextRewardRate(2);
+        const actualRate = await Distributor.nextRewardRate(1);
 
         expect(actualRate).to.equal(
           expectedRate(expectedStartRateUnlocked, secondPoolExpectedDrs, secondPoolExpectedDys)
@@ -413,11 +459,11 @@ describe.only('Distributor', function () {
           secondPoolExpectedDys,
           isLocked
         );
-        const [, drs, dys] = await Distributor.info(2);
+        const [, drs, dys] = await Distributor.info(1);
         expect(drs).to.equal(secondPoolExpectedDrs);
         expect(dys).to.equal(secondPoolExpectedDys);
 
-        const actualRate = await Distributor.nextRewardRate(2);
+        const actualRate = await Distributor.nextRewardRate(1);
 
         // expectedRate function does not account for maximum rate limits.
         // So, use expectedRate as a check that, without limits, the rate would exceed the maximum
@@ -445,11 +491,11 @@ describe.only('Distributor', function () {
           secondPoolExpectedDys,
           true
         );
-        const [, drs, dys] = await Distributor.info(2);
+        const [, drs, dys] = await Distributor.info(1);
         expect(drs).to.equal(secondPoolExpectedDrs);
         expect(dys).to.equal(secondPoolExpectedDys);
 
-        const actualRate = await Distributor.nextRewardRate(2);
+        const actualRate = await Distributor.nextRewardRate(1);
 
         expect(actualRate).to.equal(
           expectedRate(expectedStartRateLocked, secondPoolExpectedDrs, secondPoolExpectedDys)
@@ -467,11 +513,11 @@ describe.only('Distributor', function () {
           secondPoolExpectedDys,
           true
         );
-        const [, drs, dys] = await Distributor.info(2);
+        const [, drs, dys] = await Distributor.info(1);
         expect(drs).to.equal(secondPoolExpectedDrs);
         expect(dys).to.equal(secondPoolExpectedDys);
 
-        const actualRate = await Distributor.nextRewardRate(2);
+        const actualRate = await Distributor.nextRewardRate(1);
 
         // expectedRate function does not account for maximum rate limits.
         // So, use expectedRate as a check that, without limits, the rate would exceed the maximum
@@ -500,7 +546,6 @@ describe.only('Distributor', function () {
   });
 
   describe('nextRewardFor', function () {
-
     // TODO: Will need to change this in future if/when nextRewardAt changes (currently still uses THEO total supply)
     it('returns the next reward expected for a specified recipient', async function () {
       const [owner] = users;
@@ -509,12 +554,14 @@ describe.only('Distributor', function () {
       expect(recipient).to.equal(StakingMock.address);
       await TheopetraERC20Mock.mint(owner.address, theoToMint);
 
-      const expectedReward = Math.floor(Number(theoToMint) * (expectedRate(expectedStartRateUnlocked, expectedDrs, expectedDys) / 10**9));
+      const expectedReward = Math.floor(
+        Number(theoToMint) * (expectedRate(expectedStartRateUnlocked, expectedDrs, expectedDys) / 10 ** 9)
+      );
       const actualReward = await Distributor.nextRewardFor(StakingMock.address);
 
-      expect(Number(actualReward)).to.equal(expectedReward)
-    })
-  })
+      expect(Number(actualReward)).to.equal(expectedReward);
+    });
+  });
 
   describe('removeRecipient', function () {
     it('will set the recipient, start rate, Drs and Dys to zero', async function () {
@@ -540,6 +587,6 @@ describe.only('Distributor', function () {
       await Distributor.removeRecipient(0);
 
       expect(await Distributor.nextRewardRate(0)).to.equal(0);
-    })
+    });
   });
 });
