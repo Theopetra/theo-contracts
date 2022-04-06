@@ -55,15 +55,14 @@ describe('Staking', function () {
     const epochLength = 2000; // Same value as used in deployment script for Hardhat network deployment
     const firstEpochNumber = 1; // Same value as used in deployment script for Hardhat network deployment
 
-    const currentBlock = await ethers.provider.send("eth_blockNumber", []);
-    const blockTimestamp = (await ethers.provider.getBlock(currentBlock)).timestamp;
-    const firstEpochTime = blockTimestamp + 10000;
-
     it('can be deployed', async function () {
       await setup();
     });
 
     it('is deployed with the correct constructor arguments', async function () {
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const lowerBound = latestBlock.timestamp * 0.999 + epochLength;
+      const upperBound = latestBlock.timestamp * 1.001 + epochLength;
       expect(await Staking.THEO()).to.equal(TheopetraERC20Mock.address);
       expect(await Staking.sTHEO()).to.equal(sTheoMock.address);
 
@@ -71,12 +70,16 @@ describe('Staking', function () {
 
       expect(epoch._length).to.equal(BigNumber.from(epochLength));
       expect(epoch.number).to.equal(BigNumber.from(firstEpochNumber));
-      expect(epoch.end).to.equal(BigNumber.from(firstEpochTime));
+      expect(Number(epoch.end)).to.be.greaterThan(lowerBound);
+      expect(Number(epoch.end)).to.be.lessThan(upperBound);
 
       expect(await TheopetraAuthority.governor()).to.equal(owner);
     });
 
     it('will revert if deployment is attempted with a zero address for THEO', async function () {
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const blockTimestamp = latestBlock.timestamp;
+      const firstEpochTime = blockTimestamp + 10000;
       await expect(
         deployments.deploy(CONTRACTS.staking, {
           from: owner,
@@ -93,6 +96,9 @@ describe('Staking', function () {
     });
 
     it('will revert if deployment is attempted with a zero address for sTHEO', async function () {
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const blockTimestamp = latestBlock.timestamp;
+      const firstEpochTime = blockTimestamp + 10000;
       await expect(
         deployments.deploy(CONTRACTS.staking, {
           from: owner,
@@ -110,7 +116,7 @@ describe('Staking', function () {
   });
 
   describe('setContract', function () {
-    it('should allw the manager to set a contract address for LP staking', async function () {
+    it('should allow the manager to set a contract address for LP staking', async function () {
       const [, alice] = users;
       await Staking.setContract(0, alice.address); // set distributor
       expect(await Staking.distributor()).to.equal(alice.address);

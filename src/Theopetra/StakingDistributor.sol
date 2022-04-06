@@ -35,8 +35,14 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     uint256 private immutable rateDenominator = 1_000_000_000;
 
-    bytes16 private immutable n = ABDKMathQuad.fromUInt(1095);
-    bytes16 private one = ABDKMathQuad.fromUInt(1);
+    /**
+        @dev    byte representation of 1095. See also `deriveRate`.
+     */
+    bytes16 private immutable n = 0x400911c0000000000000000000000000;
+    /**
+        @dev    byte representation of 1;
+     */
+    bytes16 private one = 0x3fff0000000000000000000000000000;
 
     /* ====== STRUCTS ====== */
 
@@ -250,20 +256,18 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
      *         z = ln(apyProportion + 1) / 1095
      *         1095 is: 365(days) * 24(hours) / 8(hours per performance update)
      *         apyProportion is a proportion (that is, a percentage in its decimal form), calculated using the param _apy
+     *         0x401cdcd6500000000000000000000000 is the byte representation of 10**9
      * @param _apy The APY to calculate the rate for. 9 decimals
      * @return rate uint256 The rate for the given APY. 9 decimals
      */
     function deriveRate(uint256 _apy) public view returns (uint256) {
-        bytes16 apyProportion = ABDKMathQuad.div(ABDKMathQuad.fromUInt(_apy), ABDKMathQuad.fromUInt(1_000_000_000));
+        bytes16 apyProportion = ABDKMathQuad.div(ABDKMathQuad.fromUInt(_apy), 0x401cdcd6500000000000000000000000);
         bytes16 z = ABDKMathQuad.div(ABDKMathQuad.ln(ABDKMathQuad.add(apyProportion, one)), n);
         bytes16 eToTheZ = ABDKMathQuad.exp(z);
 
         return
             ABDKMathQuad.toUInt(
-                ABDKMathQuad.mul(
-                    ABDKMathQuad.sub(ABDKMathQuad.mul(n, eToTheZ), n),
-                    ABDKMathQuad.fromUInt(1_000_000_000)
-                )
+                ABDKMathQuad.mul(ABDKMathQuad.sub(ABDKMathQuad.mul(n, eToTheZ), n), 0x401cdcd6500000000000000000000000)
             );
     }
 }
