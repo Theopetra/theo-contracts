@@ -2,7 +2,7 @@ import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } from 'hardhat';
 import { TheopetraBondDepository } from '../typechain-types';
 import { setupUsers } from './utils';
-import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
+import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTFULL } from '../utils/constants';
 
 const setup = deployments.createFixture(async function () {
   await deployments.fixture([
@@ -23,8 +23,14 @@ const setup = deployments.createFixture(async function () {
     BondDepository: <TheopetraBondDepository>await ethers.getContract(CONTRACTS.bondDepo),
     sTheoMock: await ethers.getContract(MOCKS.sTheoMock),
     StakingMock: await ethers.getContract(MOCKSWITHARGS.stakingMock),
-    TheopetraERC20Mock: await ethers.getContract(MOCKS.theoTokenMock),
-    TreasuryMock: await ethers.getContract(MOCKSWITHARGS.treasuryMock),
+    TheopetraERC20Mock:
+      process.env.NODE_ENV === TESTFULL
+        ? await ethers.getContract(CONTRACTS.theoToken)
+        : await ethers.getContract(MOCKS.theoTokenMock),
+    TreasuryMock:
+      process.env.NODE_ENV === TESTFULL
+        ? await ethers.getContract(CONTRACTS.treasury)
+        : await ethers.getContract(MOCKSWITHARGS.treasuryMock),
     UsdcTokenMock: await ethers.getContract(MOCKS.usdcTokenMock),
     WETH9: await ethers.getContract(MOCKS.WETH9),
   };
@@ -53,6 +59,7 @@ describe('Bond depository', function () {
   const vesting = 100;
   // Initial mint for Mock USDC
   const initialMint = '10000000000000000000000000';
+  const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
 
   let block;
   let BondDepository: any;
@@ -85,9 +92,27 @@ describe('Bond depository', function () {
 
     await UsdcTokenMock.mint(bob.address, initialMint);
 
-    await TheopetraAuthority.pushVault(TreasuryMock.address, true);
+    // START TESTFULL-specific setup
+    // Deposit into the Treasury so that it has excess reserves (with non-zero total reserves), which are needed for a call to Treasury.mint
+    await UsdcTokenMock.mint(owner.address, initialMint); // Will use owner to deposit USDC
+    await TreasuryMock.enable(2, UsdcTokenMock.address, addressZero); // set USDC as a reserve token
+    await TreasuryMock.enable(0, owner.address, addressZero) // set owner as reserve depositor
+    const treasuryDepositAmount = '1000000000000000'; // 1e15 (this is greater than the amount to minto for THEO, to give excess reserves)
+    await owner.UsdcTokenMock.approve(TreasuryMock.address, treasuryDepositAmount); // Give treasury permision to transfer token
+    await TheopetraAuthority.pushVault(TreasuryMock.address, true); // Push vault role to Treasury, to allow it to call THEO.mint
+    await owner.TreasuryMock.deposit(treasuryDepositAmount, UsdcTokenMock.address, 0);
 
-    await TheopetraERC20Mock.mint(owner.address, '10000000000000'); // Set to be same as return value in Treasury Mock for baseSupply
+    // END TESTFULL-specific setup
+
+    // Setup to mint initial amount of THEO
+    const [,treasurySigner] = await ethers.getSigners();
+    await TheopetraAuthority.pushVault(treasurySigner.address, true);
+    await TheopetraERC20Mock.connect(treasurySigner).mint(owner.address, '10000000000000'); // 1e13 Set to be same as return value in Treasury Mock for baseSupply
+
+    // Set Bond Depo as reward manager in Treasury (to allow call to mint from NoteKeeper when adding new note)
+    await TreasuryMock.enable(8, BondDepository.address, addressZero);
+
+
 
     // Mint enough to allow transfers when redeeming bonds
     await sTheoMock.mint(BondDepository.address, '1000000000000000000000');

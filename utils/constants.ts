@@ -23,3 +23,5 @@ export const MOCKSWITHARGS: Record<string, string> = {
   treasuryMock: 'TreasuryMock',
   stakingMock: 'StakingMock',
 };
+
+export const TESTFULL = 'test-full';
