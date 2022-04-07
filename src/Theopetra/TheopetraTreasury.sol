@@ -3,6 +3,8 @@ pragma solidity ^0.7.5;
 
 import "../Libraries/SafeMath.sol";
 import "../Libraries/SafeERC20.sol";
+import "../Libraries/SignedSafeMath.sol";
+import "../Libraries/SafeCast.sol";
 
 import "../Interfaces/IERC20.sol";
 import "../Interfaces/IERC20Metadata.sol";
@@ -10,6 +12,8 @@ import "../Interfaces/ITHEO.sol";
 import "../Interfaces/IsTHEO.sol";
 import "../Interfaces/IBondCalculator.sol";
 import "../Interfaces/ITreasury.sol";
+import "../Interfaces/IYieldReporter.sol";
+import "../Interfaces/IBondDepository.sol";
 
 import "../Types/TheopetraAccessControlled.sol";
 
@@ -17,6 +21,8 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     /* ========== DEPENDENCIES ========== */
 
     using SafeMath for uint256;
+    using SafeCast for uint256;
+    using SignedSafeMath for int256;
     using SafeERC20 for IERC20;
 
     /* ========== EVENTS ========== */
@@ -44,7 +50,8 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         RESERVEDEBTOR,
         REWARDMANAGER,
         STHEO,
-        THEODEBTOR
+        THEODEBTOR,
+        YIELDREPORTER
     }
 
     struct Queue {
@@ -56,10 +63,19 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         bool executed;
     }
 
+    struct PriceInfo {
+        int256 deltaTreasuryYield;
+        uint256 timeLastUpdated;
+        uint256 lastTokenPrice;
+        uint256 currentTokenPrice;
+    }
+
     /* ========== STATE VARIABLES ========== */
 
     ITHEO public immutable THEO;
     IsTHEO public sTHEO;
+    IYieldReporter private yieldReporter;
+    IBondCalculator private theoBondingCalculator;
 
     mapping(STATUS => address[]) public registry;
     mapping(STATUS => mapping(address => bool)) public permissions;
@@ -72,6 +88,8 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     uint256 public theoDebt;
     Queue[] public permissionQueue;
     uint256 public immutable blocksNeededForQueue;
+
+    PriceInfo private priceInfo;
 
     bool public timelockEnabled;
     bool public initialized;
@@ -97,6 +115,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         timelockEnabled = false;
         initialized = false;
         blocksNeededForQueue = _timelock;
+        priceInfo.timeLastUpdated = block.timestamp;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -258,6 +277,24 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         emit RepayDebt(msg.sender, address(THEO), _amount, _amount);
     }
 
+    /* ======== BONDING CALCULATOR ======== */
+
+    /**
+     * @notice                  get the address of the theo bonding calculator
+     * @return                  address for theo liquidity pool
+     */
+    function getTheoBondingCalculator() public view override returns (IBondCalculator) {
+        return IBondCalculator(theoBondingCalculator);
+    }
+
+    /**
+     * @notice             set the address for the theo bonding calculator
+     * @param _theoBondingCalculator    address of the theo bonding calculator
+     */
+    function setTheoBondingCalculator(address _theoBondingCalculator) public override onlyGuardian {
+        theoBondingCalculator = IBondCalculator(_theoBondingCalculator);
+    }
+
     /* ========== MANAGERIAL FUNCTIONS ========== */
 
     /**
@@ -307,6 +344,8 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         require(timelockEnabled == false, "Use queueTimelock");
         if (_status == STATUS.STHEO) {
             sTHEO = IsTHEO(_address);
+        } else if (_status == STATUS.YIELDREPORTER) {
+            yieldReporter = IYieldReporter(_address);
         } else {
             permissions[_status][_address] = true;
 
@@ -352,6 +391,19 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
             }
         }
         return (false, 0);
+    }
+
+    /**
+     * @notice              update the current token price and previous (last) token price.
+     *                      Token price is calculated with the theoBondingCalculator, as set by the Governor
+     * @dev                 this method can be called at any time but will only update contract state every 8 hours
+     */
+    function tokenPerformanceUpdate() public override {
+        if (block.timestamp >= priceInfo.timeLastUpdated + 28800) {
+            priceInfo.lastTokenPrice = priceInfo.currentTokenPrice;
+            priceInfo.currentTokenPrice = IBondCalculator(theoBondingCalculator).valuation(address(THEO), 1);
+            priceInfo.timeLastUpdated = block.timestamp;
+        }
     }
 
     /* ========== TIMELOCKED FUNCTIONS ========== */
@@ -472,7 +524,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     }
 
     /**
-     * @notice returns THEO valuation of asset
+     * @notice returns THEO valuation for an amount of Quote Tokens
      * @param _token address
      * @param _amount uint256
      * @return value_ uint256
@@ -492,5 +544,33 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      */
     function baseSupply() external view override returns (uint256) {
         return THEO.totalSupply() - theoDebt;
+    }
+
+    /**
+     * @notice  calculate the proportional change (i.e. a percentage as a decimal) in token price, with 9 decimals
+     * @dev     calculated as (currentPrice - lastPrice) / lastPrice
+     *           using 9 decimals for the price values and for return value.
+     * @return  int256 proportional change in treasury yield. 9 decimals
+     */
+    function deltaTokenPrice() public view override returns (int256) {
+        return
+            ((priceInfo.currentTokenPrice.toInt256()).sub(priceInfo.lastTokenPrice.toInt256()) * 10**9).div(
+                priceInfo.lastTokenPrice.toInt256()
+            );
+    }
+
+    /**
+     * @notice  calculate the proportional change (i.e. a percentage as a decimal) in treasury yield, with 9 decimals
+     * @dev     calculated as (currentYield - lastYield) / lastYield
+     *           using 9 decimals for the yield values and for return value.
+     *           example: ((10_000_000_000 - 15_000_000_000)*(10**9)) / 15_000_000_000 = -333333333
+     *           -333333333 is equivalent to the proportion -0.333333333 (that is, -33.3333333%)
+     * @return  int256 proportional change in treasury yield. 9 decimals
+     */
+    function deltaTreasuryYield() public view override returns (int256) {
+        require(address(yieldReporter) != address(0), "Zero address: YieldReporter");
+        return
+            (((IYieldReporter(yieldReporter).currentYield()).sub(IYieldReporter(yieldReporter).lastYield())) * 10**9)
+                .div(IYieldReporter(yieldReporter).lastYield());
     }
 }
