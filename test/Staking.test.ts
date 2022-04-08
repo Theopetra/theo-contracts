@@ -3,17 +3,19 @@ import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardh
 import { BigNumber } from 'ethers';
 
 import { setupUsers } from './utils';
-import { CONTRACTS, MOCKS } from '../utils/constants';
+import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTFULL } from '../utils/constants';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.staking, CONTRACTS.authority, MOCKS.theoTokenMock, MOCKS.sTheoMock]);
+  await deployments.fixture(process.env.NODE_ENV === TESTFULL ? ['setupIntegration'] : [CONTRACTS.staking, CONTRACTS.authority, MOCKS.theoTokenMock, MOCKS.sTheoMock]);
   const { deployer: owner } = await getNamedAccounts();
-
+  const isFullTest = process.env.NODE_ENV === TESTFULL;
   const contracts = {
     Staking: await ethers.getContract(CONTRACTS.staking),
-    sTheoMock: await ethers.getContract(MOCKS.sTheoMock),
+    sTheoMock: isFullTest ? await ethers.getContract(CONTRACTS.sTheo) : await ethers.getContract(MOCKS.sTheoMock),
     TheopetraAuthority: await ethers.getContract(CONTRACTS.authority),
-    TheopetraERC20Mock: await ethers.getContract(MOCKS.theoTokenMock),
+    TheopetraERC20Mock: isFullTest ? await ethers.getContract(CONTRACTS.theoToken) : await ethers.getContract(MOCKS.theoTokenMock),
+    BondDepository: await ethers.getContract(CONTRACTS.bondDepo),
+    TreasuryMock: await ethers.getContract(MOCKSWITHARGS.treasuryMock),
   };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
@@ -34,21 +36,33 @@ describe('Staking', function () {
   let sTheoMock: any;
   let TheopetraAuthority: any;
   let TheopetraERC20Mock: any;
+  let BondDepository: any;
+  let TreasuryMock: any;
   let users: any;
   let owner: any;
   let addressZero: any;
 
   beforeEach(async function () {
-    ({ Staking, sTheoMock, TheopetraAuthority, TheopetraERC20Mock, users, owner, addressZero } = await setup());
+    ({ Staking, sTheoMock, TheopetraAuthority, TheopetraERC20Mock, TreasuryMock, BondDepository, users, owner, addressZero } = await setup());
 
     const [, bob, carol] = users;
-
-    await TheopetraERC20Mock.mint(bob.address, '10000000000000');
+    // Setup to mint initial amount of THEO
+    const [, treasurySigner] = await ethers.getSigners();
+    if(process.env.NODE_ENV === TESTFULL){
+      await TheopetraAuthority.pushVault(treasurySigner.address, true); //
+      await TheopetraERC20Mock.connect(treasurySigner).mint(bob.address, '10000000000000000'); // 1e16 Set to be same as return value in Treasury Mock for baseSupply
+      await TheopetraAuthority.pushVault(TreasuryMock.address, true); // Restore Treasury contract as Vault
+    } else {
+      await TheopetraERC20Mock.mint(bob.address, '10000000000000');
+    }
     await bob.TheopetraERC20Mock.approve(Staking.address, LARGE_APPROVAL);
     await carol.TheopetraERC20Mock.approve(Staking.address, LARGE_APPROVAL);
 
-    // Mint enough to allow transfers when claiming staked THEO
-    await sTheoMock.mint(Staking.address, '1000000000000000000000');
+    if(process.env.NODE_ENV !== TESTFULL){
+      // Mint enough to allow transfers when claiming staked THEO
+      // only call this if not performing full testing, as only mock sTheo has a mint function (sTheo itself uses `initialize` instead)
+      await sTheoMock.mint(Staking.address, '1000000000000000000000');
+    }
   });
 
   describe('Deployment', function () {
@@ -136,7 +150,8 @@ describe('Staking', function () {
     });
   });
 
-  describe('stake', function () {
+  describe('stake', async function () {
+    const gons = process.env.NODE_ENV === TESTFULL ? await sTheoMock.gonsForBalance(amountToStake) : 0; // use 0 gons for sTheoMock.gonsForBalance(), because it returns amountToStake, which is already added in the test below
     it('adds a Claim for the staked _amount to the warmup when `_claim` is false and `warmupPeriod` is zero', async function () {
       const [, bob] = users;
       const claim = false;
@@ -147,7 +162,7 @@ describe('Staking', function () {
       const epochInfo = await Staking.epoch();
       expect(warmupInfo.deposit).to.equal(amountToStake);
       expect(warmupInfo.expiry).to.equal(epochInfo.number); // equal because warmup is zero
-      expect(warmupInfo.gons).to.equal(amountToStake); // sTheoMock.gonsForBalance() just returns amount
+      expect(Number(warmupInfo.gons)).to.equal(Number(gons) + amountToStake);
       expect(warmupInfo.lock).to.equal(false);
     });
 
@@ -245,14 +260,14 @@ describe('Staking', function () {
 
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
-      expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(bobStartingTheoBalance - amountToStake);
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+      expect(Number(await TheopetraERC20Mock.balanceOf(bob.address))).to.equal(bobStartingTheoBalance - amountToStake);
+      expect(Number(await sTheoMock.balanceOf(bob.address))).to.equal(amountToStake);
 
       await bob.sTheoMock.approve(Staking.address, amountToStake);
       await bob.Staking.unstake(bob.address, amountToStake, false);
 
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
-      expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(bobStartingTheoBalance);
+      expect(Number(await sTheoMock.balanceOf(bob.address))).to.equal(0);
+      expect(Number(await TheopetraERC20Mock.balanceOf(bob.address))).to.equal(bobStartingTheoBalance);
     });
   });
 

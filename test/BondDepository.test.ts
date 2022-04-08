@@ -1,56 +1,30 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } from 'hardhat';
-import { TheopetraBondDepository, TheopetraERC20Token } from '../typechain-types';
+import { TheopetraBondDepository } from '../typechain-types';
 import { setupUsers, moveTimeForward, waitFor } from './utils';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTFULL } from '../utils/constants';
 
-const setup = deployments.createFixture(async function () {
-  await deployments.fixture([
-    CONTRACTS.bondDepo,
-    CONTRACTS.authority,
-    CONTRACTS.theoToken,
-    CONTRACTS.treasury,
-    CONTRACTS.yieldReporter,
-    CONTRACTS.sTheo,
-    CONTRACTS.staking,
-    MOCKS.sTheoMock,
-    MOCKS.theoTokenMock,
-    MOCKS.usdcTokenMock,
-    MOCKSWITHARGS.stakingMock,
-    MOCKSWITHARGS.treasuryMock,
-    MOCKS.WETH9,
-    MOCKSWITHARGS.bondingCalculatorMock,
-  ]);
+// const setup = createFixtureFunc();
 
+const setup  = deployments.createFixture(async function () {
+  await deployments.fixture(process.env.NODE_ENV === TESTFULL ? ['setupIntegration'] : []);
   const { deployer: owner } = await getNamedAccounts();
-
+  const isFullTest = process.env.NODE_ENV === TESTFULL;
   const contracts = {
     TheopetraAuthority: await ethers.getContract(CONTRACTS.authority),
+    YieldReporter: await ethers.getContract(CONTRACTS.yieldReporter),
     BondDepository: <TheopetraBondDepository>await ethers.getContract(CONTRACTS.bondDepo),
-    sTheoMock:
-      process.env.NODE_ENV === TESTFULL
-        ? await ethers.getContract(CONTRACTS.sTheo)
-        : await ethers.getContract(MOCKS.sTheoMock),
-    StakingMock:
-      process.env.NODE_ENV === TESTFULL
-        ? await ethers.getContract(CONTRACTS.staking)
-        : await ethers.getContract(MOCKSWITHARGS.stakingMock),
-    TheopetraERC20Mock:
-      process.env.NODE_ENV === TESTFULL
-        ? await ethers.getContract(CONTRACTS.theoToken)
-        : await ethers.getContract(MOCKS.theoTokenMock),
-    TreasuryMock:
-      process.env.NODE_ENV === TESTFULL
-        ? await ethers.getContract(CONTRACTS.treasury)
-        : await ethers.getContract(MOCKSWITHARGS.treasuryMock),
+    sTheo: isFullTest ? await ethers.getContract(CONTRACTS.sTheo) : await ethers.getContract(MOCKS.sTheoMock),
+    StakingMock: isFullTest ? await ethers.getContract(CONTRACTS.staking) : await ethers.getContract(MOCKSWITHARGS.stakingMock),
+    TheopetraERC20Mock: isFullTest ? await ethers.getContract(CONTRACTS.theoToken) : await ethers.getContract(MOCKS.theoTokenMock),
+    TreasuryMock: isFullTest ? await ethers.getContract(CONTRACTS.treasury) : await ethers.getContract(MOCKSWITHARGS.treasuryMock),
     UsdcTokenMock: await ethers.getContract(MOCKS.usdcTokenMock),
     WETH9: await ethers.getContract(MOCKS.WETH9),
     BondingCalculatorMock: await ethers.getContract(MOCKSWITHARGS.bondingCalculatorMock),
-    YieldReporter: await ethers.getContract(CONTRACTS.yieldReporter),
   };
 
-  const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
+  const users = await setupUsers(await getUnnamedAccounts(), contracts);
   return {
     ...contracts,
     users,
@@ -84,7 +58,7 @@ describe('Bond depository', function () {
   let BondingCalculatorMock: any;
   let conclusion: number;
   let StakingMock: any;
-  let sTheoMock: any;
+  let sTheo: any;
   let TheopetraAuthority: any;
   let TheopetraERC20Mock: any;
   let TreasuryMock: any;
@@ -110,7 +84,7 @@ describe('Bond depository', function () {
       BondDepository,
       BondingCalculatorMock,
       StakingMock,
-      sTheoMock,
+      sTheo,
       TheopetraAuthority,
       TheopetraERC20Mock,
       TreasuryMock,
@@ -128,13 +102,14 @@ describe('Bond depository', function () {
 
     // Setup to mint initial amount of THEO
     const [, treasurySigner] = await ethers.getSigners();
-    await TheopetraAuthority.pushVault(treasurySigner.address, true);
+    await TheopetraAuthority.pushVault(treasurySigner.address, true); //
     await TheopetraERC20Mock.connect(treasurySigner).mint(BondDepository.address, '10000000000000000'); // 1e16 Set to be same as return value in Treasury Mock for baseSupply
-    // await TheopetraERC20Mock.connect(treasurySigner).mint(owner.address, '10000000000000'); // 1e13 Set to be same as return value in Treasury Mock for baseSupply
+    await TheopetraAuthority.pushVault(TreasuryMock.address, true); // Restore Treasury contract as Vault
 
     if (process.env.NODE_ENV !== TESTFULL) {
       // Deposit / mint quote tokens and approve transfer for the Bond Depository, to allow deposits
-      await sTheoMock.mint(BondDepository.address, '1000000000000000000000');
+      // only call this if not performing full testing, as only mock sTheo has a mint function (sTheo itself uses `initialize` instead)
+      await sTheo.mint(BondDepository.address, '1000000000000000000000');
     }
 
     await bob.WETH9.deposit({ value: ethers.utils.parseEther('1000') });
@@ -153,27 +128,7 @@ describe('Bond depository', function () {
 
     // START TESTFULL-specific setup
     if (process.env.NODE_ENV === TESTFULL) {
-      /* ======== Setup for successfull call to `Treasury.mint` (during deposit) ======== */
-      // Setup to allow deposit into the Treasury so that it has excess reserves (with non-zero total reserves), which are needed for a call to Treasury.mint
-      const treasuryDepositAmount = '100000'; // 1e5 (this is greater than the amount to mint for THEO, to give excess reserves, and greater than the expected amount to mint when a deposit is made)
-      const treasuryDebtAmount = '1000000'; // 1e6
-      const sTheoAmountToTransfer = '100';
-
-      await UsdcTokenMock.mint(owner.address, treasuryDepositAmount); // Will use owner to deposit USDC
-      await TreasuryMock.enable(2, UsdcTokenMock.address, addressZero); // set USDC as a reserve token
-      await TreasuryMock.enable(0, owner.address, addressZero); // set owner as reserve depositor
-      await owner.UsdcTokenMock.approve(TreasuryMock.address, treasuryDepositAmount); // Give treasury permision to transfer token
-      await TheopetraAuthority.pushVault(TreasuryMock.address, true); // Push vault role to Treasury, to allow it to call THEO.mint
-      await owner.TreasuryMock.deposit(treasuryDepositAmount, UsdcTokenMock.address, 0);
-
-      await TreasuryMock.enable(10, owner.address, addressZero); // Update permision for owner to be Theo-Debtor
-      await TreasuryMock.enable(9, sTheoMock.address, addressZero); // Update permission for sTheo on Treasury
-      await sTheoMock.initialize(StakingMock.address, TreasuryMock.address); // Initialize sTHEO
-
-      // await sTheoMock.transfer(owner.address, sTheoAmountToTransfer);
-      // await owner.TreasuryMock.incurDebt(treasuryDebtAmount, TheopetraERC20Mock.address); // Incur debt to result in non-zero excess reserves
-
-      /* ======== Setup for calls to `marketPrice` (during `deposit`) ======== */
+      /* ======== Setup for successful calls to `marketPrice` (during `deposit`) ======== */
       // Set the address of the bonding calculator
       await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
       // Move forward 8 hours to allow tokenPerformanceUpdate to update contract state for token price
@@ -184,21 +139,12 @@ describe('Bond depository', function () {
       await moveTimeForward(60 * 60 * 8);
       await TreasuryMock.tokenPerformanceUpdate();
 
-      await waitFor(YieldReporter.reportYield(50_000_000_000));
-
-      /* ======== Other setup to allow `deposit` ======== */
-      // Enable Yield Reporter in Treasury
-      await TreasuryMock.enable(11, YieldReporter.address, addressZero);
-      // Set Bond Depo as reward manager in Treasury (to allow call to mint from NoteKeeper when adding new note)
-      await TreasuryMock.enable(8, BondDepository.address, addressZero);
-
-
       // Set the Bonding Calculator address (used previously just to update token performance) back to address zero, to allow unit testing from this state
       await TreasuryMock.setTheoBondingCalculator(addressZero);
+
+      await waitFor(YieldReporter.reportYield(50_000_000_000)); // Update current and last treasury yield
     }
     // END TESTFULL-specific setup
-
-
   });
 
   describe('Deployment', function () {
@@ -673,7 +619,7 @@ describe('Bond depository', function () {
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       await BondDepository.redeemAll(bob.address);
-      const bobBalance = Number(await sTheoMock.balanceOf(bob.address));
+      const bobBalance = Number(await sTheo.balanceOf(bob.address));
 
       expect(bobBalance).to.greaterThanOrEqual(Number(expectedPayout));
       expect(bobBalance).to.lessThan(Number(expectedPayout) * 1.0001);
@@ -711,7 +657,7 @@ describe('Bond depository', function () {
 
       await BondDepository.redeemAll(bob.address);
 
-      const bobBalance = Number(await sTheoMock.balanceOf(bob.address));
+      const bobBalance = Number(await sTheo.balanceOf(bob.address));
 
       expect(bobBalance).to.greaterThanOrEqual(Number(firstExpectedPayout));
       expect(bobBalance).to.lessThan(Number(firstExpectedPayout * 1.0001));
