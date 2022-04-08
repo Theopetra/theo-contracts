@@ -9,7 +9,7 @@ import {
   BondingCalculatorMock,
 } from '../typechain-types';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
-import { setupUsers } from './utils';
+import { setupUsers, moveTimeForward } from './utils';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture([CONTRACTS.authority, CONTRACTS.treasury, MOCKS.yieldReporterMock]);
@@ -125,11 +125,11 @@ describe('TheopetraTreasury', () => {
   });
 
   describe('Token price', function () {
-    async function moveTimeForward(timeInSeconds: number) {
-      const latestBlock = await ethers.provider.getBlock('latest');
-      const newTimestampInSeconds = latestBlock.timestamp + timeInSeconds;
-      await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
-    }
+    // async function moveTimeForward(timeInSeconds: number) {
+    //   const latestBlock = await ethers.provider.getBlock('latest');
+    //   const newTimestampInSeconds = latestBlock.timestamp + timeInSeconds;
+    //   await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+    // }
 
     function randomIntFromInterval(min: number, max: number) {
       return Math.floor(Math.random() * (max - min + 1) + min);

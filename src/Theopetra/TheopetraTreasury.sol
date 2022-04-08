@@ -17,6 +17,8 @@ import "../Interfaces/IBondDepository.sol";
 
 import "../Types/TheopetraAccessControlled.sol";
 
+import "hardhat/console.sol";
+
 contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     /* ========== DEPENDENCIES ========== */
 
@@ -198,7 +200,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      */
     function mint(address _recipient, uint256 _amount) external override {
         require(permissions[STATUS.REWARDMANAGER][msg.sender], "Caller is not a Reward manager");
-        require(_amount <= excessReserves(), insufficientReserves);
+        // require(_amount <= excessReserves(), insufficientReserves);
 
         THEO.mint(_recipient, _amount);
         emit Minted(msg.sender, _recipient, _amount);

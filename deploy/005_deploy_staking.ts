@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
-import { CONTRACTS, MOCKS } from '../utils/constants';
+import { CONTRACTS, MOCKS, TESTFULL } from '../utils/constants';
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   try {
@@ -18,7 +18,23 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     let args: any = [];
 
     // If on Hardhat network, use the following values for testing
-    if (chainId === '1337') {
+    if (chainId === '1337' && process.env.NODE_ENV === TESTFULL) {
+      epochLengthInBlocks = '2000';
+      firstEpochNumber = '1';
+      firstEpochBlock = '10000'; // Sets the rebase far enough in the future to not hit it in tests
+
+      const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
+      const sTheopetraERC20 = await deployments.get(CONTRACTS.sTheo);
+
+      args = [
+        TheopetraERC20Token.address,
+        sTheopetraERC20.address,
+        epochLengthInBlocks,
+        firstEpochNumber,
+        firstEpochBlock,
+        TheopetraAuthority.address,
+      ];
+    } else if (chainId === '1337') {
       epochLengthInBlocks = '2000';
       firstEpochNumber = '1';
       firstEpochBlock = '10000'; // Sets the rebase far enough in the future to not hit it in tests
@@ -55,4 +71,4 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func;
 func.tags = [CONTRACTS.staking];
-func.dependencies = [CONTRACTS.authority];
+func.dependencies = [CONTRACTS.authority, CONTRACTS.theoToken, CONTRACTS.sTheo];

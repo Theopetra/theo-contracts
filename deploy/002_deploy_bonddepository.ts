@@ -15,15 +15,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const chainId = await getChainId();
     const args = [TheopetraAuthority.address, deployer, deployer, deployer, deployer];
 
-    // If on Hardhat network, update args with addresses of already-deployed mocks
-
     if (chainId === '1337' && process.env.NODE_ENV === TESTFULL) {
-      const { sTheoMock, StakingMock, TreasuryMock } = await getNamedMockAddresses(hre);
-
       const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
       const TheopetraTreasury = await deployments.get(CONTRACTS.treasury);
+      const sTheopetraERC20 = await deployments.get(CONTRACTS.sTheo);
+      const Staking = await deployments.get(CONTRACTS.staking);
 
-      args.splice(1, 4, TheopetraERC20Token.address, sTheoMock, StakingMock, TheopetraTreasury.address);
+      args.splice(1, 4, TheopetraERC20Token.address, sTheopetraERC20.address, Staking.address, TheopetraTreasury.address);
 
     } else if (chainId === '1337') {
       const { TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock } = await getNamedMockAddresses(hre);
@@ -42,4 +40,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = [CONTRACTS.bondDepo];
-func.dependencies = hre?.network?.config?.chainId === 1337 ? [CONTRACTS.authority, CONTRACTS.treasury, 'Mocks'] : [CONTRACTS.authority];
+func.dependencies = hre?.network?.config?.chainId === 1337 ? [CONTRACTS.authority, CONTRACTS.treasury, CONTRACTS.theoToken, CONTRACTS.sTheo, CONTRACTS.staking, 'Mocks'] : [CONTRACTS.authority];

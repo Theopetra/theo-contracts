@@ -5,13 +5,14 @@ import { setupUsers } from './utils';
 import { CONTRACTS, MOCKSWITHARGS } from '../utils/constants';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.sTheo, CONTRACTS.authority, MOCKSWITHARGS.stakingMock]);
+  await deployments.fixture([CONTRACTS.sTheo, CONTRACTS.authority, MOCKSWITHARGS.stakingMock, MOCKSWITHARGS.treasuryMock]);
   const { deployer: owner } = await getNamedAccounts();
 
   const contracts = {
     sTheopetra: await ethers.getContract(CONTRACTS.sTheo),
     TheopetraAuthority: await ethers.getContract(CONTRACTS.authority),
     StakingMock: await ethers.getContract(MOCKSWITHARGS.stakingMock),
+    TreasuryMock: await ethers.getContract(MOCKSWITHARGS.treasuryMock)
   };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
@@ -38,20 +39,22 @@ describe('sTheopetra', function () {
     });
 
     it('sets the authority to be the TheopetraAuthority', async function () {
-      const { sTheopetra, TheopetraAuthority, owner } = await setup();
+      const { sTheopetra, TheopetraAuthority } = await setup();
 
       expect(await sTheopetra.authority()).to.equal(TheopetraAuthority.address);
     });
   });
 
   describe('initialize', function () {
-    it('initializes with the staking contract', async function () {
-      const { sTheopetra, StakingMock, addressZero } = await setup();
+    it('initializes with the staking contract and treasury contract', async function () {
+      const { sTheopetra, StakingMock, TreasuryMock, addressZero } = await setup();
 
       expect(await sTheopetra.stakingContract()).to.equal(addressZero);
+      expect(await sTheopetra.treasury()).to.equal(addressZero);
 
-      await sTheopetra.initialize(StakingMock.address);
+      await sTheopetra.initialize(StakingMock.address, TreasuryMock.address);
       expect(await sTheopetra.stakingContract()).to.equal(StakingMock.address);
+      expect(await sTheopetra.treasury()).to.equal(TreasuryMock.address);
     });
   });
 

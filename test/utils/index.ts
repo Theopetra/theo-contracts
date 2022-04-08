@@ -28,3 +28,9 @@ export async function waitFor<T>(p: Promise<{ wait: () => Promise<T> }>): Promis
   const tx = await p;
   return tx.wait();
 }
+
+export async function moveTimeForward(timeInSeconds: number): Promise<void> {
+  const latestBlock = await ethers.provider.getBlock('latest');
+  const newTimestampInSeconds = latestBlock.timestamp + timeInSeconds;
+  await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+}
