@@ -59,4 +59,4 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func;
 func.tags = [CONTRACTS.distributor];
-func.dependencies = [CONTRACTS.authority,CONTRACTS.treasury, CONTRACTS.theoToken, CONTRACTS.staking];
+func.dependencies = [CONTRACTS.authority, CONTRACTS.treasury, CONTRACTS.theoToken, CONTRACTS.staking];

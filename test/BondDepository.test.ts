@@ -80,7 +80,7 @@ describe('Bond depository', function () {
       YieldReporter,
     } = await setup());
 
-    const [owner, , bob] = users;
+    const [, , bob] = users;
     block = await ethers.provider.getBlock('latest');
     conclusion = block.timestamp + timeToConclusion;
 

@@ -153,6 +153,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
          * is redeemable, the time when payout was redeemed, and the ID
          * of the market deposited into
          */
+
         depositInfo.index_ = addNote(_user, depositInfo.payout_, uint48(depositInfo.expiry_), uint48(_id), _referral, 0);
 
         // transfer payment to treasury

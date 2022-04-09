@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
 import getNamedMockAddresses from './mocks/helpers';
-import { CONTRACTS } from '../utils/constants';
+import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   try {
@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ];
 
     // If on Hardhat network, update args with addresses of already-deployed mocks
-    if (chainId === '1337') {
+    if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
       const { TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock } = await getNamedMockAddresses(hre);
       args.splice(1, 4, TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock);
     }

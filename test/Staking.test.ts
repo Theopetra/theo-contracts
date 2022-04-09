@@ -37,7 +37,7 @@ describe('Staking', function () {
   let addressZero: any;
 
   beforeEach(async function () {
-    ({ Staking, sTheo, TheopetraAuthority, TheopetraERC20Token, Treasury, BondDepository, users, owner, addressZero } =
+    ({ Staking, sTheo, TheopetraAuthority, TheopetraERC20Token, Treasury, users, owner, addressZero } =
       await setup());
 
     const [, bob, carol] = users;

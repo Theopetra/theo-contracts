@@ -1,4 +1,4 @@
-import {ethers} from 'hardhat';
+import {deployments, ethers} from 'hardhat';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { CONTRACTS, TESTWITHMOCKS } from '../../utils/constants';
 import { getContracts } from '../../utils/helpers';
@@ -9,9 +9,20 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
 
     if( process.env.NODE_ENV === TESTWITHMOCKS ) return;
 
+    // await deployments.fixture([
+    //   CONTRACTS.authority,
+    //   CONTRACTS.yieldReporter,
+    //   CONTRACTS.bondDepo,
+    //   CONTRACTS.sTheo,
+    //   CONTRACTS.staking,
+    //   CONTRACTS.theoToken,
+    //   CONTRACTS.treasury,
+    //   CONTRACTS.distributor,
+    // ]);
+
     const [owner, ] = await ethers.getSigners();
     const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
-    const {TheopetraAuthority, sTheo, Staking, Treasury, YieldReporter, BondDepository} = await getContracts();
+    const {TheopetraAuthority, sTheo, Staking, Treasury, YieldReporter, BondDepository, WhitelistBondDepository} = await getContracts();
 
 /* ======== Setup for successfull call to `Treasury.mint` (called when `TheopetraBondDepository.deposit` is called) ======== */
     await TheopetraAuthority.pushVault(Treasury.address, true); // Push vault role to Treasury, to allow it to call THEO.mint
@@ -22,6 +33,12 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
       await Treasury.connect(owner).enable(11, YieldReporter.address, addressZero);
       // Set Bond Depo as reward manager in Treasury (to allow call to mint from NoteKeeper when adding new note)
       await Treasury.connect(owner).enable(8, BondDepository.address, addressZero);
+
+
+      /* ======== Setup for Whitelist Bond Depository ======== */
+      // Set Whitelist Bond Depo as reward manager in Treasury (to allow call to mint from NoteKeeper when adding new note)
+      await Treasury.connect(owner).enable(8, WhitelistBondDepository.address, addressZero);
+
 
       /* ======== Setup for deposit into Treasury, to build excess reserves ======== */
       // const treasuryDepositAmount = '100000'; // 1e5 (this is greater than the amount to mint for THEO, to give excess reserves, and greater than the expected amount to mint when a deposit is made)
