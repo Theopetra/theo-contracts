@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
-import { CONTRACTS, MOCKS, TESTFULL } from '../utils/constants';
+import { CONTRACTS, MOCKS, TESTWITHMOCKS } from '../utils/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
@@ -17,7 +17,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (chainId === '1337') {
     const TheopetraERC20Mock = await deployments.get(MOCKS.theoTokenMock);
     args = [
-      process.env.NODE_ENV === TESTFULL ? Theo.address : TheopetraERC20Mock.address,
+      process.env.NODE_ENV === TESTWITHMOCKS ? TheopetraERC20Mock.address : Theo.address,
       0,
       TheopetraAuthority.address,
     ];

@@ -4,7 +4,7 @@ import { BigNumber } from 'ethers';
 
 import { setupUsers } from './utils';
 import { getContracts } from '../utils/helpers';
-import { CONTRACTS, TESTFULL } from '../utils/constants';
+import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture();
@@ -43,7 +43,7 @@ describe('Staking', function () {
     const [, bob, carol] = users;
     // Setup to mint initial amount of THEO
     const [, treasurySigner] = await ethers.getSigners();
-    if (process.env.NODE_ENV === TESTFULL) {
+    if (process.env.NODE_ENV !== TESTWITHMOCKS) {
       await TheopetraAuthority.pushVault(treasurySigner.address, true); //
       await TheopetraERC20Token.connect(treasurySigner).mint(bob.address, '10000000000000000'); // 1e16 Set to be same as return value in Treasury Mock for baseSupply
       await TheopetraAuthority.pushVault(Treasury.address, true); // Restore Treasury contract as Vault
@@ -53,7 +53,7 @@ describe('Staking', function () {
     await bob.TheopetraERC20Token.approve(Staking.address, LARGE_APPROVAL);
     await carol.TheopetraERC20Token.approve(Staking.address, LARGE_APPROVAL);
 
-    if (process.env.NODE_ENV !== TESTFULL) {
+    if (process.env.NODE_ENV === TESTWITHMOCKS) {
       // Mint enough to allow transfers when claiming staked THEO
       // only call this if not performing full testing, as only mock sTheo has a mint function (sTheo itself uses `initialize` instead)
       await sTheo.mint(Staking.address, '1000000000000000000000');
@@ -146,7 +146,7 @@ describe('Staking', function () {
   });
 
   describe('stake', async function () {
-    const gons = process.env.NODE_ENV === TESTFULL ? await sTheo.gonsForBalance(amountToStake) : 0; // use 0 gons for sTheo.gonsForBalance(), because it returns amountToStake, which is already added in the test below
+    const gons = process.env.NODE_ENV !== TESTWITHMOCKS ? await sTheo.gonsForBalance(amountToStake) : 0; // if running test with mocks, use 0 gons for sTheo.gonsForBalance(), because it returns amountToStake, which is already added in the test below
     it('adds a Claim for the staked _amount to the warmup when `_claim` is false and `warmupPeriod` is zero', async function () {
       const [, bob] = users;
       const claim = false;

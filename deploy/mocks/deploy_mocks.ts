@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
-import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTFULL } from '../../utils/constants';
+import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTWITHMOCKS } from '../../utils/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, getChainId } = hre;
@@ -27,12 +27,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         args = [namedMockAddresses.TheopetraERC20Mock];
       } else if (key === 'bondingCalculatorMock') {
         const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
-        const tokenToUse = process.env.NODE_ENV === TESTFULL ? TheopetraERC20Token.address : namedMockAddresses.TheopetraERC20Mock;
+        const tokenToUse =
+          process.env.NODE_ENV === TESTWITHMOCKS ? namedMockAddresses.TheopetraERC20Mock : TheopetraERC20Token.address;
 
-        args = [
-          tokenToUse,
-          namedMockAddresses.UsdcERC20Mock,
-        ];
+        args = [tokenToUse, namedMockAddresses.UsdcERC20Mock];
       }
       await deploy(MOCKSWITHARGS[key], {
         from: deployer,
