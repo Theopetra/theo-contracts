@@ -8,7 +8,7 @@ import {
   UsdcERC20Mock,
   BondingCalculatorMock,
 } from '../typechain-types';
-import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
+import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTWITHMOCKS } from '../utils/constants';
 import { setupUsers, moveTimeForward } from './utils';
 
 const setup = deployments.createFixture(async () => {
@@ -112,6 +112,10 @@ describe('TheopetraTreasury', () => {
 
   describe('deltaTreasuryYield', function () {
     it('should revert if the yield reporter address is address zero', async function () {
+      if(process.env.NODE_ENV !== TESTWITHMOCKS) {
+        //Set address back to zero (if not using mocks, then the yield reporter address is already set)
+        await Treasury.enable(11, addressZero, addressZero);
+      }
       await expect(Treasury.deltaTreasuryYield()).to.be.revertedWith('Zero address: YieldReporter');
     });
 

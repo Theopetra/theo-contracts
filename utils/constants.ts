@@ -27,3 +27,4 @@ export const MOCKSWITHARGS: Record<string, string> = {
 };
 
 export const TESTFULL = 'test-full';
+export const TESTWITHMOCKS = 'test-with-mocks'

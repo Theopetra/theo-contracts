@@ -1,18 +1,18 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
-import { TheopetraAuthority } from '../typechain-types';
 import { setupUsers } from './utils';
-import { CONTRACTS } from '../utils/constants';
+import {getContracts} from '../utils/helpers';
+import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture([CONTRACTS.authority]);
   const { deployer: owner } = await getNamedAccounts();
-  const contracts = {
-    TheopetraAuthority: <TheopetraAuthority>await ethers.getContract(CONTRACTS.authority),
-  };
-  const users = await setupUsers(await getUnnamedAccounts(), contracts);
+  const { TheopetraAuthority, Treasury } = await getContracts(CONTRACTS.authority);
+  const users = await setupUsers(await getUnnamedAccounts(), { TheopetraAuthority, Treasury });
+
   return {
-    ...contracts,
+    TheopetraAuthority,
+    Treasury,
     users,
     owner,
     addressZero: ethers.utils.getAddress('0x0000000000000000000000000000000000000000'),
@@ -22,9 +22,13 @@ const setup = deployments.createFixture(async () => {
 describe('TheopetraAuthority', function () {
   describe('Vault', function () {
     it('is deployed with a correctly-set vault address', async function () {
-      const { TheopetraAuthority, owner } = await setup();
+      const { TheopetraAuthority, Treasury, owner } = await setup();
 
-      expect(await TheopetraAuthority.vault()).to.equal(owner);
+      if(process.env.NODE_ENV === TESTWITHMOCKS){
+        expect(await TheopetraAuthority.vault()).to.equal(owner);
+      } else {
+        expect(await TheopetraAuthority.vault()).to.equal(Treasury.address);
+      }
     });
 
     it('allows the governor to set a vault address', async function () {

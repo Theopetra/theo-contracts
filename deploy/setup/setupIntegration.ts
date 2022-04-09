@@ -1,22 +1,21 @@
 import {ethers} from 'hardhat';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { CONTRACTS } from '../../utils/constants';
+import { CONTRACTS, TESTWITHMOCKS } from '../../utils/constants';
+import { getContracts } from '../../utils/helpers';
 
 
 const func = async function (hre: HardhatRuntimeEnvironment) {
   try {
+
+    if( process.env.NODE_ENV === TESTWITHMOCKS ) return;
+
     const [owner, ] = await ethers.getSigners();
     const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
-    const TheopetraAuthority = await ethers.getContract(CONTRACTS.authority);
-    const sTheopetraERC20 = await ethers.getContract(CONTRACTS.sTheo);
-    const Staking = await ethers.getContract(CONTRACTS.staking);
-    const Treasury = await ethers.getContract(CONTRACTS.treasury);
-    const YieldReporter = await ethers.getContract(CONTRACTS.yieldReporter);
-    const BondDepository = await ethers.getContract(CONTRACTS.bondDepo);
+    const {TheopetraAuthority, sTheo, Staking, Treasury, YieldReporter, BondDepository} = await getContracts();
 
 /* ======== Setup for successfull call to `Treasury.mint` (called when `TheopetraBondDepository.deposit` is called) ======== */
     await TheopetraAuthority.pushVault(Treasury.address, true); // Push vault role to Treasury, to allow it to call THEO.mint
-    await sTheopetraERC20.connect(owner).initialize(Staking.address, Treasury.address); // Initialize sTHEO
+    await sTheo.connect(owner).initialize(Staking.address, Treasury.address); // Initialize sTHEO
 
     /* ======== Other setup to allow successful `TheopetraBondDepository.deposit()` ======== */
       // Enable Yield Reporter in Treasury
