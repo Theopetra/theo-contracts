@@ -19,16 +19,7 @@ import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
 
 const setup = deployments.createFixture(async function () {
   await deployments.fixture([
-    CONTRACTS.bondDepo,
-    CONTRACTS.authority,
-    MOCKS.sTheoMock,
-    MOCKS.theoTokenMock,
-    MOCKS.usdcTokenMock,
-    MOCKSWITHARGS.stakingMock,
-    MOCKSWITHARGS.treasuryMock,
-    MOCKS.WETH9,
-    MOCKS.aggregatorMockETH,
-    MOCKS.aggregatorMockUSDC,
+    CONTRACTS.whitelistBondDepo
   ]);
 
   const { deployer: owner } = await getNamedAccounts();
