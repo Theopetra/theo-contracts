@@ -1,14 +1,14 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } from 'hardhat';
 import { setupUsers, moveTimeForward, waitFor } from './utils';
-import {getContracts} from '../utils/helpers';
-import { CONTRACTS, TESTWITHMOCKS} from '../utils/constants';
+import { getContracts } from '../utils/helpers';
+import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 
 const setup = deployments.createFixture(async function () {
   await deployments.fixture();
   const { deployer: owner } = await getNamedAccounts();
 
-  const contracts = {...await getContracts(CONTRACTS.bondDepo)};
+  const contracts = await getContracts(CONTRACTS.bondDepo);
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
   return {
@@ -88,13 +88,12 @@ describe('Bond depository', function () {
 
     // Setup to mint initial amount of THEO
     const [, treasurySigner] = await ethers.getSigners();
-    await TheopetraAuthority.pushVault(treasurySigner.address, true); //
+    await TheopetraAuthority.pushVault(treasurySigner.address, true); // Use a valid signer for Vault
     await TheopetraERC20Token.connect(treasurySigner).mint(BondDepository.address, '10000000000000000'); // 1e16 Set to be same as return value in Treasury Mock for baseSupply
     await TheopetraAuthority.pushVault(Treasury.address, true); // Restore Treasury contract as Vault
 
     if (process.env.NODE_ENV === TESTWITHMOCKS) {
-      // Deposit / mint quote tokens and approve transfer for the Bond Depository, to allow deposits
-      // only call this if not performing full testing, as only mock sTheo has a mint function (sTheo itself uses `initialize` instead)
+      // Only call this if using mock sTheo, as only the mock has a mint function (sTheo itself uses `initialize` instead)
       await sTheo.mint(BondDepository.address, '1000000000000000000000');
     }
 
@@ -112,11 +111,11 @@ describe('Bond depository', function () {
     );
     expect(await BondDepository.isLive(bid)).to.equal(true);
 
-    // START integration-test setup
+    // Setup for successful calls to `marketPrice` (during `deposit`) when test use wired-up contracts
     if (process.env.NODE_ENV !== TESTWITHMOCKS) {
-      /* ======== Setup for successful calls to `marketPrice` (during `deposit`) ======== */
       // Set the address of the bonding calculator
       await Treasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+
       // Move forward 8 hours to allow tokenPerformanceUpdate to update contract state for token price
       // current token price will subsequently be updated, last token price will still be zero
       await moveTimeForward(60 * 60 * 8);
@@ -468,7 +467,7 @@ describe('Bond depository', function () {
 
   describe('pendingFor', function () {
     beforeEach(async function () {
-      // // Set the address of the bonding calculator
+      // Set the address of the bonding calculator
       await Treasury.setTheoBondingCalculator(BondingCalculatorMock.address);
     });
 

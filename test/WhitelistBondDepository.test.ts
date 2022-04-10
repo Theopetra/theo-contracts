@@ -15,39 +15,15 @@ import {
   TheopetraTreasury,
 } from '../typechain-types';
 import { setupUsers } from './utils';
-import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
+import { CONTRACTS } from '../utils/constants';
 import { getContracts } from '../utils/helpers';
 
 const setup = deployments.createFixture(async function () {
-  await deployments.fixture([
-    CONTRACTS.bondDepo,
-    CONTRACTS.authority,
-    MOCKS.sTheoMock,
-    MOCKS.theoTokenMock,
-    MOCKS.usdcTokenMock,
-    MOCKSWITHARGS.stakingMock,
-    MOCKSWITHARGS.treasuryMock,
-    MOCKS.WETH9,
-    MOCKS.aggregatorMockETH,
-    MOCKS.aggregatorMockUSDC,
-  ]);
+  await deployments.fixture();
 
   const { deployer: owner } = await getNamedAccounts();
 
-  // const contracts = {
-  //   TheopetraAuthority: <TheopetraAuthority>await ethers.getContract(CONTRACTS.authority),
-  //   WhitelistBondDepository: <WhitelistTheopetraBondDepository>await ethers.getContract(CONTRACTS.whitelistBondDepo),
-  //   sTheoMock: await ethers.getContract(MOCKS.sTheoMock),
-  //   StakingMock: <StakingMock>await ethers.getContract(MOCKSWITHARGS.stakingMock),
-  //   TheopetraERC20Mock: <TheopetraERC20Mock>await ethers.getContract(MOCKS.theoTokenMock),
-  //   TreasuryMock: <TreasuryMock>await ethers.getContract(MOCKSWITHARGS.treasuryMock),
-  //   UsdcTokenMock: <UsdcERC20Mock>await ethers.getContract(MOCKS.usdcTokenMock),
-  //   WETH9: <WETH9>await ethers.getContract(MOCKS.WETH9),
-  //   AggregatorMockETH: <AggregatorMockETH>await ethers.getContract(MOCKS.aggregatorMockETH),
-  //   AggregatorMockUSDC: <AggregatorMockUSDC>await ethers.getContract(MOCKS.aggregatorMockUSDC),
-  // };
-
-  const contracts = await getContracts();
+  const contracts = await getContracts(CONTRACTS.whitelistBondDepo);
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 

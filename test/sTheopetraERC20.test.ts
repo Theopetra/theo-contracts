@@ -2,11 +2,11 @@ import { expect } from './chai-setup';
 import { deployments, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 
 import { setupUsers } from './utils';
-import { CONTRACTS, MOCKSWITHARGS, TESTWITHMOCKS } from '../utils/constants';
+import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 import { getContracts } from '../utils/helpers';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.sTheo, CONTRACTS.authority, MOCKSWITHARGS.stakingMock, MOCKSWITHARGS.treasuryMock]);
+  await deployments.fixture();
   const { deployer: owner } = await getNamedAccounts();
 
   const contracts = await getContracts(CONTRACTS.sTheo);
@@ -46,7 +46,7 @@ describe('sTheopetra', function () {
       const { sTheo, Staking, Treasury, addressZero } = await setup();
 
       // sTHEO has already been initialized during setup for tests without mocks
-      if(process.env.NODE_ENV === TESTWITHMOCKS){
+      if (process.env.NODE_ENV === TESTWITHMOCKS) {
         expect(await sTheo.stakingContract()).to.equal(addressZero);
         expect(await sTheo.treasury()).to.equal(addressZero);
         await sTheo.initialize(Staking.address, Treasury.address);

@@ -5,7 +5,7 @@ import { setupUsers } from './utils';
 import { CONTRACTS } from '../utils/constants';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.theoToken, CONTRACTS.authority]);
+  await deployments.fixture();
   const { deployer: owner } = await getNamedAccounts();
   const contracts = {
     TheopetraAuthority: <TheopetraAuthority>await ethers.getContract(CONTRACTS.authority),

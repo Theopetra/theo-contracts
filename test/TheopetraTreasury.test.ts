@@ -12,16 +12,16 @@ import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTWITHMOCKS } from '../utils/constan
 import { setupUsers, moveTimeForward } from './utils';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.authority, CONTRACTS.treasury, MOCKS.yieldReporterMock]);
+  await deployments.fixture([CONTRACTS.treasury]);
   const addressZero = '0x0000000000000000000000000000000000000000';
   const { deployer: owner } = await getNamedAccounts();
   const contracts = {
-    UsdcTokenMock: await ethers.getContract(MOCKS.usdcTokenMock),
+    UsdcTokenMock: <UsdcERC20Mock>await ethers.getContract(MOCKS.usdcTokenMock),
     Treasury: <TheopetraTreasury>await ethers.getContract(CONTRACTS.treasury),
     Theo: <TheopetraERC20Mock>await ethers.getContract(CONTRACTS.theoToken),
     TheopetraAuthority: <TheopetraAuthority>await ethers.getContract(CONTRACTS.authority),
     YieldReporterMock: <YieldReporterMock>await ethers.getContract(MOCKS.yieldReporterMock),
-    BondingCalculatorMock: await ethers.getContract(MOCKSWITHARGS.bondingCalculatorMock),
+    BondingCalculatorMock: <BondingCalculatorMock>await ethers.getContract(MOCKSWITHARGS.bondingCalculatorMock),
   };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
@@ -45,10 +45,10 @@ const setup = deployments.createFixture(async () => {
 
 describe('TheopetraTreasury', () => {
   let Treasury: TheopetraTreasury;
-  let UsdcTokenMock: any;
-  let BondingCalculatorMock: any;
-  let YieldReporterMock: any;
-  let TheopetraAuthority: any;
+  let UsdcTokenMock: UsdcERC20Mock;
+  let BondingCalculatorMock: BondingCalculatorMock;
+  let YieldReporterMock: YieldReporterMock;
+  let TheopetraAuthority: TheopetraAuthority;
   let users: any;
   let owner: any;
   let addressZero: any;
@@ -112,7 +112,7 @@ describe('TheopetraTreasury', () => {
 
   describe('deltaTreasuryYield', function () {
     it('should revert if the yield reporter address is address zero', async function () {
-      if(process.env.NODE_ENV !== TESTWITHMOCKS) {
+      if (process.env.NODE_ENV !== TESTWITHMOCKS) {
         //Set address back to zero (if not using mocks, then the yield reporter address is already set)
         await Treasury.enable(11, addressZero, addressZero);
       }
@@ -129,12 +129,6 @@ describe('TheopetraTreasury', () => {
   });
 
   describe('Token price', function () {
-    // async function moveTimeForward(timeInSeconds: number) {
-    //   const latestBlock = await ethers.provider.getBlock('latest');
-    //   const newTimestampInSeconds = latestBlock.timestamp + timeInSeconds;
-    //   await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
-    // }
-
     function randomIntFromInterval(min: number, max: number) {
       return Math.floor(Math.random() * (max - min + 1) + min);
     }

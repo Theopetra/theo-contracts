@@ -6,8 +6,6 @@ import "../Interfaces/IsTHEO.sol";
 import "../Types/ERC20Permit.sol";
 import "../Types/TheopetraAccessControlled.sol";
 
-import "hardhat/console.sol";
-
 contract sTheopetra is IsTHEO, ERC20Permit, TheopetraAccessControlled {
     using SafeMath for uint256;
 

@@ -12,8 +12,6 @@ import "../Interfaces/IBondDepository.sol";
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IBondCalculator.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title Theopetra Bond Depository
  * @notice Originally based off of Olympus Bond Depository V2

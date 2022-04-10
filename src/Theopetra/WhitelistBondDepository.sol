@@ -154,7 +154,14 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
          * of the market deposited into
          */
 
-        depositInfo.index_ = addNote(_user, depositInfo.payout_, uint48(depositInfo.expiry_), uint48(_id), _referral, 0);
+        depositInfo.index_ = addNote(
+            _user,
+            depositInfo.payout_,
+            uint48(depositInfo.expiry_),
+            uint48(_id),
+            _referral,
+            0
+        );
 
         // transfer payment to treasury
         market.quoteToken.safeTransferFrom(msg.sender, address(treasury), _amount);

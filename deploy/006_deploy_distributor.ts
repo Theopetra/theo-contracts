@@ -20,31 +20,32 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     let nextEpochBlock;
     let args: any = [];
 
-    // If on Hardhat network, use the following values for testing
+    // Note: epochLength and nextEpoch to be updated as needed for other networks
     if (chainId === '1337') {
       epochLengthInBlocks = '2000';
       nextEpochBlock = '10';
+    }
 
-      if (process.env.NODE_ENV === TESTWITHMOCKS) {
-        const { TheopetraERC20Mock, TreasuryMock, StakingMock } = await getNamedMockAddresses(hre);
-        args = [
-          TreasuryMock,
-          TheopetraERC20Mock,
-          epochLengthInBlocks,
-          nextEpochBlock,
-          TheopetraAuthority.address,
-          StakingMock,
-        ];
-      } else {
-        args = [
-          TheopetraTreasury.address,
-          TheopetraERC20Token.address,
-          epochLengthInBlocks,
-          nextEpochBlock,
-          TheopetraAuthority.address,
-          Staking.address,
-        ];
-      }
+    args = [
+      TheopetraTreasury.address,
+      TheopetraERC20Token.address,
+      epochLengthInBlocks,
+      nextEpochBlock,
+      TheopetraAuthority.address,
+      Staking.address,
+    ];
+
+    // If on Hardhat network, use the following values for testing
+    if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
+      const { TheopetraERC20Mock, TreasuryMock, StakingMock } = await getNamedMockAddresses(hre);
+      args = [
+        TreasuryMock,
+        TheopetraERC20Mock,
+        epochLengthInBlocks,
+        nextEpochBlock,
+        TheopetraAuthority.address,
+        StakingMock,
+      ];
     }
 
     await deploy(CONTRACTS.distributor, {

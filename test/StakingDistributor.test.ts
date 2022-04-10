@@ -1,14 +1,12 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
-
-import {
-  StakingDistributor__factory,
-} from '../typechain-types';
-
+import { CONTRACTS } from '../utils/constants';
+import { StakingDistributor__factory } from '../typechain-types';
 import { setupUsers } from './utils';
 import { getContracts } from '../utils/helpers';
 
 const setup = deployments.createFixture(async () => {
+  await deployments.fixture();
   const { deployer: owner } = await getNamedAccounts();
   const contracts = await getContracts();
 

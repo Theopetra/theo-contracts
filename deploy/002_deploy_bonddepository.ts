@@ -20,19 +20,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const chainId = await getChainId();
     let args: any = [];
 
-    if (chainId === '1337') {
-      if (process.env.NODE_ENV === TESTWITHMOCKS) {
-        const { TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock } = await getNamedMockAddresses(hre);
-        args = [TheopetraAuthority.address, TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock];
-      } else {
-        args = [
-          TheopetraAuthority.address,
-          TheopetraERC20Token.address,
-          sTheopetraERC20.address,
-          Staking.address,
-          TheopetraTreasury.address,
-        ];
-      }
+    args = [
+      TheopetraAuthority.address,
+      TheopetraERC20Token.address,
+      sTheopetraERC20.address,
+      Staking.address,
+      TheopetraTreasury.address,
+    ];
+    if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
+      const { TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock } = await getNamedMockAddresses(hre);
+      args = [TheopetraAuthority.address, TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock];
     }
 
     await deploy(CONTRACTS.bondDepo, {

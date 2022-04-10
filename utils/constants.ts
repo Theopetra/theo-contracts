@@ -26,4 +26,4 @@ export const MOCKSWITHARGS: Record<string, string> = {
   bondingCalculatorMock: 'BondingCalculatorMock',
 };
 
-export const TESTWITHMOCKS = 'test-with-mocks'
+export const TESTWITHMOCKS = 'test-with-mocks';

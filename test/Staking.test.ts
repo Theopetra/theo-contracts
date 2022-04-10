@@ -30,21 +30,19 @@ describe('Staking', function () {
   let sTheo: any;
   let TheopetraAuthority: any;
   let TheopetraERC20Token: any;
-  let BondDepository: any;
   let Treasury: any;
   let users: any;
   let owner: any;
   let addressZero: any;
 
   beforeEach(async function () {
-    ({ Staking, sTheo, TheopetraAuthority, TheopetraERC20Token, Treasury, users, owner, addressZero } =
-      await setup());
+    ({ Staking, sTheo, TheopetraAuthority, TheopetraERC20Token, Treasury, users, owner, addressZero } = await setup());
 
     const [, bob, carol] = users;
     // Setup to mint initial amount of THEO
     const [, treasurySigner] = await ethers.getSigners();
     if (process.env.NODE_ENV !== TESTWITHMOCKS) {
-      await TheopetraAuthority.pushVault(treasurySigner.address, true); //
+      await TheopetraAuthority.pushVault(treasurySigner.address, true); // Use a valid signer for Vault
       await TheopetraERC20Token.connect(treasurySigner).mint(bob.address, '10000000000000000'); // 1e16 Set to be same as return value in Treasury Mock for baseSupply
       await TheopetraAuthority.pushVault(Treasury.address, true); // Restore Treasury contract as Vault
     } else {

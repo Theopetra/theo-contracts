@@ -17,8 +17,6 @@ import "../Interfaces/IBondDepository.sol";
 
 import "../Types/TheopetraAccessControlled.sol";
 
-import "hardhat/console.sol";
-
 contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     /* ========== DEPENDENCIES ========== */
 
