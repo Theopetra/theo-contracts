@@ -146,8 +146,8 @@ describe('Staking', function () {
   });
 
   describe('stake', async function () {
-    const gons = process.env.NODE_ENV !== TESTWITHMOCKS ? await sTheo.gonsForBalance(amountToStake) : 0; // if running test with mocks, use 0 gons for sTheo.gonsForBalance(), because it returns amountToStake, which is already added in the test below
     it('adds a Claim for the staked _amount to the warmup when `_claim` is false and `warmupPeriod` is zero', async function () {
+      const gons = process.env.NODE_ENV !== TESTWITHMOCKS ? await sTheo.gonsForBalance(amountToStake) : 0; // if running test with mocks, use 0 gons for sTheo.gonsForBalance(), because it returns amountToStake, which is already added in the test below
       const [, bob] = users;
       const claim = false;
 
