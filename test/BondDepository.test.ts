@@ -1,7 +1,7 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } from 'hardhat';
 import { TheopetraBondDepository } from '../typechain-types';
-import { setupUsers } from './utils';
+import { setupUsers, waitFor } from './utils';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
 
 const setup = deployments.createFixture(async function () {
@@ -263,6 +263,33 @@ describe('Bond depository', function () {
       const [payout_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(newTotalTheoSupply - initialTotalTheoSupply).to.equal(payout_);
+    });
+
+    it.only('should result in an emitted event by the Treasury, when THEO is minted', async function () {
+      const [, , bob] = users;
+
+      const { events } = await waitFor(
+        bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address)
+      );
+      const [payout_] = await BondDepository.pendingFor(bob.address, 0);
+      expect(events).to.have.length(7);
+
+      const receipt = await ethers.provider.getTransactionReceipt(events[6]?.transactionHash);
+      const abi = ['event Minted(address indexed caller, address indexed recipient, uint256 amount)'];
+
+      const iface = new ethers.utils.Interface(abi);
+
+      // filter for the log specific to the Treasury
+      const treasuryLog = receipt?.logs?.filter(log => {
+        return log.address === TreasuryMock.address;
+      })
+      expect(treasuryLog.length).to.equal(1);
+      const log = iface.parseLog(treasuryLog[0]);
+      const { caller, recipient, amount } = log.args;
+
+      expect(Number(amount)).to.equal(Number(payout_));
+      expect(caller).to.equal(BondDepository.address);
+      expect(recipient).to.equal(BondDepository.address);
     });
 
     it('should stake the payout', async function () {
