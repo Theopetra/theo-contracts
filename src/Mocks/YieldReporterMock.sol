@@ -9,14 +9,14 @@ contract YieldReporterMock is IYieldReporter {
     }
 
     function currentYield() external view override returns (int256) {
-        return 10_000_000_000;
+        return 24_000_000_000;
     }
 
     function getYieldById(uint256 id) external view override returns (int256) {
-        return 10_000_000_000;
+        return 14_000_000_000;
     }
 
     function reportYield(int256 _amount) external override returns (uint256) {
-        return 10_000_000_000;
+        return 10;
     }
 }
