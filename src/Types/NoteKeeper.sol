@@ -47,6 +47,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
      * @param _payout      the amount of THEO due to the user
      * @param _expiry      the timestamp when the Note is redeemable
      * @param _marketID    the ID of the market deposited into
+     * @param _discount    the discount on the bond (that is, the bond rate, variable). This is a proportion (that is, a percentage in its decimal form), with 9 decimals
      * @return index_      the index of the Note in the user's array
      */
     function addNote(
@@ -54,7 +55,8 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         uint256 _payout,
         uint48 _expiry,
         uint48 _marketID,
-        address _referral
+        address _referral,
+        uint48 _discount
     ) internal returns (uint256 index_) {
         // the index of the note is the next in the user's array
         index_ = notes[_user].length;
@@ -66,7 +68,8 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
                 created: uint48(block.timestamp),
                 matured: _expiry,
                 redeemed: 0,
-                marketID: _marketID
+                marketID: _marketID,
+                discount: _discount
             })
         );
 
@@ -96,7 +99,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         uint48 time = uint48(block.timestamp);
 
         for (uint256 i = 0; i < _indexes.length; i++) {
-            (uint256 pay, bool matured) = pendingFor(_user, _indexes[i]);
+            (uint256 pay, , , , bool matured, ) = pendingFor(_user, _indexes[i]);
 
             if (matured) {
                 notes[_user][_indexes[i]].redeemed = time; // mark as redeemed
@@ -175,16 +178,35 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
     }
 
     /**
-     * @notice             calculate amount available for claim for a single note
-     * @param _user        the user that the note belongs to
-     * @param _index       the index of the note in the user's array
-     * @return payout_     the payout due, in sTHEO
-     * @return matured_    if the payout can be redeemed
+     * @notice                  calculate amount available for claim for a single note
+     * @param _user             the user that the note belongs to
+     * @param _index            the index of the note in the user's array
+     * @return payout_          the payout due, in sTHEO
+     * @return created_         the time the note was created
+     * @return expiry_          the time the note is redeemable
+     * @return timeRemaining_   the time remaining until the note is matured
+     * @return matured_         if the payout can be redeemed
      */
-    function pendingFor(address _user, uint256 _index) public view override returns (uint256 payout_, bool matured_) {
+    function pendingFor(address _user, uint256 _index)
+        public
+        view
+        override
+        returns (
+            uint256 payout_,
+            uint48 created_,
+            uint48 expiry_,
+            uint48 timeRemaining_,
+            bool matured_,
+            uint48 discount_
+        )
+    {
         Note memory note = notes[_user][_index];
 
         payout_ = note.payout;
+        created_ = note.created;
+        expiry_ = note.matured;
+        timeRemaining_ = note.matured - note.created;
         matured_ = note.redeemed == 0 && note.matured <= block.timestamp && note.payout != 0;
+        discount_ = note.discount;
     }
 }

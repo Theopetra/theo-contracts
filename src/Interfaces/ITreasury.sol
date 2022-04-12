@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity >=0.7.5;
 
+import "./IBondCalculator.sol";
+
 interface ITreasury {
     function deposit(
         uint256 _amount,
@@ -20,6 +22,8 @@ interface ITreasury {
 
     function repayDebtWithReserve(uint256 amount_, address token_) external;
 
+    function tokenPerformanceUpdate() external;
+
     function excessReserves() external view returns (uint256);
 
     function baseSupply() external view returns (uint256);
@@ -27,4 +31,8 @@ interface ITreasury {
     function deltaTokenPrice() external view returns (int256);
 
     function deltaTreasuryYield() external view returns (int256);
+
+    function getTheoBondingCalculator() external view returns (IBondCalculator);
+
+    function setTheoBondingCalculator(address _theoBondingCalculator) external;
 }

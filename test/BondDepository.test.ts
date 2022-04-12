@@ -14,6 +14,7 @@ const setup = deployments.createFixture(async function () {
     MOCKSWITHARGS.stakingMock,
     MOCKSWITHARGS.treasuryMock,
     MOCKS.WETH9,
+    MOCKSWITHARGS.bondingCalculatorMock,
   ]);
 
   const { deployer: owner } = await getNamedAccounts();
@@ -27,6 +28,7 @@ const setup = deployments.createFixture(async function () {
     TreasuryMock: await ethers.getContract(MOCKSWITHARGS.treasuryMock),
     UsdcTokenMock: await ethers.getContract(MOCKS.usdcTokenMock),
     WETH9: await ethers.getContract(MOCKS.WETH9),
+    BondingCalculatorMock: await ethers.getContract(MOCKSWITHARGS.bondingCalculatorMock),
   };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
@@ -41,24 +43,29 @@ const setup = deployments.createFixture(async function () {
 describe('Bond depository', function () {
   const bid = 0;
   const buffer = 2e5;
-  const capacity = 10000e9;
+  const capacity = '10000000000000000'; // 1e16
   const capacityInQuote = false;
   const depositAmount = '100000000'; // 1e8, equivalent to 100 USDC (6 decimals for USDC)
-  const depositInterval = 60 * 60 * 4;
+  const depositInterval = 60 * 60 * 24 * 30;
   const fixedTerm = true;
   const initialPrice = 400e9;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
-  const timeToConclusion = 60 * 60 * 24;
+  const timeToConclusion = 60 * 60 * 24 * 180; // seconds in 180 days
   const tuneInterval = 60 * 60;
-  const vesting = 100;
+  const vesting = 60 * 60 * 24 * 14; // seconds in 14 days
   // Initial mint for Mock USDC
   const initialMint = '10000000000000000000000000';
+  const bondRateFixed = 10_000_000; // 1% in decimal form (i.e. 0.01 with 9 decimals)
+  const maxBondRateVariable = 40_000_000; // 4% in decimal form (i.e. 0.04 with 9 decimals)
+  const discountRateBond = 10_000_000; // 1% in decimal form (i.e. 0.01 with 9 decimals)
+  const discountRateYield = 20_000_000; // 2% in decimal form (i.e. 0.02 with 9 decimals)
 
-  let block;
+  let block: any;
   let BondDepository: any;
+  let BondingCalculatorMock: any;
   let conclusion: number;
-  let sTheoMock: any;
   let StakingMock: any;
+  let sTheoMock: any;
   let TheopetraAuthority: any;
   let TheopetraERC20Mock: any;
   let TreasuryMock: any;
@@ -66,17 +73,30 @@ describe('Bond depository', function () {
   let users: any;
   let WETH9: any;
 
+  async function expectedBondRateVariable(marketId: number) {
+    const [, , , , , brFixed, , Drb, Dyb] = await BondDepository.terms(marketId);
+
+    const deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
+    const deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
+    return (
+      Number(brFixed) +
+      (Number(Drb) * Number(deltaTokenPrice)) / 10 ** 9 +
+      (Number(Dyb) * Number(deltaTreasuryYield)) / 10 ** 9
+    );
+  }
+
   beforeEach(async function () {
     ({
       BondDepository,
+      BondingCalculatorMock,
       StakingMock,
       sTheoMock,
       TheopetraAuthority,
       TheopetraERC20Mock,
       TreasuryMock,
       UsdcTokenMock,
-      WETH9,
       users,
+      WETH9,
     } = await setup());
 
     const [owner, , bob] = users;
@@ -89,9 +109,9 @@ describe('Bond depository', function () {
 
     await TheopetraERC20Mock.mint(owner.address, '10000000000000'); // Set to be same as return value in Treasury Mock for baseSupply
 
-    // Mint enough to allow transfers when redeeming bonds
+    // Deposit / mint quote tokens and approve transfer for the Bond Depository, to allow deposits
     await sTheoMock.mint(BondDepository.address, '1000000000000000000000');
-
+    await bob.WETH9.deposit({ value: ethers.utils.parseEther('1000') });
     await bob.UsdcTokenMock.approve(BondDepository.address, LARGE_APPROVAL);
     await bob.WETH9.approve(BondDepository.address, LARGE_APPROVAL);
 
@@ -100,6 +120,7 @@ describe('Bond depository', function () {
       [capacity, initialPrice, buffer],
       [capacityInQuote, fixedTerm],
       [vesting, conclusion],
+      [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
       [depositInterval, tuneInterval]
     );
     expect(await BondDepository.isLive(bid)).to.equal(true);
@@ -130,6 +151,7 @@ describe('Bond depository', function () {
         [capacity, initialPrice, buffer],
         [capacityInQuote, fixedTerm],
         [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
         [depositInterval, tuneInterval]
       );
     });
@@ -140,6 +162,7 @@ describe('Bond depository', function () {
         [capacity, initialPrice, buffer],
         [capacityInQuote, fixedTerm],
         [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
         [depositInterval, tuneInterval]
       );
       expect(await BondDepository.isLive(bid)).to.equal(true);
@@ -157,15 +180,86 @@ describe('Bond depository', function () {
           [capacity, initialPrice, buffer],
           [capacityInQuote, fixedTerm],
           [vesting, conclusion],
+          [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
           [depositInterval, tuneInterval]
         )
       ).to.be.revertedWith('UNAUTHORIZED');
     });
 
+    it('should store the vesting length in the bond terms', async function () {
+      const [, , vestingLength] = await BondDepository.terms(bid);
+
+      expect(vestingLength).to.equal(vesting);
+    });
+
+    it('can be created with a vesting length of 90 days', async function () {
+      const longVesting = 60 * 60 * 24 * 90;
+
+      await BondDepository.create(
+        UsdcTokenMock.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [longVesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      );
+
+      const [, , vestingLength] = await BondDepository.terms(1);
+
+      expect(vestingLength).to.equal(longVesting);
+    });
+
+    it('can be created with a vesting length of 30 days', async function () {
+      const longVesting = 60 * 60 * 24 * 30;
+
+      await BondDepository.create(
+        UsdcTokenMock.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [longVesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      );
+
+      const [, , vestingLength] = await BondDepository.terms(1);
+
+      expect(vestingLength).to.equal(longVesting);
+    });
+
+    it('can be created with a vesting length that extends beyond the market conclusion time', async function () {
+      const longVesting = 60 * 60 * 24 * 90; // 90 days vesting time
+      const shorterConclusion = block.timestamp + 60 * 60 * 24 * 30; // 30 days to market conclusion
+
+      await BondDepository.create(
+        UsdcTokenMock.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [longVesting, shorterConclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      );
+
+      const [, , vestingLength] = await BondDepository.terms(1);
+
+      expect(vestingLength).to.equal(longVesting);
+    });
+
+    it('should store the correct market terms', async function () {
+      const [, , vestingLength, marketConclusion, , brFixed, maxBrVariable, Drb, Dyb] = await BondDepository.terms(bid);
+
+      expect(vestingLength).to.equal(vesting);
+      expect(marketConclusion).to.equal(conclusion);
+      expect(brFixed).to.equal(bondRateFixed);
+      expect(maxBrVariable).to.equal(maxBondRateVariable);
+      expect(Drb).to.equal(discountRateBond);
+      expect(Dyb).to.equal(discountRateYield);
+    });
+
     it('should set max payout to correct % of capacity', async function () {
-      const [, , , , maxPayout, ,] = await BondDepository.markets(bid);
-      const upperBound = (capacity * 1.0033) / 6;
-      const lowerBound = (capacity * 0.9967) / 6;
+      const [, , , , , , maxPayout] = await BondDepository.markets(bid);
+      const [, , secondsToConclusion, depositInterval] = await BondDepository.metadata(bid);
+      const upperBound = (Number(capacity) * Number(depositInterval) * 1.0033) / secondsToConclusion;
+      const lowerBound = (Number(capacity) * Number(depositInterval) * 0.9967) / secondsToConclusion;
       expect(Number(maxPayout)).to.be.greaterThan(lowerBound);
       expect(Number(maxPayout)).to.be.lessThan(upperBound);
     });
@@ -176,6 +270,7 @@ describe('Bond depository', function () {
         [capacity, initialPrice, buffer],
         [capacityInQuote, fixedTerm],
         [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
         [depositInterval, tuneInterval]
       );
       const [firstMarketId, secondMarketId] = await BondDepository.liveMarkets();
@@ -189,6 +284,7 @@ describe('Bond depository', function () {
         [capacity, initialPrice, buffer],
         [capacityInQuote, fixedTerm],
         [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
         [depositInterval, tuneInterval]
       );
 
@@ -198,23 +294,14 @@ describe('Bond depository', function () {
       const [idMarket2] = await BondDepository.liveMarketsFor(WETH9.address);
       expect(Number(idMarket2)).to.equal(1);
     });
-
-    it('should start with price at the initial price', async function () {
-      const lowerBound = initialPrice * 0.9999;
-      expect(Number(await BondDepository.marketPrice(bid))).to.be.greaterThan(lowerBound);
-    });
-
-    it('should give accurate payout for price', async function () {
-      const price = await BondDepository.marketPrice(bid);
-      const amount = 100000000000000;
-      const expectedPayout = amount / price;
-      const lowerBound = expectedPayout * 0.9999;
-
-      expect(Number(await BondDepository.payoutFor(amount, 0))).to.be.greaterThan(lowerBound);
-    });
   });
 
   describe('Deposit', function () {
+    beforeEach(async function () {
+      // Set the address of the bonding calculator
+      await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
+    });
+
     it('should allow a deposit', async function () {
       const [, , bob, carol] = users;
 
@@ -224,7 +311,46 @@ describe('Bond depository', function () {
       expect(bobNotesIndexes.length).to.equal(1);
     });
 
-    it('should protect the user against price changes after entering the mempool', async function () {
+    it('can allow a relatively large deposit (by using a large deposit interval)', async function () {
+      const [, , bob, carol] = users;
+      const largeDepositAmount = '1000000000000000000'; // 1 ETH (1e18)
+      const largeDepositInterval = 60 * 60 * 24 * 180; // Set to match time remaining until market conclusion
+      await BondDepository.create(
+        WETH9.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [largeDepositInterval, tuneInterval]
+      );
+
+      await bob.BondDepository.deposit(1, largeDepositAmount, initialPrice, bob.address, carol.address);
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+
+      expect(bobNotesIndexes.length).to.equal(1);
+    });
+
+    it('can allow a very large deposit (using a combination of large capacity and long deposit interval)', async function () {
+      const [, , bob, carol] = users;
+      const largeDepositAmount = '100000000000000000000'; // 100 ETH (1e20)
+      const largeDepositInterval = 60 * 60 * 24 * 180; // Set to match time remaining until market conclusion
+      const largeCapacity = '10000000000000000'; // 1e16
+      await BondDepository.create(
+        WETH9.address,
+        [largeCapacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [largeDepositInterval, tuneInterval]
+      );
+
+      await bob.BondDepository.deposit(1, largeDepositAmount, initialPrice, bob.address, carol.address);
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+
+      expect(bobNotesIndexes.length).to.equal(1);
+    });
+
+    it.skip('should protect the user against price changes after entering the mempool', async function () {
       const [, , bob, carol] = users;
 
       await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
@@ -243,12 +369,12 @@ describe('Bond depository', function () {
 
     it('should decay debt', async function () {
       const [, , bob, carol] = users;
-      const [, , , totalDebt, , ,] = await BondDepository.markets(0);
+      const [, , , , , totalDebt] = await BondDepository.markets(0);
 
       await network.provider.send('evm_increaseTime', [100]);
       bob.BondDepository.deposit(bid, 10000, initialPrice, bob.address, carol.address);
 
-      const [, , , newTotalDebt, , ,] = await BondDepository.markets(0);
+      const [, , , , , newTotalDebt] = await BondDepository.markets(0);
       expect(Number(totalDebt)).to.be.greaterThan(Number(newTotalDebt));
     });
 
@@ -274,6 +400,16 @@ describe('Bond depository', function () {
 
       const newStakingTHEOBalance = await TheopetraERC20Mock.balanceOf(StakingMock.address);
       expect(Number(initialStakingTheoBalance)).to.be.lessThan(Number(newStakingTHEOBalance));
+    });
+
+    it('should emit a Bond event containing bond market id, amount and price', async function () {
+      const [, , bob] = users;
+
+      const price = await BondDepository.marketPrice(bid);
+
+      await expect(bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address))
+        .to.emit(BondDepository, 'Bond')
+        .withArgs(bid, depositAmount, price);
     });
   });
 
@@ -314,6 +450,7 @@ describe('Bond depository', function () {
         [capacity, initialPrice, buffer],
         [capacityInQuote, fixedTerm],
         [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
         [depositInterval, tuneInterval]
       );
 
@@ -324,6 +461,11 @@ describe('Bond depository', function () {
   });
 
   describe('pendingFor', function () {
+    beforeEach(async function () {
+      // Set the address of the bonding calculator
+      await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
+    });
+
     it('should show the Note as being not-yet-matured before the vesting time has passed', async function () {
       const [, , bob, carol] = users;
 
@@ -333,7 +475,7 @@ describe('Bond depository', function () {
       const newTimestampInSeconds = latestBlock.timestamp + vesting / 2;
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
-      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, , , , matured_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(matured_).to.equal(false);
     });
@@ -350,7 +492,7 @@ describe('Bond depository', function () {
       const newTimestampInSeconds = latestBlock.timestamp + vesting * 10;
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
-      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, , , , matured_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(matured_).to.equal(true);
     });
@@ -369,8 +511,8 @@ describe('Bond depository', function () {
       // Second deposit
       await bob.BondDepository.deposit(bid, depositAmount, initialPrice * 1.01, bob.address, carol.address);
 
-      const [, firstMatured_] = await BondDepository.pendingFor(bob.address, 0);
-      const [, secondMatured_] = await BondDepository.pendingFor(bob.address, 1);
+      const [, , , , firstMatured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, , , , secondMatured_] = await BondDepository.pendingFor(bob.address, 1);
 
       expect(firstMatured_).to.equal(true);
       expect(secondMatured_).to.equal(false);
@@ -378,6 +520,11 @@ describe('Bond depository', function () {
   });
 
   describe('Redeem', function () {
+    beforeEach(async function () {
+      // Set the address of the bonding calculator
+      await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
+    });
+
     it('should not be immediately redeemable (before the vesting time has passed)', async function () {
       const [, , bob, carol] = users;
 
@@ -386,7 +533,7 @@ describe('Bond depository', function () {
       const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
 
       expect(bobNotesIndexes.length).to.equal(1);
-      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, , , , matured_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(matured_).to.equal(false);
 
@@ -404,7 +551,7 @@ describe('Bond depository', function () {
       const newTimestampInSeconds = latestBlock.timestamp + vesting / 2;
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
-      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, , , , matured_] = await BondDepository.pendingFor(bob.address, 0);
 
       expect(matured_).to.equal(false);
 
@@ -421,8 +568,8 @@ describe('Bond depository', function () {
       const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
 
       expect(bobNotesIndexes.length).to.equal(2);
-      const [, matured_] = await BondDepository.pendingFor(bob.address, 0);
-      const [, secondMatured_] = await BondDepository.pendingFor(bob.address, 1);
+      const [, , , , matured_] = await BondDepository.pendingFor(bob.address, 0);
+      const [, , , , secondMatured_] = await BondDepository.pendingFor(bob.address, 1);
 
       expect(matured_).to.equal(false);
       expect(secondMatured_).to.equal(false);
@@ -494,6 +641,339 @@ describe('Bond depository', function () {
       expect(bobBalance).to.greaterThanOrEqual(Number(firstExpectedPayout));
       expect(bobBalance).to.lessThan(Number(firstExpectedPayout * 1.0001));
       expect(bobBalance).to.be.lessThan(Number(totalExpectedPayoutsOverAllTime));
+    });
+  });
+
+  describe('Bond pricing', function () {
+    describe('Bonding calculator', function () {
+      it('a deposit attempt should revert if the bond calculator is not set', async function () {
+        const [, , bob, carol] = users;
+
+        await expect(
+          bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address)
+        ).to.be.revertedWith('No bonding calculator');
+      });
+
+      it('a deposit attempt should revert if the bond calculator isset as address zero', async function () {
+        const [, , bob, carol] = users;
+        const addressZero = await ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
+
+        await TreasuryMock.setTheoBondingCalculator(addressZero);
+
+        await expect(
+          bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address)
+        ).to.be.revertedWith('No bonding calculator');
+      });
+
+      it('a call to get the market price should revert if the bond calculator is not set or set as address zero', async function () {
+        const addressZero = await ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
+
+        await expect(BondDepository.marketPrice(bid)).to.be.revertedWith('No bonding calculator');
+
+        await TreasuryMock.setTheoBondingCalculator(addressZero);
+        await expect(BondDepository.marketPrice(bid)).to.be.revertedWith('No bonding calculator');
+      });
+    });
+
+    describe('market price', function () {
+      const price = 242674; // To match valuation returned from BondingCalculatorMock
+
+      beforeEach(async function () {
+        // Set the address of the bonding calculator
+        await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
+      });
+
+      it('should give accurate payout for price', async function () {
+        const price = await BondDepository.marketPrice(bid);
+        const amount = 100_000_000_000_000;
+        const expectedPayout = amount / price;
+        const lowerBound = expectedPayout * 0.9999;
+
+        expect(Number(await BondDepository.payoutFor(amount, 0))).to.be.greaterThan(lowerBound);
+      });
+
+      it('gets the market price', async function () {
+        const expectedBrv = await expectedBondRateVariable(bid);
+
+        const expectedPrice = Math.floor((price * (10 ** 9 - Number(expectedBrv))) / 10 ** 9);
+        const marketPrice = await BondDepository.marketPrice(bid);
+
+        expect(Number(marketPrice)).to.equal(expectedPrice);
+      });
+
+      it('limits the discount on the market price to the specified max bond rate variable', async function () {
+        const largeBondRateFixed = 10_000_000_000; // 10% (> max bond rate variable)
+
+        await BondDepository.create(
+          UsdcTokenMock.address,
+          [capacity, initialPrice, buffer],
+          [capacityInQuote, fixedTerm],
+          [vesting, conclusion],
+          [largeBondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+          [depositInterval, tuneInterval]
+        );
+
+        const expectedPrice = Math.floor((price * (10 ** 9 - Number(maxBondRateVariable))) / 10 ** 9);
+        const marketPrice = await BondDepository.marketPrice(1);
+
+        expect(Number(marketPrice)).to.equal(Number(expectedPrice));
+      });
+
+      it('allows for a 0% discount on the current market value; that is, allows for 0% bond rate variable', async function () {
+        const zeroBondRateFixed = 0;
+        const zeroDiscountRateBond = 0;
+        const zeroDiscountRateYield = 0;
+
+        await BondDepository.create(
+          UsdcTokenMock.address,
+          [capacity, initialPrice, buffer],
+          [capacityInQuote, fixedTerm],
+          [vesting, conclusion],
+          [zeroBondRateFixed, maxBondRateVariable, zeroDiscountRateBond, zeroDiscountRateYield],
+          [depositInterval, tuneInterval]
+        );
+
+        const expectedBrv = await expectedBondRateVariable(1);
+
+        const expectedPrice = Math.floor((price * (10 ** 9 - Number(expectedBrv))) / 10 ** 9);
+        const marketPrice = await BondDepository.marketPrice(1);
+
+        expect(Number(marketPrice)).to.equal(Number(price));
+        expect(Number(marketPrice)).to.equal(Number(expectedPrice));
+      });
+
+      it('has a minimum discount on the bond of 0% (that is, it does not allow a negative discount)', async function () {
+        const negativeBondRateFixed = -10_000_000; // -1% in decimal form (i.e. -0.01 with 9 decimals)
+        const negativeDiscountRateBond = -10_000_000; // -1% in decimal form (i.e. -0.01 with 9 decimals)
+        const negativeDiscountRateYield = -20_000_000; // -2% in decimal form (i.e. -0.02 with 9 decimals)
+
+        await BondDepository.create(
+          UsdcTokenMock.address,
+          [capacity, initialPrice, buffer],
+          [capacityInQuote, fixedTerm],
+          [vesting, conclusion],
+          [negativeBondRateFixed, maxBondRateVariable, negativeDiscountRateBond, negativeDiscountRateYield],
+          [depositInterval, tuneInterval]
+        );
+
+        const rawCalculatedBrv = await expectedBondRateVariable(1);
+        expect(rawCalculatedBrv).to.be.lessThan(0);
+
+        const expectedPrice = Math.floor((price * (10 ** 9 - 0)) / 10 ** 9);
+        const marketPrice = await BondDepository.marketPrice(1);
+
+        expect(Number(marketPrice)).to.equal(Number(price));
+        expect(Number(marketPrice)).to.equal(Number(expectedPrice));
+      });
+    });
+
+    describe('setDiscountRateBond', function () {
+      it('updates the market terms with the new Discount Rate Return Bond (Drb)', async function () {
+        const [, , , , , , , initialDiscountRateBond] = await BondDepository.terms(bid);
+        expect(initialDiscountRateBond).to.equal(discountRateBond);
+
+        const newExpectedDiscountRateBond = 5_000_000;
+        await BondDepository.setDiscountRateBond(bid, newExpectedDiscountRateBond);
+        const [, , , , , , , newDiscountRateBond] = await BondDepository.terms(bid);
+        expect(newDiscountRateBond).to.equal(newExpectedDiscountRateBond);
+      });
+
+      it('will revert if called by an account other than the policy holder', async function () {
+        const [, , bob] = users;
+
+        const newExpectedDiscountRateBond = 5_000_000;
+        await expect(bob.BondDepository.setDiscountRateBond(bid, newExpectedDiscountRateBond)).to.be.revertedWith(
+          'UNAUTHORIZED'
+        );
+      });
+
+      it('will update the market price as expected', async function () {
+        // Set the address of the bonding calculator to allow market price calculation
+        await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
+
+        const newExpectedDiscountRateBond = 5_000_000;
+        await BondDepository.setDiscountRateBond(bid, newExpectedDiscountRateBond);
+
+        // Calculate the new expected Bond Rate, variable
+        const [, , , , , brFixed, , Drb, Dyb] = await BondDepository.terms(bid);
+        const deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
+        const deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
+        const newExpectedBrv =
+          Number(brFixed) +
+          (Number(Drb) * Number(deltaTokenPrice)) / 10 ** 9 +
+          (Number(Dyb) * Number(deltaTreasuryYield)) / 10 ** 9;
+
+        const price = 242674; // To match valuation returned from BondingCalculatorMock
+        const newExpectedPrice = Math.floor((price * (10 ** 9 - Number(newExpectedBrv))) / 10 ** 9);
+
+        const newMarketPrice = await BondDepository.marketPrice(bid);
+
+        expect(Number(newMarketPrice)).to.equal(newExpectedPrice);
+      });
+    });
+
+    describe('setDiscountRateYield', function () {
+      it('updates the market terms with the new Discount Rate Return Yield (Dyb)', async function () {
+        const [, , , , , , , , initialDiscountRateYield] = await BondDepository.terms(bid);
+        expect(initialDiscountRateYield).to.equal(discountRateYield);
+
+        const newExpectedDiscountRateYield = 7_000_000;
+        await BondDepository.setDiscountRateYield(bid, newExpectedDiscountRateYield);
+        const [, , , , , , , , newDiscountRateYield] = await BondDepository.terms(bid);
+        expect(newDiscountRateYield).to.equal(newExpectedDiscountRateYield);
+      });
+
+      it('will revert if called by an account other than the policy holder', async function () {
+        const [, , bob] = users;
+
+        const newExpectedDiscountRateYield = 7_000_000;
+        await expect(bob.BondDepository.setDiscountRateYield(bid, newExpectedDiscountRateYield)).to.be.revertedWith(
+          'UNAUTHORIZED'
+        );
+      });
+
+      it('will update the market price as expected', async function () {
+        // Set the address of the bonding calculator to allow market price calculation
+        await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
+
+        const newExpectedDiscountRateYield = 7_000_000;
+        await BondDepository.setDiscountRateYield(bid, newExpectedDiscountRateYield);
+
+        // Calculate the new expected Bond Rate, variable
+        const [, , , , , brFixed, , Drb, Dyb] = await BondDepository.terms(bid);
+        const deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
+        const deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
+        const newExpectedBrv =
+          Number(brFixed) +
+          (Number(Drb) * Number(deltaTokenPrice)) / 10 ** 9 +
+          (Number(Dyb) * Number(deltaTreasuryYield)) / 10 ** 9;
+
+        const price = 242674; // To match valuation returned from BondingCalculatorMock
+        const newExpectedPrice = Math.floor((price * (10 ** 9 - Number(newExpectedBrv))) / 10 ** 9);
+
+        const newMarketPrice = await BondDepository.marketPrice(bid);
+
+        expect(Number(newMarketPrice)).to.equal(newExpectedPrice);
+      });
+    });
+  });
+
+  describe('UI-related', function () {
+    beforeEach(async function () {
+      // Set the address of the bonding calculator
+      await TreasuryMock.setTheoBondingCalculator(BondingCalculatorMock.address);
+    });
+
+    it('allows a user to get the current bond discounts (Bond Rate, variable) for all live markets', async function () {
+      const [, , bob] = users;
+
+      // create a second market, so multiple markets are live
+      await BondDepository.create(
+        WETH9.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      );
+      const allLiveMarketsIds = await BondDepository.liveMarkets();
+
+      allLiveMarketsIds.forEach(async (id: number) => {
+        const marketBrv = await bob.BondDepository.bondRateVariable(id);
+        const expectedBrv = await expectedBondRateVariable(id);
+
+        expect(marketBrv).to.equal(expectedBrv);
+      });
+
+      for (let i = 0; i < allLiveMarketsIds.length; i++) {
+        const marketBrv = await bob.BondDepository.bondRateVariable(allLiveMarketsIds[i]);
+        const expectedBrv = await expectedBondRateVariable(allLiveMarketsIds[i]);
+
+        expect(marketBrv).to.equal(expectedBrv);
+      }
+    });
+
+    it('allows a user to get the locking (vesting) periods for all live markets', async function () {
+      const [, , bob] = users;
+
+      // create a second market, so multiple markets are live
+      await BondDepository.create(
+        WETH9.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      );
+      const allLiveMarketsIds = await BondDepository.liveMarkets();
+
+      for (let i = 0; i < allLiveMarketsIds.length; i++) {
+        const [, , marketVestingPeriod] = await bob.BondDepository.terms(allLiveMarketsIds[i]);
+        expect(await marketVestingPeriod).to.equal(vesting);
+      }
+    });
+
+    it('allows a user to buy and lock THEO at a discount, paying with USDC, with the THEO earned automatically being placed into staking', async function () {
+      const [, , bob] = users;
+      const initialBobBalance = await TheopetraERC20Mock.balanceOf(bob.address);
+      const initialStakingTheoBalance = await TheopetraERC20Mock.balanceOf(StakingMock.address);
+
+      // Buy the bond, in USDC market
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address);
+
+      // Check that bond (note) is made
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+      expect(bobNotesIndexes.length).to.equal(1);
+
+      // Check that THEO is locked (bond cannot be redeemed before maturity)
+      await bob.BondDepository.redeemAll(bob.address);
+      expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(initialBobBalance);
+
+      // Check that THEO is automatically staked
+      const newStakingTHEOBalance = await TheopetraERC20Mock.balanceOf(StakingMock.address);
+      expect(Number(initialStakingTheoBalance)).to.be.lessThan(Number(newStakingTHEOBalance));
+    });
+
+    it('allows a user to see details for all of their locked bonds, with: payout in sTHEO, purchase date, expiry date, time remaining and discount', async function () {
+      const [, , bob] = users;
+      const initialTotalTheoSupply = await TheopetraERC20Mock.totalSupply();
+
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const currentTimestamp = latestBlock.timestamp;
+      // First deposit
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address);
+
+      // Second deposit
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address);
+
+      // Get indexes for all user's pending notes
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+      expect(bobNotesIndexes.length).to.equal(2);
+      // Payout is minted as THEO (and staked as sTHEO)
+      const newTotalTheoSupply = await TheopetraERC20Mock.totalSupply();
+      // Calculate expected payout: based on two identical deposits above
+      const expectedPayout = (newTotalTheoSupply - initialTotalTheoSupply) / 2;
+
+      for (let i = 0; i < bobNotesIndexes.length; i++) {
+        const [payout, createdAt, expiresAt, timeRemaining, marketId, discount] = await BondDepository.pendingFor(
+          bob.address,
+          bobNotesIndexes[i]
+        );
+
+        expect(payout).to.equal(expectedPayout);
+
+        const currentTimestampLowerbound = currentTimestamp * 0.993;
+        const currentTimestampUpperbound = currentTimestamp * 1.01;
+
+        expect(createdAt).to.be.greaterThan(currentTimestampLowerbound).and.to.be.lessThan(currentTimestampUpperbound);
+        expect(expiresAt)
+          .to.be.greaterThan(currentTimestampLowerbound + vesting)
+          .and.to.be.lessThan(currentTimestampUpperbound + vesting);
+        expect(timeRemaining).to.equal(expiresAt - createdAt);
+
+        const expectedBrv = await expectedBondRateVariable(bid);
+        expect(discount).to.equal(expectedBrv);
+      }
     });
   });
 });

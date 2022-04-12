@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.10;
 
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import "../Types/NoteKeeper.sol";
 
 import "../Libraries/SafeERC20.sol";
 
 import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/IBondDepository.sol";
+import "../Interfaces/ITreasury.sol";
+import "../Interfaces/IBondCalculator.sol";
 
 /**
  * @title Theopetra Bond Depository
@@ -17,6 +21,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     /* ======== DEPENDENCIES ======== */
 
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
+    using SafeCast for int256;
 
     /* ======== EVENTS ======== */
 
@@ -35,6 +41,13 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
 
     // Queries
     mapping(address => uint256[]) public marketsForQuote; // market IDs for quote token
+
+    /* ======== STRUCTS ======== */
+
+    struct PriceInfo {
+        uint256 price;
+        uint48 bondRateVariable;
+    }
 
     /* ======== CONSTRUCTOR ======== */
 
@@ -79,6 +92,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     {
         Market storage market = markets[_id];
         Terms memory term = terms[_id];
+        PriceInfo memory priceInfo;
         uint48 currentTime = uint48(block.timestamp);
 
         // Markets end at a defined timestamp
@@ -90,8 +104,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
 
         // Users input a maximum price, which protects them from price changes after
         // entering the mempool. max price is a slippage mitigation measure
-        uint256 price = _marketPrice(_id);
-        require(price <= _maxPrice, "Depository: more than max price");
+        priceInfo.price = marketPrice(_id);
+        require(priceInfo.price <= _maxPrice, "Depository: more than max price");
 
         /**
          * payout for the deposit = amount / price
@@ -103,7 +117,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
          *
          * 1e18 = THEO decimals (9) + price decimals (9)
          */
-        payout_ = ((_amount * 1e18) / price) / (10**metadata[_id].quoteDecimals);
+        payout_ = ((_amount * 1e18) / priceInfo.price) / (10**metadata[_id].quoteDecimals);
 
         // markets have a max payout amount, capping size because deposits
         // do not experience slippage. max payout is recalculated upon tuning
@@ -145,15 +159,16 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         // incrementing total debt raises the price of the next bond
         market.totalDebt += uint64(payout_);
 
-        emit Bond(_id, _amount, price);
+        emit Bond(_id, _amount, priceInfo.price);
 
         /**
          * user data is stored as Notes. these are isolated array entries
          * storing the amount due, the time created, the time when payout
-         * is redeemable, the time when payout was redeemed, and the ID
-         * of the market deposited into
+         * is redeemable, the time when payout was redeemed, the ID
+         * of the market deposited into, and the Bond Rate Variable (Brv) discount on the bond
          */
-        index_ = addNote(_user, payout_, uint48(expiry_), uint48(_id), _referral);
+        priceInfo.bondRateVariable = uint48(bondRateVariable(_id));
+        index_ = addNote(_user, payout_, uint48(expiry_), uint48(_id), _referral, priceInfo.bondRateVariable);
 
         // transfer payment to treasury
         market.quoteToken.safeTransferFrom(msg.sender, address(treasury), _amount);
@@ -242,7 +257,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
              * i.e. market has 10 days remaining. deposit interval is 1 day. capacity
              * is 10,000 THEO. max payout would be 1,000 THEO (10,000 * 1 / 10).
              */
-            markets[_id].maxPayout = uint64((capacity * meta.depositInterval) / timeRemaining);
+            markets[_id].maxPayout = uint256((capacity * meta.depositInterval) / timeRemaining);
 
             // calculate the ideal total debt to satisfy capacity in the remaining time
             uint256 targetDebt = (capacity * meta.length) / timeRemaining;
@@ -273,6 +288,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * @param _market      [capacity (in THEO or quote), initial price / THEO (9 decimals), debt buffer (3 decimals)]
      * @param _booleans    [capacity in quote, fixed term]
      * @param _terms       [vesting length (if fixed term) or vested timestamp, conclusion timestamp]
+     * @param _rates       [bondRateFixed, maxBondRateVariable, initial discountRateBond (Drb), initial discountRateYield (Dyb)]
      * @param _intervals   [deposit interval (seconds), tune interval (seconds)]
      * @return id_         ID of new bond market
      */
@@ -281,7 +297,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         uint256[3] memory _market,
         bool[2] memory _booleans,
         uint256[2] memory _terms,
-        uint32[2] memory _intervals
+        int64[4] memory _rates,
+        uint64[2] memory _intervals
     ) external override onlyPolicy returns (uint256 id_) {
         // the length of the program, in seconds
         uint256 secondsToConclusion = _terms[1] - block.timestamp;
@@ -296,14 +313,14 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
          *
          * 1e18 = theo decimals (9) + initial price decimals (9)
          */
-        uint64 targetDebt = uint64(_booleans[0] ? ((_market[0] * 1e18) / _market[1]) / 10**decimals : _market[0]);
+        uint256 targetDebt = uint256(_booleans[0] ? ((_market[0] * 1e18) / _market[1]) / 10**decimals : _market[0]);
 
         /*
          * max payout is the amount of capacity that should be utilized in a deposit
          * interval. for example, if capacity is 1,000 THEO, there are 10 days to conclusion,
          * and the preferred deposit interval is 1 day, max payout would be 100 THEO.
          */
-        uint64 maxPayout = uint64((targetDebt * _intervals[0]) / secondsToConclusion);
+        uint256 maxPayout = (targetDebt * _intervals[0]) / secondsToConclusion;
 
         /*
          * max debt serves as a circuit breaker for the market. let's say the quote
@@ -347,7 +364,11 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
                 controlVariable: uint64(controlVariable),
                 vesting: uint48(_terms[0]),
                 conclusion: uint48(_terms[1]),
-                maxDebt: uint64(maxDebt)
+                maxDebt: uint64(maxDebt),
+                bondRateFixed: int64(_rates[0]),
+                maxBondRateVariable: int64(_rates[1]),
+                discountRateBond: int64(_rates[2]),
+                discountRateYield: int64(_rates[3])
             })
         );
 
@@ -356,8 +377,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
                 lastTune: uint48(block.timestamp),
                 lastDecay: uint48(block.timestamp),
                 length: uint48(secondsToConclusion),
-                depositInterval: _intervals[0],
-                tuneInterval: _intervals[1],
+                depositInterval: uint64(_intervals[0]),
+                tuneInterval: uint64(_intervals[1]),
                 quoteDecimals: uint8(decimals)
             })
         );
@@ -377,37 +398,83 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         emit CloseMarket(_id);
     }
 
+    /* ======== BONDING RATES ======== */
+
+    /**
+     * @notice                      update the Discount Rate Return Bond (Drb) for a specified market
+     * @param _id                   uint256 the ID of the bond market to update
+     * @param _discountRateBond     uint64 the new Discount Rate Return Bond (Drb), 9 decimals
+     */
+    function setDiscountRateBond(uint256 _id, int64 _discountRateBond) public override onlyPolicy {
+        terms[_id].discountRateBond = _discountRateBond;
+    }
+
+    /**
+     * @notice                      update the Discount Rate Return Yield (Dyb) for a specified market
+     * @param _id                   uint256 the ID of the bond market to update
+     * @param _discountRateYield    uint64 the new Discount Rate Return Yield (Dyb), 9 decimals
+     */
+    function setDiscountRateYield(uint256 _id, int64 _discountRateYield) public override onlyPolicy {
+        terms[_id].discountRateYield = _discountRateYield;
+    }
+
+    /**
+     * @notice                  calculate bond rate variable (Brv)
+     * @dev                     see marketPrice for calculation details.
+     * @param _id               ID of market
+     */
+    function bondRateVariable(uint256 _id) public view override returns (uint256) {
+        int256 bondRateVariable = int64(terms[_id].bondRateFixed) +
+            ((int64(terms[_id].discountRateBond) * ITreasury(treasury).deltaTokenPrice()) / 10**9) + //deltaTokenPrice is 9 decimals
+            ((int64(terms[_id].discountRateYield) * ITreasury(treasury).deltaTreasuryYield()) / 10**9); // deltaTreasuryYield is 9 decimals
+
+        if (bondRateVariable <= 0) {
+            return 0;
+        } else if (bondRateVariable >= terms[_id].maxBondRateVariable) {
+            return uint256(uint64(terms[_id].maxBondRateVariable));
+        } else {
+            return bondRateVariable.toUint256();
+        }
+    }
+
     /* ======== EXTERNAL VIEW ======== */
 
     /**
-     * @notice             calculate current market price of quote token in base token
-     * @dev                accounts for debt and control variable decay since last deposit (vs _marketPrice())
+     * @notice             calculate current market price of quote token in base token (i.e. quote tokens per THEO)
+     * @dev                uses the theoBondingCalculator.valuation method (using an amount of 1) to get the quote token value (Quote-Token per THEO).
      * @param _id          ID of market
      * @return             price for market in THEO decimals
      *
      * price is derived from the equation
      *
-     * p = cv * dr
+     * P = Cmv * (1 - Brv)
      *
      * where
      * p = price
-     * cv = control variable
-     * dr = debt ratio
+     * cmv = current market value
+     * Brv = bond rate, variable. This is a proportion (that is, a percentage in its decimal form), with 9 decimals
      *
-     * dr = d / s
-     *
-     * where
-     * d = debt
-     * s = supply of token at market creation
-     *
-     * d -= ( d * (dt / l) )
+     * Brv = Brf + Bcrb + Bcyb
      *
      * where
-     * dt = change in time
-     * l = length of program
+     * Brf = bond rate, fixed
+     * Bcrb = Drb * deltaTokenPrice
+     * Bcyb = Dyb * deltaTreasuryYield
+     *
+     *
+     * where
+     * Drb is a discount rate as a proportion (that is, a percentage in its decimal form) applied to the fluctuation in token price (deltaTokenPrice)
+     * Dyb is a discount rate as a proportion (that is a percentage in its decimal form) applied to the fluctuation of the treasury yield (deltaTreasuryYield)
+     * Drb, Dyb, deltaTokenPrice and deltaTreasuryYield are expressed as proportions (that is, they are a percentages in decimal form), with 9 decimals
      */
     function marketPrice(uint256 _id) public view override returns (uint256) {
-        return (currentControlVariable(_id) * debtRatio(_id)) / (10**metadata[_id].quoteDecimals);
+        IBondCalculator theoBondingCalculator = ITreasury(NoteKeeper.treasury).getTheoBondingCalculator();
+        if (address(theoBondingCalculator) == address(0)) {
+            revert("No bonding calculator");
+        }
+        return
+            (theoBondingCalculator.valuation(address(FrontEndRewarder.theo), 1) * (10**9 - bondRateVariable(_id))) /
+            10**9;
     }
 
     /**

@@ -13,6 +13,7 @@ import "../Interfaces/IsTHEO.sol";
 import "../Interfaces/IBondCalculator.sol";
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IYieldReporter.sol";
+import "../Interfaces/IBondDepository.sol";
 
 import "../Types/TheopetraAccessControlled.sol";
 
@@ -49,7 +50,8 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         RESERVEDEBTOR,
         REWARDMANAGER,
         STHEO,
-        THEODEBTOR
+        THEODEBTOR,
+        YIELDREPORTER
     }
 
     struct Queue {
@@ -73,6 +75,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     ITHEO public immutable THEO;
     IsTHEO public sTHEO;
     IYieldReporter private yieldReporter;
+    IBondCalculator private theoBondingCalculator;
 
     mapping(STATUS => address[]) public registry;
     mapping(STATUS => mapping(address => bool)) public permissions;
@@ -112,6 +115,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         timelockEnabled = false;
         initialized = false;
         blocksNeededForQueue = _timelock;
+        priceInfo.timeLastUpdated = block.timestamp;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -273,6 +277,24 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         emit RepayDebt(msg.sender, address(THEO), _amount, _amount);
     }
 
+    /* ======== BONDING CALCULATOR ======== */
+
+    /**
+     * @notice                  get the address of the theo bonding calculator
+     * @return                  address for theo liquidity pool
+     */
+    function getTheoBondingCalculator() public view override returns (IBondCalculator) {
+        return IBondCalculator(theoBondingCalculator);
+    }
+
+    /**
+     * @notice             set the address for the theo bonding calculator
+     * @param _theoBondingCalculator    address of the theo bonding calculator
+     */
+    function setTheoBondingCalculator(address _theoBondingCalculator) public override onlyGuardian {
+        theoBondingCalculator = IBondCalculator(_theoBondingCalculator);
+    }
+
     /* ========== MANAGERIAL FUNCTIONS ========== */
 
     /**
@@ -322,6 +344,8 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         require(timelockEnabled == false, "Use queueTimelock");
         if (_status == STATUS.STHEO) {
             sTHEO = IsTHEO(_address);
+        } else if (_status == STATUS.YIELDREPORTER) {
+            yieldReporter = IYieldReporter(_address);
         } else {
             permissions[_status][_address] = true;
 
@@ -367,6 +391,19 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
             }
         }
         return (false, 0);
+    }
+
+    /**
+     * @notice              update the current token price and previous (last) token price.
+     *                      Token price is calculated with the theoBondingCalculator, as set by the Governor
+     * @dev                 this method can be called at any time but will only update contract state every 8 hours
+     */
+    function tokenPerformanceUpdate() public override {
+        if (block.timestamp >= priceInfo.timeLastUpdated + 28800) {
+            priceInfo.lastTokenPrice = priceInfo.currentTokenPrice;
+            priceInfo.currentTokenPrice = IBondCalculator(theoBondingCalculator).valuation(address(THEO), 1);
+            priceInfo.timeLastUpdated = block.timestamp;
+        }
     }
 
     /* ========== TIMELOCKED FUNCTIONS ========== */
@@ -487,7 +524,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     }
 
     /**
-     * @notice returns THEO valuation of asset
+     * @notice returns THEO valuation for an amount of Quote Tokens
      * @param _token address
      * @param _amount uint256
      * @return value_ uint256
