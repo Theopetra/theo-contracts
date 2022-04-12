@@ -121,7 +121,7 @@ describe('TheopetraTreasury', () => {
 
     it('should calculate the difference in treasury yield', async function () {
       // Use same value as in the mock yield reporter
-      const expectedDeltaTreasuryYield = Math.round(((10_000_000_000 - 15_000_000_000) * 10 ** 9) / 15_000_000_000);
+      const expectedDeltaTreasuryYield = Math.round(((24_000_000_000 - 15_000_000_000) * 10 ** 9) / 15_000_000_000);
 
       await Treasury.enable(11, YieldReporterMock.address, addressZero);
       expect(Number(await Treasury.deltaTreasuryYield())).to.equal(expectedDeltaTreasuryYield);
