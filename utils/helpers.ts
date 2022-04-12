@@ -17,6 +17,7 @@ import {
   STheoMock,
   STheopetra,
   BondingCalculatorMock,
+  YieldReporterMock,
 } from '../typechain-types';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTWITHMOCKS } from './constants';
 
@@ -24,7 +25,10 @@ export async function getContracts(currentContract?: string): Promise<any> {
   const isWithMocks = process.env.NODE_ENV === TESTWITHMOCKS;
   return {
     TheopetraAuthority: <TheopetraAuthority>await ethers.getContract(CONTRACTS.authority),
-    YieldReporter: <TheopetraYieldReporter>await ethers.getContract(CONTRACTS.yieldReporter),
+    YieldReporter:
+      isWithMocks && currentContract !== CONTRACTS.yieldReporter
+        ? <YieldReporterMock>await ethers.getContract(MOCKS.yieldReporterMock)
+        : <TheopetraYieldReporter>await ethers.getContract(CONTRACTS.yieldReporter),
     BondDepository: <TheopetraBondDepository>await ethers.getContract(CONTRACTS.bondDepo),
     sTheo:
       isWithMocks && currentContract !== CONTRACTS.sTheo

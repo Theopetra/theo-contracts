@@ -8,21 +8,15 @@ import {
   UsdcERC20Mock,
   BondingCalculatorMock,
 } from '../typechain-types';
-import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTWITHMOCKS } from '../utils/constants';
-import { setupUsers, moveTimeForward } from './utils';
+import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
+import { setupUsers, moveTimeForward, waitFor } from './utils';
+import { getContracts } from '../utils/helpers';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.treasury]);
+  await deployments.fixture();
   const addressZero = '0x0000000000000000000000000000000000000000';
   const { deployer: owner } = await getNamedAccounts();
-  const contracts = {
-    UsdcTokenMock: <UsdcERC20Mock>await ethers.getContract(MOCKS.usdcTokenMock),
-    Treasury: <TheopetraTreasury>await ethers.getContract(CONTRACTS.treasury),
-    Theo: <TheopetraERC20Mock>await ethers.getContract(CONTRACTS.theoToken),
-    TheopetraAuthority: <TheopetraAuthority>await ethers.getContract(CONTRACTS.authority),
-    YieldReporterMock: <YieldReporterMock>await ethers.getContract(MOCKS.yieldReporterMock),
-    BondingCalculatorMock: <BondingCalculatorMock>await ethers.getContract(MOCKSWITHARGS.bondingCalculatorMock),
-  };
+  const contracts = await getContracts(CONTRACTS.treasury);
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
@@ -47,7 +41,7 @@ describe('TheopetraTreasury', () => {
   let Treasury: TheopetraTreasury;
   let UsdcTokenMock: UsdcERC20Mock;
   let BondingCalculatorMock: BondingCalculatorMock;
-  let YieldReporterMock: YieldReporterMock;
+  let YieldReporter: any;
   let TheopetraAuthority: TheopetraAuthority;
   let users: any;
   let owner: any;
@@ -58,7 +52,7 @@ describe('TheopetraTreasury', () => {
       Treasury,
       UsdcTokenMock,
       BondingCalculatorMock,
-      YieldReporterMock,
+      YieldReporter,
       TheopetraAuthority,
       addressZero,
       users,
@@ -106,7 +100,7 @@ describe('TheopetraTreasury', () => {
     });
 
     it('can set the address of the yield reporter', async function () {
-      await expect(Treasury.enable(11, YieldReporterMock.address, addressZero)).to.not.be.reverted;
+      await expect(Treasury.enable(11, YieldReporter.address, addressZero)).to.not.be.reverted;
     });
   });
 
@@ -120,10 +114,20 @@ describe('TheopetraTreasury', () => {
     });
 
     it('should calculate the difference in treasury yield', async function () {
-      // Use same value as in the mock yield reporter
-      const expectedDeltaTreasuryYield = Math.round(((24_000_000_000 - 15_000_000_000) * 10 ** 9) / 15_000_000_000);
+      let expectedDeltaTreasuryYield;
+      if (process.env.NODE_ENV === TESTWITHMOCKS) {
+        // Use same value as in the mock yield reporter
+        expectedDeltaTreasuryYield = Math.floor(((24_000_000_000 - 15_000_000_000) * 10 ** 9) / 15_000_000_000);
+      } else {
+        // If not using the mock, report a couple of yields using the Yield Reporter (for use when calculating deltaTreasuryYield)
+        const lastYield = 50_000_000_000;
+        const currentYield = 150_000_000_000;
+        await waitFor(YieldReporter.reportYield(50_000_000_000));
+        await waitFor(YieldReporter.reportYield(currentYield));
+        expectedDeltaTreasuryYield = Math.floor(((currentYield - lastYield) * 10**9) / lastYield)
+      }
 
-      await Treasury.enable(11, YieldReporterMock.address, addressZero);
+      await Treasury.enable(11, YieldReporter.address, addressZero);
       expect(Number(await Treasury.deltaTreasuryYield())).to.equal(expectedDeltaTreasuryYield);
     });
   });
