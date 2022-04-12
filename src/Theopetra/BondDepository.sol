@@ -29,7 +29,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     event CreateMarket(uint256 indexed id, address indexed baseToken, address indexed quoteToken, uint256 initialPrice);
     event CloseMarket(uint256 indexed id);
     event Bond(uint256 indexed id, uint256 amount, uint256 price);
-    event Tuned(uint256 indexed id, uint64 oldControlVariable, uint64 newControlVariable);
 
     /* ======== STATE VARIABLES ======== */
 
@@ -37,7 +36,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     Market[] public markets; // persistent market data
     Terms[] public terms; // deposit construction data
     Metadata[] public metadata; // extraneous market data
-    mapping(uint256 => Adjustment) public adjustments; // control variable changes
 
     // Queries
     mapping(address => uint256[]) public marketsForQuote; // market IDs for quote token
@@ -208,25 +206,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
          */
         markets[_id].totalDebt -= debtDecay(_id);
         metadata[_id].lastDecay = _time;
-
-        // Control variable decay
-
-        // The bond control variable is continually tuned. When it is lowered (which
-        // lowers the market price), the change is carried out smoothly over time.
-        if (adjustments[_id].active) {
-            Adjustment storage adjustment = adjustments[_id];
-
-            (uint64 adjustBy, uint48 secondsSince, bool stillActive) = _controlDecay(_id);
-            terms[_id].controlVariable -= adjustBy;
-
-            if (stillActive) {
-                adjustment.change -= adjustBy;
-                adjustment.timeToAdjusted -= secondsSince;
-                adjustment.lastAdjustment = _time;
-            } else {
-                adjustment.active = false;
-            }
-        }
     }
 
     /**
@@ -242,9 +221,9 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
 
             // compute seconds remaining until market will conclude
             uint256 timeRemaining = terms[_id].conclusion - _time;
-            uint256 price = _marketPrice(_id);
+            uint256 price = marketPrice(_id);
 
-            // standardize capacity into an base token amount
+            // standardize capacity into a base token amount
             // theo decimals (9) + price decimals (9)
             uint256 capacity = market.capacityInQuote
                 ? ((market.capacity * 1e18) / price) / (10**meta.quoteDecimals)
@@ -259,22 +238,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
              */
             markets[_id].maxPayout = uint256((capacity * meta.depositInterval) / timeRemaining);
 
-            // calculate the ideal total debt to satisfy capacity in the remaining time
-            uint256 targetDebt = (capacity * meta.length) / timeRemaining;
-
-            // derive a new control variable from the target debt and current supply
-            uint64 newControlVariable = uint64((price * treasury.baseSupply()) / targetDebt);
-
-            emit Tuned(_id, terms[_id].controlVariable, newControlVariable);
-
-            if (newControlVariable >= terms[_id].controlVariable) {
-                terms[_id].controlVariable = newControlVariable;
-            } else {
-                // if decrease, control variable change will be carried out over the tune interval
-                // this is because price will be lowered
-                uint64 change = terms[_id].controlVariable - newControlVariable;
-                adjustments[_id] = Adjustment(change, _time, meta.tuneInterval, true);
-            }
             metadata[_id].lastTune = _time;
         }
     }
@@ -332,17 +295,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
          */
         uint256 maxDebt = targetDebt + ((targetDebt * _market[2]) / 1e5); // 1e5 = 100,000. 10,000 / 100,000 = 10%.
 
-        /*
-         * the control variable is set so that initial price equals the desired
-         * initial price. the control variable is the ultimate determinant of price,
-         * so we compute this last.
-         *
-         * price = control variable * debt ratio
-         * debt ratio = total debt / supply
-         * therefore, control variable = price / debt ratio
-         */
-        uint256 controlVariable = (_market[1] * treasury.baseSupply()) / targetDebt;
-
         // depositing into, or getting info for, the created market uses this ID
         id_ = markets.length;
 
@@ -361,7 +313,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         terms.push(
             Terms({
                 fixedTerm: _booleans[1],
-                controlVariable: uint64(controlVariable),
                 vesting: uint48(_terms[0]),
                 conclusion: uint48(_terms[1]),
                 maxDebt: uint64(maxDebt),
@@ -525,17 +476,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     }
 
     /**
-     * @notice             up to date control variable
-     * @dev                accounts for control variable adjustment
-     * @param _id          ID of market
-     * @return             control variable for market in THEO decimals
-     */
-    function currentControlVariable(uint256 _id) public view returns (uint256) {
-        (uint64 decay, , ) = _controlDecay(_id);
-        return terms[_id].controlVariable - decay;
-    }
-
-    /**
      * @notice             is a given market accepting deposits
      * @param _id          ID of market
      */
@@ -590,17 +530,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     /* ======== INTERNAL VIEW ======== */
 
     /**
-     * @notice                  calculate current market price of quote token in base token
-     * @dev                     see marketPrice() for explanation of price computation
-     * @dev                     uses info from storage because data has been updated before call (vs marketPrice())
-     * @param _id               market ID
-     * @return                  price for market in THEO decimals
-     */
-    function _marketPrice(uint256 _id) internal view returns (uint256) {
-        return (terms[_id].controlVariable * _debtRatio(_id)) / (10**metadata[_id].quoteDecimals);
-    }
-
-    /**
      * @notice                  calculate debt factoring in decay
      * @dev                     uses info from storage because data has been updated before call (vs debtRatio())
      * @param _id               market ID
@@ -610,28 +539,4 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         return (markets[_id].totalDebt * (10**metadata[_id].quoteDecimals)) / treasury.baseSupply();
     }
 
-    /**
-     * @notice                  amount to decay control variable by
-     * @param _id               ID of market
-     * @return decay_           change in control variable
-     * @return secondsSince_    seconds since last change in control variable
-     * @return active_          whether or not change remains active
-     */
-    function _controlDecay(uint256 _id)
-        internal
-        view
-        returns (
-            uint64 decay_,
-            uint48 secondsSince_,
-            bool active_
-        )
-    {
-        Adjustment memory info = adjustments[_id];
-        if (!info.active) return (0, 0, false);
-
-        secondsSince_ = uint48(block.timestamp) - info.lastAdjustment;
-
-        active_ = secondsSince_ < info.timeToAdjusted;
-        decay_ = active_ ? (info.change * secondsSince_) / info.timeToAdjusted : info.change;
-    }
 }

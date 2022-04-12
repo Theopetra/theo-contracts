@@ -74,7 +74,7 @@ describe('Bond depository', function () {
   let WETH9: any;
 
   async function expectedBondRateVariable(marketId: number) {
-    const [, , , , , brFixed, , Drb, Dyb] = await BondDepository.terms(marketId);
+    const [, , , , brFixed, , Drb, Dyb] = await BondDepository.terms(marketId);
 
     const deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
     const deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
@@ -187,7 +187,7 @@ describe('Bond depository', function () {
     });
 
     it('should store the vesting length in the bond terms', async function () {
-      const [, , vestingLength] = await BondDepository.terms(bid);
+      const [, vestingLength] = await BondDepository.terms(bid);
 
       expect(vestingLength).to.equal(vesting);
     });
@@ -204,7 +204,7 @@ describe('Bond depository', function () {
         [depositInterval, tuneInterval]
       );
 
-      const [, , vestingLength] = await BondDepository.terms(1);
+      const [, vestingLength] = await BondDepository.terms(1);
 
       expect(vestingLength).to.equal(longVesting);
     });
@@ -221,7 +221,7 @@ describe('Bond depository', function () {
         [depositInterval, tuneInterval]
       );
 
-      const [, , vestingLength] = await BondDepository.terms(1);
+      const [, vestingLength] = await BondDepository.terms(1);
 
       expect(vestingLength).to.equal(longVesting);
     });
@@ -239,13 +239,13 @@ describe('Bond depository', function () {
         [depositInterval, tuneInterval]
       );
 
-      const [, , vestingLength] = await BondDepository.terms(1);
+      const [, vestingLength] = await BondDepository.terms(1);
 
       expect(vestingLength).to.equal(longVesting);
     });
 
     it('should store the correct market terms', async function () {
-      const [, , vestingLength, marketConclusion, , brFixed, maxBrVariable, Drb, Dyb] = await BondDepository.terms(bid);
+      const [, vestingLength, marketConclusion, , brFixed, maxBrVariable, Drb, Dyb] = await BondDepository.terms(bid);
 
       expect(vestingLength).to.equal(vesting);
       expect(marketConclusion).to.equal(conclusion);
@@ -391,7 +391,7 @@ describe('Bond depository', function () {
       expect(newTotalTheoSupply - initialTotalTheoSupply).to.equal(payout_);
     });
 
-    it.only('should result in an emitted event by the Treasury, when THEO is minted', async function () {
+    it('should result in an emitted event by the Treasury, when THEO is minted', async function () {
       const [, , bob] = users;
 
       const { events } = await waitFor(
@@ -461,7 +461,7 @@ describe('Bond depository', function () {
     });
 
     it('should conclude in the correct time', async function () {
-      const [, , , concludes] = await BondDepository.terms(bid);
+      const [, , concludes] = await BondDepository.terms(bid);
       expect(concludes).to.equal(conclusion);
       const [, , length, , , ,] = await BondDepository.metadata(bid);
       // timestamps are a bit inaccurate with tests
@@ -796,12 +796,12 @@ describe('Bond depository', function () {
 
     describe('setDiscountRateBond', function () {
       it('updates the market terms with the new Discount Rate Return Bond (Drb)', async function () {
-        const [, , , , , , , initialDiscountRateBond] = await BondDepository.terms(bid);
+        const [, , , , , , initialDiscountRateBond] = await BondDepository.terms(bid);
         expect(initialDiscountRateBond).to.equal(discountRateBond);
 
         const newExpectedDiscountRateBond = 5_000_000;
         await BondDepository.setDiscountRateBond(bid, newExpectedDiscountRateBond);
-        const [, , , , , , , newDiscountRateBond] = await BondDepository.terms(bid);
+        const [, , , , , , newDiscountRateBond] = await BondDepository.terms(bid);
         expect(newDiscountRateBond).to.equal(newExpectedDiscountRateBond);
       });
 
@@ -822,7 +822,7 @@ describe('Bond depository', function () {
         await BondDepository.setDiscountRateBond(bid, newExpectedDiscountRateBond);
 
         // Calculate the new expected Bond Rate, variable
-        const [, , , , , brFixed, , Drb, Dyb] = await BondDepository.terms(bid);
+        const [, , , , brFixed, , Drb, Dyb] = await BondDepository.terms(bid);
         const deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
         const deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
         const newExpectedBrv =
@@ -841,12 +841,12 @@ describe('Bond depository', function () {
 
     describe('setDiscountRateYield', function () {
       it('updates the market terms with the new Discount Rate Return Yield (Dyb)', async function () {
-        const [, , , , , , , , initialDiscountRateYield] = await BondDepository.terms(bid);
+        const [, , , , , , , initialDiscountRateYield] = await BondDepository.terms(bid);
         expect(initialDiscountRateYield).to.equal(discountRateYield);
 
         const newExpectedDiscountRateYield = 7_000_000;
         await BondDepository.setDiscountRateYield(bid, newExpectedDiscountRateYield);
-        const [, , , , , , , , newDiscountRateYield] = await BondDepository.terms(bid);
+        const [, , , , , , , newDiscountRateYield] = await BondDepository.terms(bid);
         expect(newDiscountRateYield).to.equal(newExpectedDiscountRateYield);
       });
 
@@ -867,7 +867,7 @@ describe('Bond depository', function () {
         await BondDepository.setDiscountRateYield(bid, newExpectedDiscountRateYield);
 
         // Calculate the new expected Bond Rate, variable
-        const [, , , , , brFixed, , Drb, Dyb] = await BondDepository.terms(bid);
+        const [, , , , brFixed, , Drb, Dyb] = await BondDepository.terms(bid);
         const deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
         const deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
         const newExpectedBrv =
@@ -935,7 +935,7 @@ describe('Bond depository', function () {
       const allLiveMarketsIds = await BondDepository.liveMarkets();
 
       for (let i = 0; i < allLiveMarketsIds.length; i++) {
-        const [, , marketVestingPeriod] = await bob.BondDepository.terms(allLiveMarketsIds[i]);
+        const [, marketVestingPeriod] = await bob.BondDepository.terms(allLiveMarketsIds[i]);
         expect(await marketVestingPeriod).to.equal(vesting);
       }
     });

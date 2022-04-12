@@ -18,7 +18,6 @@ interface IBondDepository {
     // Info for creating new markets
     struct Terms {
         bool fixedTerm; // fixed term or fixed expiration
-        uint64 controlVariable; // scaling variable for price
         uint48 vesting; // length of time from deposit to maturity if fixed-term
         uint48 conclusion; // timestamp when market no longer offered (doubles as time when market matures if fixed-expiry)
         uint64 maxDebt; // 9 decimal debt maximum in THEO
@@ -36,14 +35,6 @@ interface IBondDepository {
         uint64 depositInterval; // target frequency of deposits
         uint64 tuneInterval; // frequency of tuning
         uint8 quoteDecimals; // decimals of quote token
-    }
-
-    // Control variable adjustment data
-    struct Adjustment {
-        uint64 change;
-        uint48 lastAdjustment;
-        uint64 timeToAdjusted;
-        bool active;
     }
 
     /**
