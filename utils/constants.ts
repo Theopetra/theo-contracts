@@ -15,6 +15,7 @@ export const MOCKS: Record<string, string> = {
   usdcTokenMock: 'UsdcERC20Mock',
   sTheoMock: 'sTheoMock',
   WETH9: 'WETH9',
+  yieldReporterMock: 'YieldReporterMock',
   aggregatorMockETH: 'AggregatorMockETH',
   aggregatorMockUSDC: 'AggregatorMockUSDC',
 };
@@ -22,4 +23,5 @@ export const MOCKS: Record<string, string> = {
 export const MOCKSWITHARGS: Record<string, string> = {
   treasuryMock: 'TreasuryMock',
   stakingMock: 'StakingMock',
+  bondingCalculatorMock: 'BondingCalculatorMock',
 };
