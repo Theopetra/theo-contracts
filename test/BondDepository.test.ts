@@ -3,6 +3,17 @@ import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } fr
 import { setupUsers, moveTimeForward, waitFor } from './utils';
 import { getContracts } from '../utils/helpers';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
+import {
+  BondingCalculatorMock,
+  StakingMock,
+  TheopetraAuthority,
+  TheopetraBondDepository,
+  TheopetraStaking,
+  UsdcERC20Mock,
+  WETH9,
+  YieldReporterMock,
+  TheopetraYieldReporter,
+} from '../typechain-types';
 
 const setup = deployments.createFixture(async function () {
   await deployments.fixture();
@@ -40,18 +51,18 @@ describe('Bond depository', function () {
   const discountRateYield = 20_000_000; // 2% in decimal form (i.e. 0.02 with 9 decimals)
 
   let block: any;
-  let BondDepository: any;
-  let BondingCalculatorMock: any;
+  let BondDepository: TheopetraBondDepository;
+  let BondingCalculatorMock: BondingCalculatorMock;
   let conclusion: number;
-  let Staking: any;
+  let Staking: TheopetraStaking | StakingMock;
   let sTheo: any;
-  let TheopetraAuthority: any;
+  let TheopetraAuthority: TheopetraAuthority;
   let TheopetraERC20Token: any;
   let Treasury: any;
-  let UsdcTokenMock: any;
+  let UsdcTokenMock: UsdcERC20Mock;
   let users: any;
-  let WETH9: any;
-  let YieldReporter: any;
+  let WETH9: WETH9;
+  let YieldReporter: TheopetraYieldReporter | YieldReporterMock;
 
   async function expectedBondRateVariable(marketId: number) {
     const [, , , , , brFixed, , Drb, Dyb] = await BondDepository.terms(marketId);
@@ -691,7 +702,7 @@ describe('Bond depository', function () {
       it('should give accurate payout for price', async function () {
         const price = await BondDepository.marketPrice(bid);
         const amount = 100_000_000_000_000;
-        const expectedPayout = amount / price;
+        const expectedPayout = amount / Number(price);
         const lowerBound = expectedPayout * 0.9999;
 
         expect(Number(await BondDepository.payoutFor(amount, 0))).to.be.greaterThan(lowerBound);
@@ -883,7 +894,7 @@ describe('Bond depository', function () {
       );
       const allLiveMarketsIds = await BondDepository.liveMarkets();
 
-      allLiveMarketsIds.forEach(async (id: number) => {
+      allLiveMarketsIds.forEach(async (id: any) => {
         const marketBrv = await bob.BondDepository.bondRateVariable(id);
         const expectedBrv = await expectedBondRateVariable(id);
 
@@ -892,7 +903,7 @@ describe('Bond depository', function () {
 
       for (let i = 0; i < allLiveMarketsIds.length; i++) {
         const marketBrv = await bob.BondDepository.bondRateVariable(allLiveMarketsIds[i]);
-        const expectedBrv = await expectedBondRateVariable(allLiveMarketsIds[i]);
+        const expectedBrv = await expectedBondRateVariable(Number(allLiveMarketsIds[i]));
 
         expect(marketBrv).to.equal(expectedBrv);
       }

@@ -7,6 +7,7 @@ import {
   YieldReporterMock,
   UsdcERC20Mock,
   BondingCalculatorMock,
+  TheopetraYieldReporter
 } from '../typechain-types';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 import { setupUsers, moveTimeForward, waitFor } from './utils';
@@ -37,11 +38,13 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
+// type Treasurys = TheopetraTreasury | TreasuryMock;
+
 describe('TheopetraTreasury', () => {
   let Treasury: TheopetraTreasury;
   let UsdcTokenMock: UsdcERC20Mock;
   let BondingCalculatorMock: BondingCalculatorMock;
-  let YieldReporter: any;
+  let YieldReporter: TheopetraYieldReporter | YieldReporterMock;
   let TheopetraAuthority: TheopetraAuthority;
   let users: any;
   let owner: any;
