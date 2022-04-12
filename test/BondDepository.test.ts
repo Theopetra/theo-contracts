@@ -40,7 +40,7 @@ const setup = deployments.createFixture(async function () {
   };
 });
 
-describe('Bond depository', function () {
+describe.only('Bond depository', function () {
   const bid = 0;
   const buffer = 2e5;
   const capacity = '10000000000000000'; // 1e16

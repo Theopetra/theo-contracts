@@ -85,8 +85,6 @@ interface IBondDepository {
 
     function currentDebt(uint256 _bid) external view returns (uint256);
 
-    function debtRatio(uint256 _bid) external view returns (uint256);
-
     function debtDecay(uint256 _bid) external view returns (uint64);
 
     function setDiscountRateBond(uint256 _id, int64 _discountRateBond) external;

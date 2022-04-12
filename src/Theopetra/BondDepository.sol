@@ -97,7 +97,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         // |-------------------------------------| t
         require(currentTime < term.conclusion, "Depository: market concluded");
 
-        // Debt and the control variable decay over time
+        // Debt decays over time
         _decay(_id, currentTime);
 
         // Users input a maximum price, which protects them from price changes after
@@ -154,7 +154,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         market.purchased += _amount;
         market.sold += uint64(payout_);
 
-        // incrementing total debt raises the price of the next bond
+        // increment total debt, which is later compared to maxDebt (this can be a circuit-breaker)
         market.totalDebt += uint64(payout_);
 
         emit Bond(_id, _amount, priceInfo.price);
@@ -209,9 +209,13 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     }
 
     /**
-     * @notice             auto-adjust control variable to hit capacity/spend target
-     * @param _id          ID of market
-     * @param _time        uint48 timestamp (saves gas when passed in)
+     * @notice          adjust the market's maxPayout
+     * @dev             calculate the correct payout to complete on time assuming each bond
+     *                  will be max size in the desired deposit interval for the remaining time
+     *                  i.e. market has 10 days remaining. deposit interval is 1 day. capacity
+     *                  is 10,000 THEO. max payout would be 1,000 THEO (10,000 * 1 / 10).
+     * @param _id       ID of market
+     * @param _time     uint48 timestamp (saves gas when passed in)
      */
     function _tune(uint256 _id, uint48 _time) internal {
         Metadata memory meta = metadata[_id];
@@ -229,13 +233,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
                 ? ((market.capacity * 1e18) / price) / (10**meta.quoteDecimals)
                 : market.capacity;
 
-            /**
-             * calculate the correct payout to complete on time assuming each bond
-             * will be max size in the desired deposit interval for the remaining time
-             *
-             * i.e. market has 10 days remaining. deposit interval is 1 day. capacity
-             * is 10,000 THEO. max payout would be 1,000 THEO (10,000 * 1 / 10).
-             */
             markets[_id].maxPayout = uint256((capacity * meta.depositInterval) / timeRemaining);
 
             metadata[_id].lastTune = _time;
@@ -443,16 +440,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     }
 
     /**
-     * @notice             calculate current ratio of debt to supply
-     * @dev                uses current debt, which accounts for debt decay since last deposit (vs _debtRatio())
-     * @param _id          ID of market
-     * @return             debt ratio for market in quote decimals
-     */
-    function debtRatio(uint256 _id) public view override returns (uint256) {
-        return (currentDebt(_id) * (10**metadata[_id].quoteDecimals)) / treasury.baseSupply();
-    }
-
-    /**
      * @notice             calculate debt factoring in decay
      * @dev                accounts for debt decay since last deposit
      * @param _id          ID of market
@@ -526,17 +513,4 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         }
         return ids;
     }
-
-    /* ======== INTERNAL VIEW ======== */
-
-    /**
-     * @notice                  calculate debt factoring in decay
-     * @dev                     uses info from storage because data has been updated before call (vs debtRatio())
-     * @param _id               market ID
-     * @return                  current debt for market in quote decimals
-     */
-    function _debtRatio(uint256 _id) internal view returns (uint256) {
-        return (markets[_id].totalDebt * (10**metadata[_id].quoteDecimals)) / treasury.baseSupply();
-    }
-
 }
