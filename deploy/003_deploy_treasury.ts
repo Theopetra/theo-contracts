@@ -1,3 +1,4 @@
+import hre from 'hardhat';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
@@ -27,6 +28,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
 };
 
+const baseDependencies = [CONTRACTS.Authority, CONTRACTS.theoToken];
 export default func;
 func.tags = [CONTRACTS.treasury];
-func.dependencies = [CONTRACTS.Authority, CONTRACTS.theoToken];
+func.dependencies = hre?.network?.config?.chainId === 1337 ? [...baseDependencies, 'Mocks'] : baseDependencies;
