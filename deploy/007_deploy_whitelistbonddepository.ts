@@ -46,7 +46,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = [CONTRACTS.whitelistBondDepo];
-func.dependencies =
-  hre?.network?.config?.chainId === 1337
-    ? [CONTRACTS.authority, 'Mocks']
-    : [CONTRACTS.authority, CONTRACTS.theoToken, CONTRACTS.sTheo, CONTRACTS.staking, CONTRACTS.treasury];
+func.dependencies = [CONTRACTS.authority, CONTRACTS.theoToken, CONTRACTS.sTheo, CONTRACTS.staking, CONTRACTS.treasury];

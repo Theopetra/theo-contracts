@@ -1,5 +1,7 @@
+import hre from 'hardhat';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
+import { ethers } from 'hardhat';
 
 import { CONTRACTS, MOCKS, TESTWITHMOCKS } from '../utils/constants';
 
@@ -14,26 +16,29 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
     const sTheopetraERC20 = await deployments.get(CONTRACTS.sTheo);
 
-    let epochLengthInBlocks;
+    let epochLength;
     let firstEpochNumber;
-    let firstEpochBlock;
+    let firstEpochTime;
     let args: any = [];
 
     // Note: epochLength, firstEpochNumber and firstEpoch to be updated as needed for other networks
     if (chainId === '1337') {
-      epochLengthInBlocks = '2000';
+      epochLength = 8 * 60 * 60;
       firstEpochNumber = '1';
-      firstEpochBlock = '10000'; // Sets the rebase far enough in the future to not hit it in tests
+      const currentBlock = await ethers.provider.send('eth_blockNumber', []);
+      const blockTimestamp = (await ethers.provider.getBlock(currentBlock)).timestamp;
+      firstEpochTime = blockTimestamp + 10000; // set the rebase far enough in the future to not hit it in tests
     }
 
     args = [
       TheopetraERC20Token.address,
       sTheopetraERC20.address,
-      epochLengthInBlocks,
+      epochLength,
       firstEpochNumber,
-      firstEpochBlock,
+      firstEpochTime,
       TheopetraAuthority.address,
     ];
+
 
     if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
       // Update args with addresses of already-deployed mocks
@@ -46,14 +51,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         }
       }
       const { TheopetraERC20Mock, sTheoMock } = namedMockAddresses;
-      args = [
-        TheopetraERC20Mock,
-        sTheoMock,
-        epochLengthInBlocks,
-        firstEpochNumber,
-        firstEpochBlock,
-        TheopetraAuthority.address,
-      ];
+      args = [TheopetraERC20Mock, sTheoMock, epochLength, firstEpochNumber, firstEpochTime, TheopetraAuthority.address];
     }
 
     await deploy(CONTRACTS.staking, {
@@ -68,4 +66,4 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func;
 func.tags = [CONTRACTS.staking];
-func.dependencies = [CONTRACTS.authority, CONTRACTS.theoToken, CONTRACTS.sTheo];
+func.dependencies = hre?.network?.config?.chainId === 1337 ? [CONTRACTS.authority, 'Mocks'] : [CONTRACTS.authority, CONTRACTS.theoToken, CONTRACTS.sTheo];

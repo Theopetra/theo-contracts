@@ -1,3 +1,4 @@
+import hre from 'hardhat';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
@@ -16,21 +17,18 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
     const Staking = await deployments.get(CONTRACTS.staking);
 
-    let epochLengthInBlocks;
-    let nextEpochBlock;
+    let epochLength;
     let args: any = [];
 
     // Note: epochLength and nextEpoch to be updated as needed for other networks
     if (chainId === '1337') {
-      epochLengthInBlocks = '2000';
-      nextEpochBlock = '10';
+      epochLength = 60 * 60 * 24 * 365;
     }
 
     args = [
       TheopetraTreasury.address,
       TheopetraERC20Token.address,
-      epochLengthInBlocks,
-      nextEpochBlock,
+      epochLength,
       TheopetraAuthority.address,
       Staking.address,
     ];
@@ -38,14 +36,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     // If on Hardhat network, use the following values for testing
     if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
       const { TheopetraERC20Mock, TreasuryMock, StakingMock } = await getNamedMockAddresses(hre);
-      args = [
-        TreasuryMock,
-        TheopetraERC20Mock,
-        epochLengthInBlocks,
-        nextEpochBlock,
-        TheopetraAuthority.address,
-        StakingMock,
-      ];
+      args = [TreasuryMock, TheopetraERC20Mock, epochLength, TheopetraAuthority.address, StakingMock];
     }
 
     await deploy(CONTRACTS.distributor, {
@@ -60,4 +51,4 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func;
 func.tags = [CONTRACTS.distributor];
-func.dependencies = [CONTRACTS.authority, CONTRACTS.treasury, CONTRACTS.theoToken, CONTRACTS.staking];
+func.dependencies = hre?.network?.config?.chainId === 1337 ? [CONTRACTS.authority, 'Mocks'] : [CONTRACTS.authority, CONTRACTS.treasury, CONTRACTS.theoToken, CONTRACTS.staking];
