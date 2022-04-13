@@ -104,7 +104,6 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         // entering the mempool. max price is a slippage mitigation measure
         priceInfo.price = marketPrice(_id);
         require(priceInfo.price <= _maxPrice, "Depository: more than max price");
-
         /**
          * payout for the deposit = amount / price
          *

@@ -10,7 +10,6 @@ import "../Interfaces/IYieldReporter.sol";
  */
 
 contract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {
-
     /* ======== STATE VARIABLES ======== */
 
     /**
@@ -28,9 +27,7 @@ contract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {
 
     /* ======== CONSTRUCTOR ======== */
 
-    constructor(
-        ITheopetraAuthority _authority
-    ) TheopetraAccessControlled(_authority) {
+    constructor(ITheopetraAuthority _authority) TheopetraAccessControlled(_authority) {
         // initialize yield 0 to 0
         yields[currentIndex] = 0;
     }
@@ -77,9 +74,7 @@ contract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {
      * @return int256  yield value
      * @dev reverts if id is out of bounds
      */
-    function getYieldById(
-        uint256 _id
-    ) external view returns (int256) {
+    function getYieldById(uint256 _id) external view returns (int256) {
         // don't allow requiring a yield past the current index
         require(_id <= currentIndex, OUT_OF_BOUNDS);
         return yields[_id];
@@ -92,9 +87,7 @@ contract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {
      * @dev reverts if called by a non-policy address
      * @dev emits a ReportYield event
      */
-    function reportYield(
-        int256 _amount
-    ) external onlyPolicy returns (uint256) {
+    function reportYield(int256 _amount) external onlyPolicy returns (uint256) {
         yields[++currentIndex] = _amount;
         emit ReportYield(currentIndex, _amount);
         return currentIndex;
