@@ -74,7 +74,7 @@ describe('Bond depository', function () {
   let WETH9: any;
 
   async function expectedBondRateVariable(marketId: number) {
-    const [, , , , brFixed, , Drb, Dyb] = await BondDepository.terms(marketId);
+    const [, , , brFixed, , Drb, Dyb] = await BondDepository.terms(marketId);
 
     const deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
     const deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
@@ -110,9 +110,9 @@ describe('Bond depository', function () {
     await TheopetraERC20Mock.mint(owner.address, '10000000000000'); // Set to be same as return value in Treasury Mock for baseSupply
 
     // Update bob's balance to allow very large deposits
-    await network.provider.send("hardhat_setBalance", [
+    await network.provider.send('hardhat_setBalance', [
       bob.address,
-      "0x52B7D2DCC80CD2E4000000", // 1e26
+      '0x52B7D2DCC80CD2E4000000', // 1e26
     ]);
 
     // Deposit / mint quote tokens and approve transfer for the Bond Depository, to allow deposits
@@ -251,7 +251,9 @@ describe('Bond depository', function () {
     });
 
     it('should store the correct market terms', async function () {
-      const [, vestingLength, marketConclusion, , brFixed, maxBrVariable, Drb, Dyb] = await BondDepository.terms(bid);
+      const [, vestingLength, marketConclusion, brFixed, maxBrVariable, Drb, Dyb, maxDebt] = await BondDepository.terms(
+        bid
+      );
 
       expect(vestingLength).to.equal(vesting);
       expect(marketConclusion).to.equal(conclusion);
@@ -259,6 +261,9 @@ describe('Bond depository', function () {
       expect(maxBrVariable).to.equal(maxBondRateVariable);
       expect(Drb).to.equal(discountRateBond);
       expect(Dyb).to.equal(discountRateYield);
+
+      const expectedMaxDebt = Number(capacity) + (Number(capacity) * buffer) / 10 ** 5;
+      expect(Number(maxDebt)).to.equal(expectedMaxDebt);
     });
 
     it('should set max payout to correct % of capacity', async function () {
@@ -396,6 +401,48 @@ describe('Bond depository', function () {
       expect(bobNotesIndexes.length).to.equal(1);
     });
 
+    it('can allow a very large market capacity, for multiple very large deposits', async function () {
+      const [, , bob, carol] = users;
+      const largeDepositAmount = '30000000000000'; // 30m USDC
+      const largeDepositInterval = 60 * 60 * 24 * 180; // Set to match time remaining until market conclusion
+      const largeCapacity = '10000000000000000000000000000000000000000000000';
+      await BondDepository.create(
+        UsdcTokenMock.address,
+        [largeCapacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [largeDepositInterval, tuneInterval]
+      );
+
+      const [, , , , , totalDebt] = await BondDepository.markets(1);
+      const [, , , , , , , initialMaxDebt] = await BondDepository.terms(1);
+      expect(Number(initialMaxDebt)).to.be.greaterThan(Number(totalDebt)); // Helps check that overflow has not occured when using very large market capacity
+
+      await bob.BondDepository.deposit(1, largeDepositAmount, initialPrice, bob.address, carol.address);
+
+      const anotherLargeDepositAmount = '35000000000000'; // 35m USDC
+      await bob.BondDepository.deposit(1, anotherLargeDepositAmount, initialPrice, bob.address, carol.address);
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+
+      expect(bobNotesIndexes.length).to.equal(2);
+    });
+
+    it('updates the purchased and sold amounts correctly', async function () {
+      const [, , bob, carol] = users;
+
+      const [, , , sold, purchased] = await BondDepository.markets(0);
+      expect(sold).to.equal(0);
+      expect(purchased).to.equal(0);
+
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
+
+      const [, , , newSold, newPurchased] = await BondDepository.markets(0);
+      const [payout_] = await BondDepository.pendingFor(bob.address, 0);
+      expect(newSold).to.equal(payout_);
+      expect(newPurchased).to.equal(depositAmount);
+    });
+
     it.skip('should protect the user against price changes after entering the mempool', async function () {
       const [, , bob, carol] = users;
 
@@ -448,7 +495,7 @@ describe('Bond depository', function () {
       const largeDepositAmount = ethers.utils.parseEther('1');
       const largeDepositInterval = 60 * 60 * 24 * 180; // Set to match time remaining until market conclusion
       const largeCapacity = '30000000000000000'; // 3e16, for the totalDebt to be very close to maxDebt at market creation
-      const lowDebtBuffer = 1 // set low, to result in a maxDebt very close to total debt at market creation
+      const lowDebtBuffer = 1; // set low, to result in a maxDebt very close to total debt at market creation
       await BondDepository.create(
         WETH9.address,
         [largeCapacity, initialPrice, lowDebtBuffer],
@@ -458,28 +505,30 @@ describe('Bond depository', function () {
         [largeDepositInterval, tuneInterval]
       );
 
-      const {events} = await waitFor(bob.BondDepository.deposit(1, largeDepositAmount, initialPrice, bob.address, carol.address));
+      const { events } = await waitFor(
+        bob.BondDepository.deposit(1, largeDepositAmount, initialPrice, bob.address, carol.address)
+      );
       const marketClosed = events.find((eventObj: any) => {
         return eventObj.event === 'CloseMarket';
-      })
+      });
 
       expect(marketClosed).not.to.be.undefined;
       expect(marketClosed.event).to.equal('CloseMarket'); // A close market event is emitted
       const [, , , , , newTotalDebt] = await BondDepository.markets(1);
-      const [, , , newMaxDebt] = await BondDepository.terms(1);
+      const [, , , , , , , newMaxDebt] = await BondDepository.terms(1);
 
       expect(Number(newMaxDebt)).to.be.lessThan(Number(newTotalDebt));
 
-      const [newMarketCapacity, ] = await BondDepository.markets(1);
+      const [newMarketCapacity] = await BondDepository.markets(1);
       expect(Number(newMarketCapacity)).to.equal(0); // Capacity of the market is set to zero
 
       const [payout_] = await BondDepository.pendingFor(bob.address, 0);
       expect(Number(payout_)).to.be.greaterThan(0); // Bob's first deposit was successful and Bob therefore has a payout due
 
       // No further deposit is allowed, as market capacity is now at zero
-      await expect(waitFor(bob.BondDepository.deposit(1, largeDepositAmount, initialPrice, bob.address, carol.address))).to.be.reverted;
-    })
-
+      await expect(waitFor(bob.BondDepository.deposit(1, largeDepositAmount, initialPrice, bob.address, carol.address)))
+        .to.be.reverted;
+    });
 
     it('should mint the payout in THEO', async function () {
       const [, , bob, carol] = users;
@@ -509,9 +558,9 @@ describe('Bond depository', function () {
       const iface = new ethers.utils.Interface(abi);
 
       // filter for the log specific to the Treasury
-      const treasuryLog = receipt?.logs?.filter(log => {
+      const treasuryLog = receipt?.logs?.filter((log) => {
         return log.address === TreasuryMock.address;
-      })
+      });
       expect(treasuryLog.length).to.equal(1);
       const log = iface.parseLog(treasuryLog[0]);
       const { caller, recipient, amount } = log.args;
@@ -547,14 +596,14 @@ describe('Bond depository', function () {
       const [, , , , , , initialMaxPayout] = await BondDepository.markets(0);
 
       await bob.BondDepository.deposit(bid, 10000, initialPrice, bob.address, carol.address);
-      await network.provider.send('evm_increaseTime', [tuneInterval*2]); // move time forward, beyond the tuneInterval, to ensure tuning occurs, which will change maxPayout
+      await network.provider.send('evm_increaseTime', [tuneInterval * 2]); // move time forward, beyond the tuneInterval, to ensure tuning occurs, which will change maxPayout
       await bob.BondDepository.deposit(bid, 10000, initialPrice, bob.address, carol.address);
-      await network.provider.send('evm_increaseTime', [tuneInterval*2]); // move time forward, beyond the tuneInterval, to ensure tuning occurs, which will change maxPayout
+      await network.provider.send('evm_increaseTime', [tuneInterval * 2]); // move time forward, beyond the tuneInterval, to ensure tuning occurs, which will change maxPayout
       await bob.BondDepository.deposit(bid, 10000, initialPrice, bob.address, carol.address);
 
       const [, , , , , , newMaxPayout] = await BondDepository.markets(0);
       expect(newMaxPayout).not.to.equal(initialMaxPayout);
-    })
+    });
   });
 
   describe('Close market', function () {
@@ -913,12 +962,12 @@ describe('Bond depository', function () {
 
     describe('setDiscountRateBond', function () {
       it('updates the market terms with the new Discount Rate Return Bond (Drb)', async function () {
-        const [, , , , , , initialDiscountRateBond] = await BondDepository.terms(bid);
+        const [, , , , , initialDiscountRateBond] = await BondDepository.terms(bid);
         expect(initialDiscountRateBond).to.equal(discountRateBond);
 
         const newExpectedDiscountRateBond = 5_000_000;
         await BondDepository.setDiscountRateBond(bid, newExpectedDiscountRateBond);
-        const [, , , , , , newDiscountRateBond] = await BondDepository.terms(bid);
+        const [, , , , , newDiscountRateBond] = await BondDepository.terms(bid);
         expect(newDiscountRateBond).to.equal(newExpectedDiscountRateBond);
       });
 
@@ -939,7 +988,7 @@ describe('Bond depository', function () {
         await BondDepository.setDiscountRateBond(bid, newExpectedDiscountRateBond);
 
         // Calculate the new expected Bond Rate, variable
-        const [, , , , brFixed, , Drb, Dyb] = await BondDepository.terms(bid);
+        const [, , , brFixed, , Drb, Dyb] = await BondDepository.terms(bid);
         const deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
         const deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
         const newExpectedBrv =
@@ -958,12 +1007,12 @@ describe('Bond depository', function () {
 
     describe('setDiscountRateYield', function () {
       it('updates the market terms with the new Discount Rate Return Yield (Dyb)', async function () {
-        const [, , , , , , , initialDiscountRateYield] = await BondDepository.terms(bid);
+        const [, , , , , , initialDiscountRateYield] = await BondDepository.terms(bid);
         expect(initialDiscountRateYield).to.equal(discountRateYield);
 
         const newExpectedDiscountRateYield = 7_000_000;
         await BondDepository.setDiscountRateYield(bid, newExpectedDiscountRateYield);
-        const [, , , , , , , newDiscountRateYield] = await BondDepository.terms(bid);
+        const [, , , , , , newDiscountRateYield] = await BondDepository.terms(bid);
         expect(newDiscountRateYield).to.equal(newExpectedDiscountRateYield);
       });
 
@@ -984,7 +1033,7 @@ describe('Bond depository', function () {
         await BondDepository.setDiscountRateYield(bid, newExpectedDiscountRateYield);
 
         // Calculate the new expected Bond Rate, variable
-        const [, , , , brFixed, , Drb, Dyb] = await BondDepository.terms(bid);
+        const [, , , brFixed, , Drb, Dyb] = await BondDepository.terms(bid);
         const deltaTokenPrice = await TreasuryMock.deltaTokenPrice();
         const deltaTreasuryYield = await TreasuryMock.deltaTreasuryYield();
         const newExpectedBrv =

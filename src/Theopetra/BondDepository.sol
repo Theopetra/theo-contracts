@@ -152,10 +152,10 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         // markets keep track of how many quote tokens have been
         // purchased, and how much THEO has been sold
         market.purchased += _amount;
-        market.sold += uint64(payout_);
+        market.sold += payout_;
 
         // increment total debt, which is later compared to maxDebt (this can be a circuit-breaker)
-        market.totalDebt += uint64(payout_);
+        market.totalDebt += payout_;
 
         emit Bond(_id, _amount, priceInfo.price);
 
@@ -312,11 +312,11 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
                 fixedTerm: _booleans[1],
                 vesting: uint48(_terms[0]),
                 conclusion: uint48(_terms[1]),
-                maxDebt: uint64(maxDebt),
                 bondRateFixed: int64(_rates[0]),
                 maxBondRateVariable: int64(_rates[1]),
                 discountRateBond: int64(_rates[2]),
-                discountRateYield: int64(_rates[3])
+                discountRateYield: int64(_rates[3]),
+                maxDebt: maxDebt
             })
         );
 

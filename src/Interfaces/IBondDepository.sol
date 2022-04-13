@@ -9,7 +9,7 @@ interface IBondDepository {
         uint256 capacity; // capacity remaining
         IERC20 quoteToken; // token to accept as payment
         bool capacityInQuote; // capacity limit is in payment token (true) or in THEO (false, default)
-        uint64 sold; // base tokens out
+        uint256 sold; // base tokens out
         uint256 purchased; // quote tokens in
         uint256 totalDebt; // total debt from market
         uint256 maxPayout; // max tokens in/out (determined by capacityInQuote false/true, respectively)
@@ -20,11 +20,11 @@ interface IBondDepository {
         bool fixedTerm; // fixed term or fixed expiration
         uint48 vesting; // length of time from deposit to maturity if fixed-term
         uint48 conclusion; // timestamp when market no longer offered (doubles as time when market matures if fixed-expiry)
-        uint64 maxDebt; // 9 decimal debt maximum in THEO
         int64 bondRateFixed; // 9 decimal fixed discount expressed as a proportion (that is, a percentage in its decimal form)
         int64 maxBondRateVariable; // 9 decimal maximum proportion (that is, a percentage in its decimal form) discount on current market price
         int64 discountRateBond; // 9 decimal
         int64 discountRateYield; // 9 decimal
+        uint256 maxDebt; // 9 decimal debt maximum in THEO
     }
 
     // Additional info about market.
