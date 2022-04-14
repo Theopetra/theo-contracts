@@ -4,7 +4,6 @@ pragma solidity >=0.7.5;
 import "./IERC20.sol";
 
 interface IWhitelistBondDepository {
-
     /**
      * @notice      Info about each type of market
      * @dev         Market::capacity is capacity remaining

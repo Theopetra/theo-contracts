@@ -22,7 +22,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
     struct Epoch {
         uint256 length;
         uint256 number;
-        uint256 endBlock;
+        uint256 end;
         uint256 distribute;
     }
     Epoch public epoch;
@@ -43,9 +43,9 @@ contract TheopetraStaking is TheopetraAccessControlled {
         address _sTHEO,
         uint256 _epochLength,
         uint256 _firstEpochNumber,
-        uint256 _firstEpochBlock,
-        address _authority,
-        uint256 _stakingTerm
+        uint256 _firstEpochTime,
+        uint256 _stakingTerm,
+        address _authority
     ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {
         definePenalties();
         require(_THEO != address(0), "Invalid address");
@@ -54,7 +54,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         sTHEO = _sTHEO;
         stakingTerm = _stakingTerm;
 
-        epoch = Epoch({ length: _epochLength, number: _firstEpochNumber, endBlock: _firstEpochBlock, distribute: 0 });
+        epoch = Epoch({ length: _epochLength, number: _firstEpochNumber, end: _firstEpochTime, distribute: 0 });
     }
 
     struct Claim {
@@ -87,7 +87,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 Claim({
                     deposit: _amount,
                     gonsInWarmup: _amount,
-                    warmupExpiry: epoch.endBlock + warmupPeriod,
+                    warmupExpiry: epoch.end + warmupPeriod,
                     stakingExpiry: block.timestamp + stakingTerm,
                     inWarmup: true,
                     lock: true
@@ -251,10 +251,10 @@ contract TheopetraStaking is TheopetraAccessControlled {
      */
     function rebase() public returns (uint256) {
         uint256 bounty;
-        if (epoch.endBlock <= block.number) {
+        if (epoch.end <= block.timestamp) {
             IsTHEO(sTHEO).rebase(epoch.distribute, epoch.number);
 
-            epoch.endBlock = epoch.endBlock.add(epoch.length);
+            epoch.end = epoch.end.add(epoch.length);
             epoch.number++;
 
             if (distributor != address(0)) {

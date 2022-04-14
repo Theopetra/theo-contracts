@@ -1,5 +1,7 @@
+import hre from 'hardhat';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
+import { ethers } from 'hardhat';
 
 import { CONTRACTS, MOCKS } from '../utils/constants';
 
@@ -11,17 +13,21 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     const chainId = await getChainId();
 
     const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
-
-    let epochLengthInBlocks;
+    // staking term is seconds in a year
+    let stakingTerm = 31536000;
+    let epochLength;
     let firstEpochNumber;
-    let firstEpochBlock;
+    let firstEpochTime;
     let args: any = [];
 
     // If on Hardhat network, use the following values for testing
     if (chainId === '1337') {
-      epochLengthInBlocks = '2000';
+      epochLength = 8 * 60 * 60;
       firstEpochNumber = '1';
-      firstEpochBlock = '10000'; // Sets the rebase far enough in the future to not hit it in tests
+
+      const currentBlock = await ethers.provider.send('eth_blockNumber', []);
+      const blockTimestamp = (await ethers.provider.getBlock(currentBlock)).timestamp;
+      firstEpochTime = blockTimestamp + 10000; // set the rebase far enough in the future to not hit it in tests
 
       // Update args with addresses of already-deployed mocks
       const namedMockAddresses: Record<any, any> = {};
@@ -33,15 +39,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         }
       }
       const { TheopetraERC20Mock, sTheoMock } = namedMockAddresses;
-      args = [
-        TheopetraERC20Mock,
-        sTheoMock,
-        epochLengthInBlocks,
-        firstEpochNumber,
-        firstEpochBlock,
-        TheopetraAuthority.address,
-        0,
-      ];
+      args = [TheopetraERC20Mock, sTheoMock, epochLength, firstEpochNumber, firstEpochTime, stakingTerm, TheopetraAuthority.address];
     }
 
     await deploy(CONTRACTS.staking, {
@@ -56,4 +54,4 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func;
 func.tags = [CONTRACTS.staking];
-func.dependencies = [CONTRACTS.authority];
+func.dependencies = hre?.network?.config?.chainId === 1337 ? [CONTRACTS.authority, 'Mocks'] : [CONTRACTS.authority];
