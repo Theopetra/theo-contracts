@@ -18,9 +18,7 @@ import { setupUsers } from './utils';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
 
 const setup = deployments.createFixture(async function () {
-  await deployments.fixture([
-    CONTRACTS.whitelistBondDepo
-  ]);
+  await deployments.fixture([CONTRACTS.whitelistBondDepo]);
 
   const { deployer: owner } = await getNamedAccounts();
 
