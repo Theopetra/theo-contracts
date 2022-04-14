@@ -52,7 +52,7 @@ contract pTheopetra is IpTHEO, ERC20Permit, TheopetraAccessControlled {
     address public treasury;
 
     constructor(address _authority)
-        ERC20("Platinum Staked THEO", "pTHEO", 9)
+        ERC20("Platinum Staked Theo", "pTHEO", 9)
         ERC20Permit()
         TheopetraAccessControlled(ITheopetraAuthority(_authority))
     {

@@ -32,7 +32,7 @@ describe('pTheopetra', function () {
 
     it('is constructed with the correct name, symbol and decimals', async function () {
       const { pTheopetra } = await setup();
-      expect(await pTheopetra.name()).to.equal('Platinum Staked THEO');
+      expect(await pTheopetra.name()).to.equal('Platinum Staked Theo');
       expect(await pTheopetra.symbol()).to.equal('pTHEO');
       expect(await pTheopetra.decimals()).to.equal(9);
     });
