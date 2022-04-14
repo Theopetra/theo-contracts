@@ -40,6 +40,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         firstEpochNumber,
         firstEpochBlock,
         TheopetraAuthority.address,
+        0,
       ];
     }
 

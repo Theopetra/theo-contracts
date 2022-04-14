@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.5;
-
 import "../Types/TheopetraAccessControlled.sol";
-
+import "hardhat/console.sol";
 import "../Libraries/SafeMath.sol";
 import "../Libraries/SafeERC20.sol";
 
@@ -18,6 +17,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
     address public immutable THEO;
     address public immutable sTHEO;
+    uint256 public immutable stakingTerm;
 
     struct Epoch {
         uint256 length;
@@ -36,6 +36,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
     uint256 public warmupPeriod;
 
     uint256 private gonsInWarmup;
+    uint256 private slashedGons;
 
     constructor(
         address _THEO,
@@ -43,23 +44,28 @@ contract TheopetraStaking is TheopetraAccessControlled {
         uint256 _epochLength,
         uint256 _firstEpochNumber,
         uint256 _firstEpochBlock,
-        address _authority
+        address _authority,
+        uint256 _stakingTerm
     ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {
+        definePenalties();
         require(_THEO != address(0), "Invalid address");
         THEO = _THEO;
         require(_sTHEO != address(0), "Invalid address");
         sTHEO = _sTHEO;
+        stakingTerm = _stakingTerm;
 
         epoch = Epoch({ length: _epochLength, number: _firstEpochNumber, endBlock: _firstEpochBlock, distribute: 0 });
     }
 
     struct Claim {
         uint256 deposit;
-        uint256 gons;
-        uint256 expiry;
+        uint256 gonsInWarmup;
+        uint256 warmupExpiry;
+        uint256 stakingExpiry;
+        bool inWarmup;
         bool lock; // prevents malicious delays
     }
-    mapping(address => Claim) public warmupInfo;
+    mapping(address => Claim[]) public stakingInfo;
 
     /**
         @notice stake THEO to enter warmup
@@ -73,61 +79,63 @@ contract TheopetraStaking is TheopetraAccessControlled {
         bool _claim
     ) external returns (uint256) {
         rebase();
-
         IERC20(THEO).safeTransferFrom(msg.sender, address(this), _amount);
+
+        if (_claim) {
+            stakingInfo[_recipient].push(
+                Claim({
+                    deposit: _amount,
+                    gonsInWarmup: gonsInWarmup,
+                    warmupExpiry: epoch.endBlock + warmupPeriod,
+                    stakingExpiry: block.timestamp + stakingTerm,
+                    inWarmup: true,
+                    lock: true
+                })
+            );
+        }
 
         if (_claim && warmupPeriod == 0) {
             return _send(_recipient, _amount);
-        } else {
-            Claim memory info = warmupInfo[_recipient];
-
-            if (!info.lock) {
-                require(_recipient == msg.sender, "External deposits for account are locked");
-            }
-
-            warmupInfo[_recipient] = Claim({
-                deposit: info.deposit.add(_amount),
-                gons: info.gons.add(IsTHEO(sTHEO).gonsForBalance(_amount)),
-                expiry: epoch.number.add(warmupPeriod),
-                lock: info.lock
-            });
-
-            gonsInWarmup = gonsInWarmup.add(IsTHEO(sTHEO).gonsForBalance(_amount));
-
-            return _amount;
         }
+
+        return _amount;
     }
 
     /**
         @notice retrieve sTHEO from warmup
         @param _recipient address
+        @param _indexes uint256[]      indexes of the sTHEO to retrieve
+        @return amount_                The amount of sTHEO sent
      */
-    function claim(address _recipient) public returns (uint256) {
-        Claim memory info = warmupInfo[_recipient];
+    function claim(address _recipient, uint256[] memory _indexes) public returns (uint256 amount_) {
+        uint256 _amount = 0;
+        for (uint256 i = 0; i < _indexes.length; i++) {
+            Claim memory info = stakingInfo[_recipient][_indexes[i]];
 
-        if (!info.lock) {
-            require(_recipient == msg.sender, "External claims for account are locked");
+            if (!info.lock) {
+                require(_recipient == msg.sender, "External claims for account are locked");
+            }
+
+            if (epoch.number >= info.stakingExpiry && info.stakingExpiry != 0) {
+                stakingInfo[_recipient][_indexes[i]].gonsInWarmup = 0;
+
+                gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
+
+                _amount.add(_send(_recipient, IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup)));
+            }
         }
 
-        if (epoch.number >= info.expiry && info.expiry != 0) {
-            delete warmupInfo[_recipient];
-
-            gonsInWarmup = gonsInWarmup.sub(info.gons);
-
-            return _send(_recipient, IsTHEO(sTHEO).balanceForGons(info.gons));
-        }
-
-        return 0;
+        return _amount;
     }
 
     /**
         @notice forfeit sTHEO in warmup and retrieve THEO
      */
     function forfeit() external {
-        Claim memory info = warmupInfo[msg.sender];
-        delete warmupInfo[msg.sender];
+        Claim memory info = stakingInfo[msg.sender][0];
+        delete stakingInfo[msg.sender];
 
-        gonsInWarmup = gonsInWarmup.sub(info.gons);
+        gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
 
         IERC20(THEO).safeTransfer(msg.sender, info.deposit);
     }
@@ -136,7 +144,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @notice prevent new deposits or claims to/from external address (protection from malicious activity)
      */
     function toggleLock() external {
-        warmupInfo[msg.sender].lock = !warmupInfo[msg.sender].lock;
+        stakingInfo[msg.sender][0].lock = !stakingInfo[msg.sender][0].lock;
     }
 
     /**
@@ -144,12 +152,14 @@ contract TheopetraStaking is TheopetraAccessControlled {
      * @param _to address
      * @param _amount uint
      * @param _trigger bool
+     * @param _indexes uint256[]
      * @return amount_ uint
      */
     function unstake(
         address _to,
         uint256 _amount,
-        bool _trigger
+        bool _trigger,
+        uint256[] memory _indexes
     ) external returns (uint256 amount_) {
         amount_ = _amount;
         uint256 bounty;
@@ -157,11 +167,80 @@ contract TheopetraStaking is TheopetraAccessControlled {
             bounty = rebase();
         }
 
-        IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
-        amount_ = amount_.add(bounty);
+        for (uint256 i = 0; i < _indexes.length; i++) {
+            Claim memory info = stakingInfo[_to][_indexes[i]];
 
-        require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
-        ITHEO(THEO).safeTransfer(_to, amount_);
+            if (block.timestamp >= info.stakingExpiry) {
+                IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
+                amount_ = amount_.add(bounty);
+
+                require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
+                ITHEO(THEO).safeTransfer(_to, amount_);
+            } else if (block.timestamp < info.stakingExpiry) {
+                // Transfer the staked THEO
+                IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
+                // Determine the penalty for removing early
+                // uint256 penalty = getPenalty(amount_, block.timestamp.div(info.stakingExpiry));
+                uint256 penalty = 0;
+
+                // Add the penalty to slashed gons
+                slashedGons = slashedGons.add(penalty);
+
+                // Figure out the amount to return based on this penalty
+                amount_ = amount_.sub(penalty);
+
+                // Ensure there is enough to make the transfer
+                require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
+
+                // Transfer the THEO to the recipient
+                ITHEO(THEO).safeTransfer(_to, amount_);
+            }
+        }
+    }
+
+    mapping(uint256 => uint256) penaltyBands;
+
+    function definePenalties() private {
+        definePenalty(1, 20);
+        definePenalty(2, 19);
+        definePenalty(3, 18);
+        definePenalty(4, 17);
+        definePenalty(5, 16);
+        definePenalty(6, 15);
+        definePenalty(7, 14);
+        definePenalty(8, 13);
+        definePenalty(9, 12);
+        definePenalty(10, 11);
+        definePenalty(11, 10);
+        definePenalty(12, 9);
+        definePenalty(13, 8);
+        definePenalty(14, 7);
+        definePenalty(15, 6);
+        definePenalty(16, 5);
+        definePenalty(17, 4);
+        definePenalty(18, 3);
+        definePenalty(19, 2);
+        definePenalty(20, 1);
+    }
+
+    function definePenalty(uint256 _percentBandMax, uint256 _penalty) private {
+        penaltyBands[_percentBandMax] = _penalty;
+    }
+
+    function ceil(uint256 a, uint256 m) private view returns (uint256) {
+        return ((a + m - 1) / m) * m;
+    }
+
+    function getPenalty(uint256 _amount, uint256 stakingTimePercentComplete) public view returns (uint256) {
+        if (stakingTimePercentComplete == 100) {
+            return 0;
+        }
+
+        uint256 penaltyBand = ceil(stakingTimePercentComplete, 5).div(5);
+
+        uint256 penaltyPercent = penaltyBands[penaltyBand];
+
+        return _amount.mul(penaltyPercent).div(100);
     }
 
     /**

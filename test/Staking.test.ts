@@ -26,7 +26,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe('Staking', function () {
+describe.only('Staking', function () {
   const amountToStake = 1000;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
 
@@ -37,6 +37,7 @@ describe('Staking', function () {
   let users: any;
   let owner: any;
   let addressZero: any;
+  const stakingTerm: any = 0;
 
   beforeEach(async function () {
     ({ Staking, sTheoMock, TheopetraAuthority, TheopetraERC20Mock, users, owner, addressZero } = await setup());
@@ -84,6 +85,7 @@ describe('Staking', function () {
             firstEpochNumber,
             firstEpochBlock,
             TheopetraAuthority.address,
+            stakingTerm,
           ],
         })
       ).to.be.revertedWith('Invalid address');
@@ -100,6 +102,7 @@ describe('Staking', function () {
             firstEpochNumber,
             firstEpochBlock,
             TheopetraAuthority.address,
+            stakingTerm,
           ],
         })
       ).to.be.revertedWith('Invalid address');
@@ -137,13 +140,15 @@ describe('Staking', function () {
   });
 
   describe('stake', function () {
-    it('adds a Claim for the staked _amount to the warmup when `_claim` is false and `warmupPeriod` is zero', async function () {
+    it.only('adds a Claim for the staked _amount to the staked collection when `_claim` is false and `warmupPeriod` is zero', async function () {
       const [, bob] = users;
       const claim = false;
 
-      await bob.Staking.stake(bob.address, amountToStake, claim);
+      await bob.Staking.stake(bob.address, amountToStake, true);
 
-      const warmupInfo = await Staking.warmupInfo(bob.address);
+      const warmupInfo = await Staking.stakingInfo(bob.address);
+
+      console.log('WARMUP', warmupInfo);
       const epochInfo = await Staking.epoch();
       expect(warmupInfo.deposit).to.equal(amountToStake);
       expect(warmupInfo.expiry).to.equal(epochInfo.number); // equal because warmup is zero
@@ -173,6 +178,90 @@ describe('Staking', function () {
       expect(await Staking.supplyInWarmup()).to.equal(0);
     });
 
+    it('gets the right penalty', async () => {
+      // 800 * .2 = 160
+      expect(await Staking.getPenalty(800, 4)).to.equal(BigNumber.from(160));
+      expect(await Staking.getPenalty(800, 5)).to.equal(BigNumber.from(160));
+
+      // 800 * .19 = 152
+      expect(await Staking.getPenalty(800, 8)).to.equal(BigNumber.from(152));
+      expect(await Staking.getPenalty(800, 10)).to.equal(BigNumber.from(152));
+
+      // 800 * .18 = 144
+      expect(await Staking.getPenalty(800, 12)).to.equal(BigNumber.from(144));
+      expect(await Staking.getPenalty(800, 15)).to.equal(BigNumber.from(144));
+
+      // 800 * .17 = 136
+      expect(await Staking.getPenalty(800, 16)).to.equal(BigNumber.from(136));
+      expect(await Staking.getPenalty(800, 20)).to.equal(BigNumber.from(136));
+
+      // 800 * .16 = 128
+      expect(await Staking.getPenalty(800, 21)).to.equal(BigNumber.from(128));
+      expect(await Staking.getPenalty(800, 25)).to.equal(BigNumber.from(128));
+
+      // 800 * .15 = 120
+      expect(await Staking.getPenalty(800, 26)).to.equal(BigNumber.from(120));
+      expect(await Staking.getPenalty(800, 30)).to.equal(BigNumber.from(120));
+
+      // 800 * .14 = 112
+      expect(await Staking.getPenalty(800, 31)).to.equal(BigNumber.from(112));
+      expect(await Staking.getPenalty(800, 35)).to.equal(BigNumber.from(112));
+
+      // 800 * .13 = 104
+      expect(await Staking.getPenalty(800, 36)).to.equal(BigNumber.from(104));
+      expect(await Staking.getPenalty(800, 40)).to.equal(BigNumber.from(104));
+
+      // 800 * .12 = 96
+      expect(await Staking.getPenalty(800, 41)).to.equal(BigNumber.from(96));
+      expect(await Staking.getPenalty(800, 45)).to.equal(BigNumber.from(96));
+      // 800 * .11 = 88
+      expect(await Staking.getPenalty(800, 49)).to.equal(BigNumber.from(88));
+      expect(await Staking.getPenalty(800, 50)).to.equal(BigNumber.from(88));
+
+      //800 * .10 = 80
+      expect(await Staking.getPenalty(800, 52)).to.equal(BigNumber.from(80));
+      expect(await Staking.getPenalty(800, 55)).to.equal(BigNumber.from(80));
+
+      //800 * .9 = 72
+      expect(await Staking.getPenalty(800, 56)).to.equal(BigNumber.from(72));
+      expect(await Staking.getPenalty(800, 60)).to.equal(BigNumber.from(72));
+
+      //800 * .8 = 64
+      expect(await Staking.getPenalty(800, 61)).to.equal(BigNumber.from(64));
+      expect(await Staking.getPenalty(800, 65)).to.equal(BigNumber.from(64));
+
+      //800 * .7 = 56
+      expect(await Staking.getPenalty(800, 69)).to.equal(BigNumber.from(56));
+      expect(await Staking.getPenalty(800, 70)).to.equal(BigNumber.from(56));
+
+      // Expect calculation for 800 * .6 = 48
+      expect(await Staking.getPenalty(800, 71)).to.equal(BigNumber.from(48));
+      expect(await Staking.getPenalty(800, 75)).to.equal(BigNumber.from(48));
+
+      // Expect calculation for 800 * .5 = 40
+      expect(await Staking.getPenalty(800, 76)).to.equal(BigNumber.from(40));
+      expect(await Staking.getPenalty(800, 80)).to.equal(BigNumber.from(40));
+
+      // Expect calculation for 800 * .4 = 32
+      expect(await Staking.getPenalty(800, 81)).to.equal(BigNumber.from(32));
+      expect(await Staking.getPenalty(800, 85)).to.equal(BigNumber.from(32));
+
+      // Expect calculation for 800 * .3 = 24
+      expect(await Staking.getPenalty(800, 86)).to.equal(BigNumber.from(24));
+      expect(await Staking.getPenalty(800, 90)).to.equal(BigNumber.from(24));
+
+      // Expect calculation for 800 * .2 = 16
+      expect(await Staking.getPenalty(800, 91)).to.equal(BigNumber.from(16));
+      expect(await Staking.getPenalty(800, 95)).to.equal(BigNumber.from(16));
+
+      // Expect calculation for 800 * .1 = 8
+      expect(await Staking.getPenalty(800, 96)).to.equal(BigNumber.from(8));
+      expect(await Staking.getPenalty(800, 98)).to.equal(BigNumber.from(8));
+
+      // It should never get here if it's 100% but we want to ensure its 0
+      // expect(await Staking.getPenalty(800,)).to.equal(BigNumber.from(0));
+    });
+
     it('adds a Claim in warmup, with the correct deposit and expiry, when `_claim` is true and the warmup period is greater than 0', async function () {
       const [, bob] = users;
       const claim = true;
@@ -185,7 +274,7 @@ describe('Staking', function () {
 
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
 
-      const warmupInfo = await Staking.warmupInfo(bob.address);
+      const warmupInfo = await Staking.stakingInfo(bob.address);
       const epochInfo = await Staking.epoch();
 
       expect(warmupInfo.deposit).to.equal(amountToStake);
