@@ -80,8 +80,20 @@ contract TheopetraStaking is TheopetraAccessControlled {
     ) external returns (uint256) {
         rebase();
         IERC20(THEO).safeTransferFrom(msg.sender, address(this), _amount);
+        if (!_claim && warmupPeriod == 0) {
+            stakingInfo[_recipient].push(
+                Claim({
+                    deposit: _amount,
+                    gonsInWarmup: _amount,
+                    warmupExpiry: epoch.end + warmupPeriod,
+                    stakingExpiry: block.timestamp + stakingTerm,
+                    inWarmup: true,
+                    lock: true
+                })
+            );
+        }
 
-        if (_claim && warmupPeriod != 0) {
+        if (_warmupPeriod != 0) {
             gonsInWarmup += _amount;
             stakingInfo[_recipient].push(
                 Claim({
@@ -95,11 +107,6 @@ contract TheopetraStaking is TheopetraAccessControlled {
             );
         }
 
-        if (_claim && warmupPeriod == 0) {
-            uint256 _localAmount = _send(_recipient, _amount);
-            return _localAmount;
-        }
-
         return _amount;
     }
 
@@ -110,7 +117,6 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @return amount_                The amount of sTHEO sent
      */
     function claim(address _recipient, uint256[] memory _indexes) public returns (uint256 amount_) {
-        uint256 _amount = 0;
         for (uint256 i = 0; i < _indexes.length; i++) {
             Claim memory info = stakingInfo[_recipient][_indexes[i]];
 
@@ -118,16 +124,14 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 require(_recipient == msg.sender, "External claims for account are locked");
             }
 
-            if (epoch.number >= info.stakingExpiry && info.stakingExpiry != 0) {
+            if (block.timestamp >= info.stakingExpiry && info.stakingExpiry != 0) {
                 stakingInfo[_recipient][_indexes[i]].gonsInWarmup = 0;
 
                 gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
 
-                _amount.add(_send(_recipient, IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup)));
+                amount_.add(_send(_recipient, IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup)));
             }
         }
-
-        return _amount;
     }
 
     /**
