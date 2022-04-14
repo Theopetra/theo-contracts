@@ -7,7 +7,7 @@ import {
   YieldReporterMock,
   UsdcERC20Mock,
   BondingCalculatorMock,
-  TheopetraYieldReporter
+  TheopetraYieldReporter,
 } from '../typechain-types';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 import { setupUsers, moveTimeForward, waitFor } from './utils';
@@ -51,16 +51,8 @@ describe('TheopetraTreasury', () => {
   let addressZero: any;
 
   beforeEach(async function () {
-    ({
-      Treasury,
-      UsdcTokenMock,
-      BondingCalculatorMock,
-      YieldReporter,
-      TheopetraAuthority,
-      addressZero,
-      users,
-      owner,
-    } = await setup());
+    ({ Treasury, UsdcTokenMock, BondingCalculatorMock, YieldReporter, TheopetraAuthority, addressZero, users, owner } =
+      await setup());
   });
 
   describe('Deployment', () => {
@@ -127,7 +119,7 @@ describe('TheopetraTreasury', () => {
         const currentYield = 150_000_000_000;
         await waitFor(YieldReporter.reportYield(50_000_000_000));
         await waitFor(YieldReporter.reportYield(currentYield));
-        expectedDeltaTreasuryYield = Math.floor(((currentYield - lastYield) * 10**9) / lastYield)
+        expectedDeltaTreasuryYield = Math.floor(((currentYield - lastYield) * 10 ** 9) / lastYield);
       }
 
       await Treasury.enable(11, YieldReporter.address, addressZero);

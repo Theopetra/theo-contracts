@@ -1,6 +1,6 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } from 'hardhat';
-import { setupUsers, performanceUpdate} from './utils';
+import { setupUsers, performanceUpdate } from './utils';
 import { getContracts } from '../utils/helpers';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 import {

@@ -36,7 +36,11 @@ export async function moveTimeForward<T>(timeInSeconds: number): Promise<void & 
   await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 }
 
-export async function performanceUpdate<T>(Treasury: TheopetraTreasury, YieldReporter: TheopetraYieldReporter | YieldReporterMock, BondingCalculatorAddress: string): Promise<void & T>{
+export async function performanceUpdate<T>(
+  Treasury: TheopetraTreasury,
+  YieldReporter: TheopetraYieldReporter | YieldReporterMock,
+  BondingCalculatorAddress: string
+): Promise<void & T> {
   const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
   // Set the address of the bonding calculator
   await Treasury.setTheoBondingCalculator(BondingCalculatorAddress);

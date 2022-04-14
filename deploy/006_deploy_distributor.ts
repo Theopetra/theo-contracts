@@ -51,4 +51,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func;
 func.tags = [CONTRACTS.distributor];
-func.dependencies = hre?.network?.config?.chainId === 1337 ? [CONTRACTS.authority, 'Mocks'] : [CONTRACTS.authority, CONTRACTS.treasury, CONTRACTS.theoToken, CONTRACTS.staking];
+func.dependencies =
+  hre?.network?.config?.chainId === 1337
+    ? [CONTRACTS.authority, 'Mocks']
+    : [CONTRACTS.authority, CONTRACTS.treasury, CONTRACTS.theoToken, CONTRACTS.staking];

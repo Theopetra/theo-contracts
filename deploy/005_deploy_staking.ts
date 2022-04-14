@@ -39,7 +39,6 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       TheopetraAuthority.address,
     ];
 
-
     if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
       // Update args with addresses of already-deployed mocks
       const namedMockAddresses: Record<any, any> = {};
@@ -66,4 +65,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func;
 func.tags = [CONTRACTS.staking];
-func.dependencies = hre?.network?.config?.chainId === 1337 ? [CONTRACTS.authority, 'Mocks'] : [CONTRACTS.authority, CONTRACTS.theoToken, CONTRACTS.sTheo];
+func.dependencies =
+  hre?.network?.config?.chainId === 1337
+    ? [CONTRACTS.authority, 'Mocks']
+    : [CONTRACTS.authority, CONTRACTS.theoToken, CONTRACTS.sTheo];
