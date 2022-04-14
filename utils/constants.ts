@@ -8,6 +8,7 @@ export const CONTRACTS: Record<string, string> = {
   treasury: 'TheopetraTreasury',
   whitelistBondDepo: 'WhitelistTheopetraBondDepository',
   yieldReporter: 'TheopetraYieldReporter',
+  pTheo: 'pTheopetra'
 };
 
 export const MOCKS: Record<string, string> = {
