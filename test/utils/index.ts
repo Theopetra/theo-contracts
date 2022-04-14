@@ -1,7 +1,5 @@
 import { Contract } from 'ethers';
 import { ethers } from 'hardhat';
-import { CONTRACTS, TESTWITHMOCKS } from '../../utils/constants';
-import { getContracts } from '../../utils/helpers';
 
 export async function setupUsers<T extends { [contractName: string]: Contract }>(
   addresses: string[],
@@ -31,7 +29,7 @@ export async function waitFor<T>(p: Promise<{ wait: () => Promise<T> }>): Promis
   return tx.wait();
 }
 
-export async function moveTimeForward(timeInSeconds: number): Promise<void> {
+export async function moveTimeForward<T>(timeInSeconds: number): Promise<void & T> {
   const latestBlock = await ethers.provider.getBlock('latest');
   const newTimestampInSeconds = latestBlock.timestamp + timeInSeconds;
   await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
