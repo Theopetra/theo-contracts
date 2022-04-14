@@ -82,10 +82,11 @@ contract TheopetraStaking is TheopetraAccessControlled {
         IERC20(THEO).safeTransferFrom(msg.sender, address(this), _amount);
 
         if (_claim) {
+            gonsInWarmup += _amount;
             stakingInfo[_recipient].push(
                 Claim({
                     deposit: _amount,
-                    gonsInWarmup: gonsInWarmup,
+                    gonsInWarmup: _amount,
                     warmupExpiry: epoch.endBlock + warmupPeriod,
                     stakingExpiry: block.timestamp + stakingTerm,
                     inWarmup: true,
@@ -180,8 +181,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 // Transfer the staked THEO
                 IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
                 // Determine the penalty for removing early
-                // uint256 penalty = getPenalty(amount_, block.timestamp.div(info.stakingExpiry));
-                uint256 penalty = 0;
+                uint256 penalty = getPenalty(amount_, block.timestamp.div(info.stakingExpiry));
+                // uint256 penalty = 0;
 
                 // Add the penalty to slashed gons
                 slashedGons = slashedGons.add(penalty);
