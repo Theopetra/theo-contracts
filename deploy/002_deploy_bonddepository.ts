@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
 import getNamedMockAddresses from './mocks/helpers';
-import { CONTRACTS } from '../utils/constants';
+import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   try {
@@ -11,14 +11,25 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deploy } = deployments;
 
     const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
+    const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
+    const TheopetraTreasury = await deployments.get(CONTRACTS.treasury);
+    const sTheopetraERC20 = await deployments.get(CONTRACTS.sTheo);
+    const Staking = await deployments.get(CONTRACTS.staking);
+
     const { deployer } = await getNamedAccounts();
     const chainId = await getChainId();
-    const args = [TheopetraAuthority.address, deployer, deployer, deployer, deployer];
+    let args: any = [];
 
-    // If on Hardhat network, update args with addresses of already-deployed mocks
-    if (chainId === '1337') {
+    args = [
+      TheopetraAuthority.address,
+      TheopetraERC20Token.address,
+      sTheopetraERC20.address,
+      Staking.address,
+      TheopetraTreasury.address,
+    ];
+    if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
       const { TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock } = await getNamedMockAddresses(hre);
-      args.splice(1, 4, TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock);
+      args = [TheopetraAuthority.address, TheopetraERC20Mock, sTheoMock, StakingMock, TreasuryMock];
     }
 
     await deploy(CONTRACTS.bondDepo, {
@@ -33,4 +44,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = [CONTRACTS.bondDepo];
-func.dependencies = hre?.network?.config?.chainId === 1337 ? [CONTRACTS.authority, 'Mocks'] : [CONTRACTS.authority];
+func.dependencies = [CONTRACTS.authority, CONTRACTS.treasury, CONTRACTS.theoToken, CONTRACTS.sTheo, CONTRACTS.staking];
