@@ -80,31 +80,50 @@ contract TheopetraStaking is TheopetraAccessControlled {
     ) external returns (uint256) {
         rebase();
         IERC20(THEO).safeTransferFrom(msg.sender, address(this), _amount);
-        if (!_claim && warmupPeriod == 0) {
-            stakingInfo[_recipient].push(
-                Claim({
-                    deposit: _amount,
-                    gonsInWarmup: _amount,
-                    warmupExpiry: epoch.end + warmupPeriod,
-                    stakingExpiry: block.timestamp + stakingTerm,
-                    inWarmup: true,
-                    lock: true
-                })
-            );
-        }
 
-        if (_warmupPeriod != 0) {
-            gonsInWarmup += _amount;
+        if (warmupPeriod == 0) {
+            // funds are sent if _claim is true
+            // and go to warmup if _claim is false
+            if (_claim) {
+                stakingInfo[_recipient].push(
+                    Claim({
+                        deposit: _amount,
+                        gonsInWarmup: 0,
+                        warmupExpiry: epoch.end + warmupPeriod,
+                        stakingExpiry: block.timestamp + stakingTerm,
+                        inWarmup: false,
+                        lock: true
+                    })
+                );
+                _send(_recipient, _amount);
+            } else {
+                gonsInWarmup = gonsInWarmup.add(_amount);
+                stakingInfo[_recipient].push(
+                    Claim({
+                        deposit: _amount,
+                        gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
+                        warmupExpiry: epoch.end + warmupPeriod,
+                        stakingExpiry: block.timestamp + stakingTerm,
+                        inWarmup: true,
+                        lock: true
+                    })
+                );
+                // funds are not sent as they went to warmup
+            }
+        } else {
+            // funds go into warmup
+            gonsInWarmup = gonsInWarmup.add(_amount);
             stakingInfo[_recipient].push(
                 Claim({
                     deposit: _amount,
-                    gonsInWarmup: _amount,
+                    gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
                     warmupExpiry: epoch.end + warmupPeriod,
                     stakingExpiry: block.timestamp + stakingTerm,
                     inWarmup: true,
                     lock: true
                 })
             );
+            // sTheo is not sent as it has went into warmup
         }
 
         return _amount;
