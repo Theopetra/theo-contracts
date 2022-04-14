@@ -13,7 +13,7 @@ import {
   TheopetraYieldReporter,
 } from '../typechain-types';
 import { TESTWITHMOCKS } from '../utils/constants';
-import { setupUsers, moveTimeForward, waitFor } from './utils';
+import { setupUsers, performanceUpdate } from './utils';
 import { getContracts } from '../utils/helpers';
 
 const setup = deployments.createFixture(async () => {
@@ -72,25 +72,7 @@ describe('Distributor', function () {
 
     // Setup to get deltaTokenPrice and deltaTreasuryYield
     if (process.env.NODE_ENV !== TESTWITHMOCKS) {
-      // Set the address of the bonding calculator
-      await Treasury.setTheoBondingCalculator(BondingCalculatorMock.address);
-
-      // Move forward 8 hours to allow tokenPerformanceUpdate to update contract state for token price
-      // current token price will subsequently be updated, last token price will still be zero
-      await moveTimeForward(60 * 60 * 8);
-      await Treasury.tokenPerformanceUpdate();
-      // Move forward in time again to update again, this time current token price becomes last token price
-      await moveTimeForward(60 * 60 * 8);
-      await Treasury.tokenPerformanceUpdate();
-
-      // Set the Bonding Calculator address (used previously just to update token performance) back to address zero, to allow unit testing from this state
-      await Treasury.setTheoBondingCalculator(addressZero);
-
-      // If not using the mock, report a couple of yields using the Yield Reporter (for use when calculating deltaTreasuryYield)
-      // Difference in reported yields is chosen to be relatively low, to avoid hiting the maximum rate (cap) when calculating the nextRewardRate
-      await waitFor(YieldReporter.reportYield(50_000_000_000));
-      await waitFor(YieldReporter.reportYield(65_000_000_000));
-
+      await performanceUpdate(Treasury, YieldReporter, BondingCalculatorMock.address);
       deltaTokenPrice = await Treasury.deltaTokenPrice();
       deltaTreasuryYield = await Treasury.deltaTreasuryYield();
     } else {

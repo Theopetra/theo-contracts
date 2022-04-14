@@ -1,6 +1,6 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } from 'hardhat';
-import { setupUsers, moveTimeForward, waitFor } from './utils';
+import { setupUsers, performanceUpdate} from './utils';
 import { getContracts } from '../utils/helpers';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 import {
@@ -44,7 +44,6 @@ describe('Bond depository', function () {
   const vesting = 60 * 60 * 24 * 14; // seconds in 14 days
   // Initial mint for Mock USDC
   const initialMint = '10000000000000000000000000';
-  const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
   const bondRateFixed = 10_000_000; // 1% in decimal form (i.e. 0.01 with 9 decimals)
   const maxBondRateVariable = 40_000_000; // 4% in decimal form (i.e. 0.04 with 9 decimals)
   const discountRateBond = 10_000_000; // 1% in decimal form (i.e. 0.01 with 9 decimals)
@@ -124,21 +123,7 @@ describe('Bond depository', function () {
 
     // Setup for successful calls to `marketPrice` (during `deposit`) when test use wired-up contracts
     if (process.env.NODE_ENV !== TESTWITHMOCKS) {
-      // Set the address of the bonding calculator
-      await Treasury.setTheoBondingCalculator(BondingCalculatorMock.address);
-
-      // Move forward 8 hours to allow tokenPerformanceUpdate to update contract state for token price
-      // current token price will subsequently be updated, last token price will still be zero
-      await moveTimeForward(60 * 60 * 8);
-      await Treasury.tokenPerformanceUpdate();
-      // Move forward in time again to update again, this time current token price becomes last token price
-      await moveTimeForward(60 * 60 * 8);
-      await Treasury.tokenPerformanceUpdate();
-
-      // Set the Bonding Calculator address (used previously just to update token performance) back to address zero, to allow unit testing from this state
-      await Treasury.setTheoBondingCalculator(addressZero);
-
-      await waitFor(YieldReporter.reportYield(50_000_000_000)); // Update current and last treasury yield
+      await performanceUpdate(Treasury, YieldReporter, BondingCalculatorMock.address);
     }
   });
 
@@ -404,7 +389,7 @@ describe('Bond depository', function () {
       const newTotalTheoSupply = await TheopetraERC20Token.totalSupply();
       const [payout_] = await BondDepository.pendingFor(bob.address, 0);
 
-      expect(newTotalTheoSupply - initialTotalTheoSupply).to.equal(payout_);
+      expect(newTotalTheoSupply.sub(initialTotalTheoSupply)).to.equal(payout_);
     });
 
     it('should stake the payout', async function () {
