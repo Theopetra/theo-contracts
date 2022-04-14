@@ -21,7 +21,6 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     let firstEpochTime;
     let args: any = [];
 
-    // Note: epochLength, firstEpochNumber and firstEpoch to be updated as needed for other networks
     if (chainId === '1337') {
       epochLength = 8 * 60 * 60;
       firstEpochNumber = '1';

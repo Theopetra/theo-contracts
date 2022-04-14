@@ -59,8 +59,6 @@ describe('sTheopetra', function () {
 
   describe('Access control', function () {
     it('allows the manager (currently set as the deployer) to set the index', async function () {
-      // This test may be removed/updated in future (when modifying sTheo)
-      // It is included here as an initial test of inclusion of TheopetraAccessControlled
       const { sTheo } = await setup();
 
       await sTheo.setIndex(10);
@@ -68,8 +66,6 @@ describe('sTheopetra', function () {
     });
 
     it('reverts if a user other than the manager makes a call to set the index', async function () {
-      // This test may be removed/updated in future (when modifying sTheo)
-      // It is included here as an initial test of inclusion of TheopetraAccessControlled
       const { users } = await setup();
       const [, alice] = users;
 

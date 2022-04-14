@@ -38,8 +38,6 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-// type Treasurys = TheopetraTreasury | TreasuryMock;
-
 describe('TheopetraTreasury', () => {
   let Treasury: TheopetraTreasury;
   let UsdcTokenMock: UsdcERC20Mock;

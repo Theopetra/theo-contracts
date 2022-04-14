@@ -20,7 +20,6 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     let epochLength;
     let args: any = [];
 
-    // Note: epochLength and nextEpoch to be updated as needed for other networks
     if (chainId === '1337') {
       epochLength = 60 * 60 * 24 * 365;
     }
