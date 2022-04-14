@@ -81,7 +81,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         rebase();
         IERC20(THEO).safeTransferFrom(msg.sender, address(this), _amount);
 
-        if (_claim) {
+        if (_claim && warmupPeriod != 0) {
             gonsInWarmup += _amount;
             stakingInfo[_recipient].push(
                 Claim({
@@ -96,7 +96,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
         }
 
         if (_claim && warmupPeriod == 0) {
-            return _send(_recipient, _amount);
+            uint256 _localAmount = _send(_recipient, _amount);
+            return _localAmount;
         }
 
         return _amount;
