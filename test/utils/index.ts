@@ -1,5 +1,8 @@
-import { Contract } from 'ethers';
+import { Contract, Event } from 'ethers';
+import { LogDescription } from "@ethersproject/abi";
 import { ethers } from 'hardhat';
+
+
 
 export async function setupUsers<T extends { [contractName: string]: Contract }>(
   addresses: string[],
@@ -27,4 +30,17 @@ export async function setupUser<T extends { [contractName: string]: Contract }>(
 export async function waitFor<T>(p: Promise<{ wait: () => Promise<T> }>): Promise<T> {
   const tx = await p;
   return tx.wait();
+}
+
+export function decodeLogs(logs: Event[], targets: Contract[]): LogDescription[] {
+
+  const decoded: LogDescription[] = [];
+
+  logs.forEach((log) => {
+    const contract = targets.find((c: Contract) => c.address === log.address);
+    if (!contract) return;
+    decoded.push(contract.interface.parseLog(log));
+  });
+
+  return decoded;
 }
