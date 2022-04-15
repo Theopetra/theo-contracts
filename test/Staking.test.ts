@@ -159,7 +159,7 @@ describe.only('Staking', function () {
     it('adds a Claim for the staked `_amount` to the staked collection when `_claim` is false and `warmupPeriod` is zero', async function () {
       const [, bob] = users;
       const claim = false;
-      const expectedGonsInWarmup = process.env.NODE_ENV !== TESTWITHMOCKS ? await sTheo.gonsForBalance(amountToStake) : 0; // if running test with mocks, use 0 gons for sTheo.gonsForBalance(), because it returns amountToStake, which is already added in the test below
+      const expectedGonsInWarmup = await sTheo.gonsForBalance(amountToStake);
 
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
