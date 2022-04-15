@@ -271,49 +271,6 @@ describe.only('Staking', function () {
       expect(warmupInfo.deposit).to.equal(amountToStake);
       expect(warmupInfo.expiry).to.equal(Number(epochInfo.number) + warmupPeriod);
     });
-
-    it('includes a toggle for locking Claims (to prevent new deposits or claims to/from external address)', async function () {
-      const [, bob] = users;
-
-      await bob.Staking.toggleLock();
-      const warmupInfo = await Staking.warmupInfo(bob.address);
-      expect(warmupInfo.lock).to.equal(true);
-    });
-
-    it('prevents an external deposit by default', async function () {
-      const [, bob, carol] = users;
-      const claim = false;
-
-      await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.be.revertedWith(
-        'External deposits for account are locked'
-      );
-    });
-
-    it('allows an external deposit when recipient toggles their Claim lock', async function () {
-      const [, bob, carol] = users;
-      const claim = false;
-
-      await carol.Staking.toggleLock();
-
-      await bob.Staking.stake(carol.address, amountToStake, claim);
-
-      expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
-
-      const warmupInfo = await Staking.warmupInfo(carol.address);
-      expect(warmupInfo.deposit).to.equal(amountToStake);
-    });
-
-    it('allows self-deposits (while preventing external deposits by default)', async function () {
-      const [, bob, carol] = users;
-      const claim = false;
-
-      await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.be.revertedWith(
-        'External deposits for account are locked'
-      );
-      await bob.Staking.stake(bob.address, amountToStake, claim);
-
-      expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
-    });
   });
 
   describe('Unstake', function () {
@@ -398,4 +355,53 @@ describe.only('Staking', function () {
       expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
     });
   });
+
+  describe.only('isExternalLocked', function () {
+    it('prevents staking from an external account by default', async function () {
+      const [, bob, carol] = users;
+      const claim = true;
+
+      // Bob cannot, by default, stake for carol
+      await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.be.revertedWith(
+        'External deposits for account are locked'
+      );
+    });
+
+    it('allows self-stakes (while preventing external stakes by default)', async function () {
+      const [, bob, carol] = users;
+      const claim = true;
+
+      // Bob can self-stake
+      await expect( bob.Staking.stake(bob.address, amountToStake, claim)).to.not.be.reverted;
+
+      // Bob cannot, by default, stake for carol
+      await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.be.revertedWith(
+        'External deposits for account are locked'
+      );
+    });
+
+    // it.only('includes a toggle for unlocking external staking (to allow new stakes or claims to/from external address)', async function () {
+    //   const [, bob] = users;
+
+    //   await bob.Staking.toggleLock();
+    //   const warmupInfo = await Staking.warmupInfo(bob.address);
+    //   expect(warmupInfo.lock).to.equal(true);
+    // });
+
+
+    it('allows an external stake when recipient toggles their `isExternalLocked` lock', async function () {
+      const [, bob, carol] = users;
+      const claim = true;
+
+      await carol.Staking.toggleLock();
+
+      await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.not.be.reverted;
+
+      // expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
+
+      // const warmupInfo = await Staking.warmupInfo(carol.address);
+      // expect(warmupInfo.deposit).to.equal(amountToStake);
+    });
+
+  })
 });

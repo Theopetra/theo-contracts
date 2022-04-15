@@ -66,6 +66,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         bool lock; // prevents malicious delays
     }
     mapping(address => Claim[]) public stakingInfo;
+    mapping(address => bool) private isExternalLocked;
 
     /**
         @notice stake THEO to enter warmup
@@ -80,6 +81,10 @@ contract TheopetraStaking is TheopetraAccessControlled {
     ) external returns (uint256) {
         rebase();
         IERC20(THEO).safeTransferFrom(msg.sender, address(this), _amount);
+
+        if (!isExternalLocked[_recipient]){
+            require(_recipient == msg.sender, "External deposits for account are locked");
+        }
 
         if (warmupPeriod == 0) {
             // funds are sent if _claim is true
@@ -169,7 +174,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @notice prevent new deposits or claims to/from external address (protection from malicious activity)
      */
     function toggleLock() external {
-        stakingInfo[msg.sender][0].lock = !stakingInfo[msg.sender][0].lock;
+        isExternalLocked[msg.sender] = !isExternalLocked[msg.sender];
     }
 
     /**
