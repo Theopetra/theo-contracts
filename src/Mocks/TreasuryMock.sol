@@ -20,7 +20,7 @@ contract TreasuryMock {
     }
 
     function baseSupply() external pure returns (uint256) {
-        return 10000000000000;
+        return 10_000_000_000_000_000;
     }
 
     function deltaTokenPrice() public view returns (int256) {
