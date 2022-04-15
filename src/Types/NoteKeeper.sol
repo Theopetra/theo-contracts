@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import "./FrontEndRewarder.sol";
 
 import "../Interfaces/IsTHEO.sol";
+import "../Interfaces/IERC20.sol";
 import "../Interfaces/IStaking.sol";
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/INoteKeeper.sol";
@@ -13,6 +14,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
     mapping(address => mapping(uint256 => address)) private noteTransfers; // change note ownership
 
     IsTHEO internal immutable sTHEO;
+    IERC20 internal immutable THEO;
     IStaking internal immutable staking;
     ITreasury internal treasury;
 
@@ -24,6 +26,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         ITreasury _treasury
     ) FrontEndRewarder(_authority, _theo) {
         sTHEO = _stheo;
+        THEO = _theo;
         staking = _staking;
         treasury = _treasury;
     }
@@ -95,7 +98,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
      * @param _indexes     the note indexes to redeem
      * @return payout_     sum of payout sent, in sTHEO
      */
-    function redeem(address _user, uint256[] memory _indexes) public override returns (uint256 payout_) {
+    function redeem(address _user, uint256[] memory _indexes, bool _stake) public override returns (uint256 payout_) {
         uint48 time = uint48(block.timestamp);
 
         for (uint256 i = 0; i < _indexes.length; i++) {
@@ -107,7 +110,11 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
             }
         }
 
-        sTHEO.transfer(_user, payout_); // send payout as sTHEO
+        if (_stake) {
+            sTHEO.transfer(_user, payout_); // send payout as sTHEO
+        } else {
+            THEO.transfer(_user, payout_); // send payout as THEO
+        }
     }
 
     /**
@@ -116,8 +123,8 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
      * @param _user        user to redeem all notes for
      * @return             sum of payout sent, in sTHEO
      */
-    function redeemAll(address _user) external override returns (uint256) {
-        return redeem(_user, indexesFor(_user));
+    function redeemAll(address _user, bool _stake) external override returns (uint256) {
+        return redeem(_user, indexesFor(_user), _stake);
     }
 
     /* ========== TRANSFER ========== */
