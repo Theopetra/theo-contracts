@@ -6,34 +6,24 @@ import {
   WETH9,
   SignerHelper__factory,
   SignerHelper,
-  StakingMock,
   TheopetraAuthority,
-  TreasuryMock,
   UsdcERC20Mock,
-  TheopetraERC20Mock,
   AggregatorMockETH,
   AggregatorMockUSDC,
+  TheopetraStaking,
+  TheopetraERC20Token,
+  TheopetraTreasury,
 } from '../typechain-types';
 import { setupUsers } from './utils';
-import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
+import { CONTRACTS } from '../utils/constants';
+import { getContracts } from '../utils/helpers';
 
 const setup = deployments.createFixture(async function () {
-  await deployments.fixture([CONTRACTS.whitelistBondDepo]);
+  await deployments.fixture();
 
   const { deployer: owner } = await getNamedAccounts();
 
-  const contracts = {
-    TheopetraAuthority: <TheopetraAuthority>await ethers.getContract(CONTRACTS.authority),
-    WhitelistBondDepository: <WhitelistTheopetraBondDepository>await ethers.getContract(CONTRACTS.whitelistBondDepo),
-    sTheoMock: await ethers.getContract(MOCKS.sTheoMock),
-    StakingMock: <StakingMock>await ethers.getContract(MOCKSWITHARGS.stakingMock),
-    TheopetraERC20Mock: <TheopetraERC20Mock>await ethers.getContract(MOCKS.theoTokenMock),
-    TreasuryMock: <TreasuryMock>await ethers.getContract(MOCKSWITHARGS.treasuryMock),
-    UsdcTokenMock: <UsdcERC20Mock>await ethers.getContract(MOCKS.usdcTokenMock),
-    WETH9: <WETH9>await ethers.getContract(MOCKS.WETH9),
-    AggregatorMockETH: <AggregatorMockETH>await ethers.getContract(MOCKS.aggregatorMockETH),
-    AggregatorMockUSDC: <AggregatorMockUSDC>await ethers.getContract(MOCKS.aggregatorMockUSDC),
-  };
+  const contracts = await getContracts(CONTRACTS.whitelistBondDepo);
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
@@ -66,11 +56,12 @@ describe('Whitelist Bond depository', function () {
   let WhitelistBondDepository: WhitelistTheopetraBondDepository;
   let WETH9: WETH9;
   let TheopetraAuthority: TheopetraAuthority;
-  let TheopetraERC20Mock: TheopetraERC20Mock;
-  let StakingMock: StakingMock;
+  let TheopetraERC20Token: TheopetraERC20Token;
+  let Staking: TheopetraStaking;
   let AggregatorMockETH: AggregatorMockETH;
   let UsdcTokenMock: UsdcERC20Mock;
   let AggregatorMockUSDC: AggregatorMockUSDC;
+  let Treasury: TheopetraTreasury;
   let users: any;
   let signature: any;
 
@@ -84,11 +75,12 @@ describe('Whitelist Bond depository', function () {
       WhitelistBondDepository,
       WETH9,
       TheopetraAuthority,
-      TheopetraERC20Mock,
-      StakingMock,
+      TheopetraERC20Token,
+      Staking,
       AggregatorMockETH,
       AggregatorMockUSDC,
       UsdcTokenMock,
+      Treasury,
       users,
     } = await setup());
     const [, , bob] = users;
@@ -100,6 +92,12 @@ describe('Whitelist Bond depository', function () {
     await bob.WETH9.approve(WhitelistBondDepository.address, LARGE_APPROVAL);
     await UsdcTokenMock.mint(bob.address, 100_000_000_000); // 100_000 USDC (6 decimals for USDC)
     await bob.UsdcTokenMock.approve(WhitelistBondDepository.address, LARGE_APPROVAL);
+
+    // Setup to mint initial amount of THEO
+    const [, treasurySigner] = await ethers.getSigners();
+    await TheopetraAuthority.pushVault(treasurySigner.address, true); //
+    await TheopetraERC20Token.connect(treasurySigner).mint(WhitelistBondDepository.address, '10000000000000000'); // 1e16 Set to be same as return value in Treasury Mock for baseSupply
+    await TheopetraAuthority.pushVault(Treasury.address, true); // Restore Treasury contract as Vault
 
     await WhitelistBondDepository.create(
       WETH9.address,
@@ -166,7 +164,7 @@ describe('Whitelist Bond depository', function () {
         )
       )
         .to.emit(WhitelistBondDepository, 'CreateMarket')
-        .withArgs(1, TheopetraERC20Mock.address, WETH9.address, fixedBondPrice);
+        .withArgs(1, TheopetraERC20Token.address, WETH9.address, fixedBondPrice);
     });
 
     it('allows a theo bond price to be less than 1 USD', async function () {
@@ -547,7 +545,7 @@ describe('Whitelist Bond depository', function () {
     it('mints the payout in THEO', async function () {
       const [, , bob, carol] = users;
 
-      const initialTotalTheoSupply = await TheopetraERC20Mock.totalSupply();
+      const initialTotalTheoSupply = await TheopetraERC20Token.totalSupply();
 
       await bob.WhitelistBondDepository.deposit(
         marketId,
@@ -558,7 +556,7 @@ describe('Whitelist Bond depository', function () {
         signature
       );
 
-      const newTotalTheoSupply = await TheopetraERC20Mock.totalSupply();
+      const newTotalTheoSupply = await TheopetraERC20Token.totalSupply();
       const [payout_] = await WhitelistBondDepository.pendingFor(bob.address, 0);
 
       expect(Number(newTotalTheoSupply) - Number(initialTotalTheoSupply)).to.equal(payout_);
@@ -567,11 +565,11 @@ describe('Whitelist Bond depository', function () {
     it('stakes the payout', async function () {
       const [, , bob] = users;
 
-      const initialStakingTheoBalance = await TheopetraERC20Mock.balanceOf(StakingMock.address);
+      const initialStakingTheoBalance = await TheopetraERC20Token.balanceOf(Staking.address);
 
       await bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
 
-      const newStakingTHEOBalance = await TheopetraERC20Mock.balanceOf(StakingMock.address);
+      const newStakingTHEOBalance = await TheopetraERC20Token.balanceOf(Staking.address);
       expect(Number(initialStakingTheoBalance)).to.be.lessThan(Number(newStakingTHEOBalance));
 
       const [payout_] = await WhitelistBondDepository.pendingFor(bob.address, 0);

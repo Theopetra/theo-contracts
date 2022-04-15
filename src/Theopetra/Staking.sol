@@ -178,7 +178,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
             if (distributor != address(0)) {
                 IDistributor(distributor).distribute();
-                bounty = IDistributor(distributor).retrieveBounty(); // Will mint ohm for this contract if there exists a bounty
+                bounty = IDistributor(distributor).retrieveBounty(); // Will mint THEO for this contract if there exists a bounty
             }
 
             uint256 balance = contractBalance();

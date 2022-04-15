@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.5;
 
+import "../Interfaces/IsTHEO.sol";
+
 import "../Types/ERC20Permit.sol";
 import "../Types/TheopetraAccessControlled.sol";
 
-contract sTheopetra is ERC20Permit, TheopetraAccessControlled {
+contract sTheopetra is IsTHEO, ERC20Permit, TheopetraAccessControlled {
     using SafeMath for uint256;
 
     modifier onlyStakingContract() {
@@ -47,6 +49,9 @@ contract sTheopetra is ERC20Permit, TheopetraAccessControlled {
 
     mapping(address => mapping(address => uint256)) private _allowedValue;
 
+    address public treasury;
+    mapping(address => uint256) public override debtBalances;
+
     constructor(address _authority)
         ERC20("Staked THEO", "sTHEO", 9)
         ERC20Permit()
@@ -57,11 +62,14 @@ contract sTheopetra is ERC20Permit, TheopetraAccessControlled {
         _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
     }
 
-    function initialize(address stakingContract_) external returns (bool) {
-        require(msg.sender == initializer);
-        require(stakingContract_ != address(0));
+    function initialize(address stakingContract_, address _treasury) external returns (bool) {
+        require(msg.sender == initializer, "Initializer:  caller is not initializer");
+        require(stakingContract_ != address(0), "Zero address: Staking");
         stakingContract = stakingContract_;
         _gonBalances[stakingContract] = TOTAL_GONS;
+
+        require(_treasury != address(0), "Zero address: Treasury");
+        treasury = _treasury;
 
         emit Transfer(address(0x0), stakingContract, _totalSupply);
         emit LogStakingContractUpdated(stakingContract_);
@@ -81,7 +89,7 @@ contract sTheopetra is ERC20Permit, TheopetraAccessControlled {
         @param profit_ uint256
         @return uint256
      */
-    function rebase(uint256 profit_, uint256 epoch_) public onlyStakingContract returns (uint256) {
+    function rebase(uint256 profit_, uint256 epoch_) public override onlyStakingContract returns (uint256) {
         uint256 rebaseAmount;
         uint256 circulatingSupply_ = circulatingSupply();
 
@@ -140,28 +148,28 @@ contract sTheopetra is ERC20Permit, TheopetraAccessControlled {
         return true;
     }
 
-    function balanceOf(address who) public view override returns (uint256) {
+    function balanceOf(address who) public view override(IsTHEO, ERC20) returns (uint256) {
         return _gonBalances[who].div(_gonsPerFragment);
     }
 
-    function gonsForBalance(uint256 amount) public view returns (uint256) {
+    function gonsForBalance(uint256 amount) public view override returns (uint256) {
         return amount.mul(_gonsPerFragment);
     }
 
-    function balanceForGons(uint256 gons) public view returns (uint256) {
+    function balanceForGons(uint256 gons) public view override returns (uint256) {
         return gons.div(_gonsPerFragment);
     }
 
     // Staking contract holds excess sTHEO
-    function circulatingSupply() public view returns (uint256) {
+    function circulatingSupply() public view override returns (uint256) {
         return _totalSupply.sub(balanceOf(stakingContract));
     }
 
-    function index() public view returns (uint256) {
+    function index() public view override returns (uint256) {
         return balanceForGons(INDEX);
     }
 
-    function transfer(address to, uint256 value) public override returns (bool) {
+    function transfer(address to, uint256 value) public override(ERC20, IERC20) returns (bool) {
         uint256 gonValue = gonsForBalance(value);
         _gonBalances[msg.sender] = _gonBalances[msg.sender].sub(gonValue);
         _gonBalances[to] = _gonBalances[to].add(gonValue);
@@ -169,7 +177,7 @@ contract sTheopetra is ERC20Permit, TheopetraAccessControlled {
         return true;
     }
 
-    function allowance(address owner_, address spender) public view override returns (uint256) {
+    function allowance(address owner_, address spender) public view override(ERC20, IERC20) returns (uint256) {
         return _allowedValue[owner_][spender];
     }
 
@@ -177,7 +185,7 @@ contract sTheopetra is ERC20Permit, TheopetraAccessControlled {
         address from,
         address to,
         uint256 value
-    ) public override returns (bool) {
+    ) public override(ERC20, IERC20) returns (bool) {
         _allowedValue[from][msg.sender] = _allowedValue[from][msg.sender].sub(value);
         emit Approval(from, msg.sender, _allowedValue[from][msg.sender]);
 
@@ -189,7 +197,7 @@ contract sTheopetra is ERC20Permit, TheopetraAccessControlled {
         return true;
     }
 
-    function approve(address spender, uint256 value) public override returns (bool) {
+    function approve(address spender, uint256 value) public override(ERC20, IERC20) returns (bool) {
         _allowedValue[msg.sender][spender] = value;
         emit Approval(msg.sender, spender, value);
         return true;
@@ -220,5 +228,27 @@ contract sTheopetra is ERC20Permit, TheopetraAccessControlled {
         }
         emit Approval(msg.sender, spender, _allowedValue[msg.sender][spender]);
         return true;
+    }
+
+    /**
+     * @notice this function is called by the treasury, and informs sTHEO of changes to debt.
+     * @dev    addresses with debt balances cannot transfer collateralized sTHEO until the debt has been repaid.
+     * @param amount uint256
+     * @param debtor address
+     * @param add    bool
+     */
+    function changeDebt(
+        uint256 amount,
+        address debtor,
+        bool add
+    ) external override {
+        require(msg.sender == treasury, "Only treasury");
+
+        if (add) {
+            debtBalances[debtor] = debtBalances[debtor].add(amount);
+        } else {
+            debtBalances[debtor] = debtBalances[debtor].sub(amount);
+        }
+        require(debtBalances[debtor] <= balanceOf(debtor), "sTHEO: insufficient balance");
     }
 }
