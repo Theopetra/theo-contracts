@@ -153,7 +153,6 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
          * is redeemable, the time when payout was redeemed, and the ID
          * of the market deposited into
          */
-
         depositInfo.index_ = addNote(
             _user,
             depositInfo.payout_,
