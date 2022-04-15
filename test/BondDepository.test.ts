@@ -96,7 +96,6 @@ describe('Bond depository', function () {
 
     await UsdcTokenMock.mint(bob.address, initialMint);
 
-
     // Setup to mint initial amount of THEO and (with mocking only) sTHEO
     const [, treasurySigner] = await ethers.getSigners();
     await TheopetraAuthority.pushVault(treasurySigner.address, true); // Use a valid signer for Vault
@@ -106,7 +105,6 @@ describe('Bond depository', function () {
 
       await TheopetraERC20Token.connect(treasurySigner).mint(BondDepository.address, '10000000000000000'); // 1e16 Set to be same as return value in Treasury Mock for baseSupply
     } else {
-
       await TheopetraERC20Token.connect(treasurySigner).mint(BondDepository.address, '1000000000000000000000000'); // 1e24 Set high to allow for tests with very large deposits
     }
     await TheopetraAuthority.pushVault(Treasury.address, true); // Restore Treasury contract as Vault
@@ -558,7 +556,9 @@ describe('Bond depository', function () {
       const [payout_] = await BondDepository.pendingFor(bob.address, 0);
       expect(events).to.have.length(process.env.NODE_ENV === TESTWITHMOCKS ? 7 : 10);
 
-      const receipt = await ethers.provider.getTransactionReceipt(events[process.env.NODE_ENV === TESTWITHMOCKS ? 6 : 9]?.transactionHash);
+      const receipt = await ethers.provider.getTransactionReceipt(
+        events[process.env.NODE_ENV === TESTWITHMOCKS ? 6 : 9]?.transactionHash
+      );
       const abi = ['event Minted(address indexed caller, address indexed recipient, uint256 amount)'];
 
       const iface = new ethers.utils.Interface(abi);
@@ -1151,7 +1151,7 @@ describe('Bond depository', function () {
       // Payout is minted as THEO (and staked as sTHEO)
       const newTotalTheoSupply = await TheopetraERC20Token.totalSupply();
       // Calculate expected payout: based on two identical deposits above
-      const expectedPayout = (newTotalTheoSupply.sub(initialTotalTheoSupply)) / 2;
+      const expectedPayout = newTotalTheoSupply.sub(initialTotalTheoSupply) / 2;
 
       for (let i = 0; i < bobNotesIndexes.length; i++) {
         const [payout, createdAt, expiresAt, timeRemaining, marketId, discount] = await BondDepository.pendingFor(
