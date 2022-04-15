@@ -2,7 +2,7 @@ import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 import { BigNumber } from 'ethers';
 
-import { setupUsers } from './utils';
+import { setupUsers, moveTimeForward } from './utils';
 import { CONTRACTS, MOCKS } from '../utils/constants';
 
 const setup = deployments.createFixture(async () => {
@@ -38,6 +38,13 @@ describe.only('Staking', function () {
   let owner: any;
   let addressZero: any;
   const stakingTerm: any = 0;
+
+  async function createClaim() {
+    const [, bob] = users;
+    const claim = false;
+
+    await bob.Staking.stake(bob.address, amountToStake, claim);
+  }
 
   beforeEach(async function () {
     ({ Staking, sTheoMock, TheopetraAuthority, TheopetraERC20Mock, users, owner, addressZero } = await setup());
@@ -294,46 +301,12 @@ describe.only('Staking', function () {
   });
 
   describe('claim', function () {
-    async function createClaim() {
-      const [, bob] = users;
-      const claim = false;
-
-      await bob.Staking.stake(bob.address, amountToStake, claim);
-    }
-
     it('allows a recipient to claim sTHEO from warmup', async function () {
       const [, bob] = users;
       await createClaim();
       expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
 
-      await bob.Staking.claim(bob.address);
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
-    });
-
-    it('prevents an external claim by default', async function () {
-      const [, bob, carol] = users;
-      await createClaim();
-
-      await expect(carol.Staking.claim(bob.address)).to.be.revertedWith('External claims for account are locked');
-    });
-
-    it('allows an external claim to be made for sTHEO, if the receipient has toggled their Claim lock', async function () {
-      const [, bob, carol] = users;
-      await createClaim();
-
-      await bob.Staking.toggleLock();
-
-      await carol.Staking.claim(bob.address);
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
-    });
-
-    it('allows an internal claim after the recipient has toggled the Claim lock', async function () {
-      const [, bob] = users;
-      await createClaim();
-
-      await bob.Staking.toggleLock();
-
-      await bob.Staking.claim(bob.address);
+      await bob.Staking.claim(bob.address, [0]);
       expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
     });
 
@@ -372,7 +345,7 @@ describe.only('Staking', function () {
       const claim = true;
 
       // Bob can self-stake
-      await expect( bob.Staking.stake(bob.address, amountToStake, claim)).to.not.be.reverted;
+      await expect(bob.Staking.stake(bob.address, amountToStake, claim)).to.not.be.reverted;
 
       // Bob cannot, by default, stake for carol
       await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.be.revertedWith(
@@ -380,28 +353,56 @@ describe.only('Staking', function () {
       );
     });
 
-    // it.only('includes a toggle for unlocking external staking (to allow new stakes or claims to/from external address)', async function () {
-    //   const [, bob] = users;
-
-    //   await bob.Staking.toggleLock();
-    //   const warmupInfo = await Staking.warmupInfo(bob.address);
-    //   expect(warmupInfo.lock).to.equal(true);
-    // });
-
-
-    it('allows an external stake when recipient toggles their `isExternalLocked` lock', async function () {
+    it('allows an external stake, with immediate claim, when recipient toggles their `isExternalLocked` lock', async function () {
       const [, bob, carol] = users;
       const claim = true;
 
       await carol.Staking.toggleLock();
 
       await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.not.be.reverted;
-
-      // expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
-
-      // const warmupInfo = await Staking.warmupInfo(carol.address);
-      // expect(warmupInfo.deposit).to.equal(amountToStake);
     });
 
-  })
+    it('allows an external stake, with non-immediate claim, when recipient toggles their `isExternalLocked` lock', async function () {
+      const [, bob, carol] = users;
+      const claim = false;
+
+      await carol.Staking.toggleLock();
+
+      await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.not.be.reverted;
+
+      expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
+
+      const stakingInfo = await Staking.stakingInfo(carol.address, 0);
+      expect(stakingInfo.deposit).to.equal(amountToStake);
+    });
+
+    it('prevents an external claim by default', async function () {
+      const [, bob, carol] = users;
+      await createClaim(); // Create a claim for Bob
+
+      await expect(carol.Staking.claim(bob.address, [0])).to.be.revertedWith('External claims for account are locked');
+    });
+
+    it('allows an external claim to be made for sTHEO, if the receipient has toggled their Claim lock', async function () {
+      const [, bob, carol] = users;
+      await createClaim(); // Create a claim for Bob
+
+      await bob.Staking.toggleLock();
+      await moveTimeForward(60 * 60 * 9); // Move time forward into the next epoch to allow claim amount to be sent
+
+      await expect(carol.Staking.claim(bob.address, [0])).to.not.be.reverted;
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+    });
+
+    it('allows an internal claim after the recipient has toggled the Claim lock', async function () {
+      const [, bob] = users;
+      await createClaim(); // Create a claim for Bob
+
+      await bob.Staking.toggleLock();
+      await moveTimeForward(60 * 60 * 9); // Move time forward into the next epoch to allow claim amount to be sent
+
+      await bob.Staking.claim(bob.address, [0]);
+      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+    });
+  });
 });

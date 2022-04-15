@@ -32,6 +32,12 @@ export async function waitFor<T>(p: Promise<{ wait: () => Promise<T> }>): Promis
   return tx.wait();
 }
 
+export async function moveTimeForward<T>(timeInSeconds: number): Promise<void & T> {
+  const latestBlock = await ethers.provider.getBlock('latest');
+  const newTimestampInSeconds = latestBlock.timestamp + timeInSeconds;
+  await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+}
+
 export function decodeLogs(logs: Event[], targets: Contract[]): LogDescription[] {
 
   const decoded: LogDescription[] = [];

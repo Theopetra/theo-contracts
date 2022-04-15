@@ -96,8 +96,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                         gonsInWarmup: 0,
                         warmupExpiry: epoch.end + warmupPeriod,
                         stakingExpiry: block.timestamp + stakingTerm,
-                        inWarmup: false,
-                        lock: true
+                        inWarmup: false
                     })
                 );
                 _send(_recipient, _amount);
@@ -109,8 +108,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                         gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
                         warmupExpiry: epoch.end + warmupPeriod,
                         stakingExpiry: block.timestamp + stakingTerm,
-                        inWarmup: true,
-                        lock: true
+                        inWarmup: true
                     })
                 );
                 // funds are not sent as they went to warmup
@@ -124,8 +122,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
                     warmupExpiry: epoch.end + warmupPeriod,
                     stakingExpiry: block.timestamp + stakingTerm,
-                    inWarmup: true,
-                    lock: true
+                    inWarmup: true
                 })
             );
             // sTheo is not sent as it has went into warmup
@@ -144,7 +141,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         for (uint256 i = 0; i < _indexes.length; i++) {
             Claim memory info = stakingInfo[_recipient][_indexes[i]];
 
-            if (!info.lock) {
+            if (!isExternalLocked[_recipient]) {
                 require(_recipient == msg.sender, "External claims for account are locked");
             }
 
