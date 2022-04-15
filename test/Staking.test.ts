@@ -37,7 +37,8 @@ describe.only('Staking', function () {
   let users: any;
   let owner: any;
   let addressZero: any;
-  const stakingTerm: any = 0;
+  const unlockedStakingTerm = 0;
+  const lockedStakingTerm = 31536000;
 
   async function createClaim() {
     const [, bob] = users;
@@ -91,7 +92,15 @@ describe.only('Staking', function () {
       await expect(
         deployments.deploy(CONTRACTS.staking, {
           from: owner,
-          args: [addressZero, owner, epochLength, firstEpochNumber, firstEpochTime, TheopetraAuthority.address],
+          args: [
+            addressZero,
+            owner,
+            epochLength,
+            firstEpochNumber,
+            firstEpochTime,
+            lockedStakingTerm,
+            TheopetraAuthority.address,
+          ],
         })
       ).to.be.revertedWith('Invalid address');
     });
@@ -103,7 +112,7 @@ describe.only('Staking', function () {
       await expect(
         deployments.deploy(CONTRACTS.staking, {
           from: owner,
-          args: [owner, addressZero, epochLength, firstEpochNumber, firstEpochTime, TheopetraAuthority.address],
+          args: [owner, addressZero, epochLength, firstEpochNumber, firstEpochTime, lockedStakingTerm, TheopetraAuthority.address],
         })
       ).to.be.revertedWith('Invalid address');
     });
@@ -139,7 +148,7 @@ describe.only('Staking', function () {
     });
   });
 
-  describe.only('stake', function () {
+  describe('stake', function () {
     it('adds a Claim for the staked `_amount` to the staked collection when `_claim` is false and `warmupPeriod` is zero', async function () {
       const [, bob] = users;
       const claim = false;
@@ -257,7 +266,7 @@ describe.only('Staking', function () {
       expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
 
       await bob.sTheoMock.approve(Staking.address, amountToStake);
-      await bob.Staking.unstake(bob.address, amountToStake, false);
+      await bob.Staking.unstake(bob.address, amountToStake, false, [0]);
 
       expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
       expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(bobStartingTheoBalance);
@@ -454,5 +463,5 @@ describe.only('Staking', function () {
       // It should never get here if it's 100% but we want to ensure its 0
       // expect(await Staking.getPenalty(800,)).to.equal(BigNumber.from(0));
     });
-  })
+  });
 });
