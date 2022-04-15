@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.7.5;
 
+import "../Types/TheopetraAccessControlled.sol";
+
+import "../Libraries/SafeMath.sol";
 import "../Libraries/SafeERC20.sol";
+
 import "../Interfaces/IFounderVesting.sol";
+import "../Interfaces/ITHEO.sol";
+import "../Interfaces/ITreasury.sol";
 
 /**
  * @title TheopetraFounderVesting
@@ -22,23 +28,33 @@ import "../Interfaces/IFounderVesting.sol";
  * tokens that apply fees during transfers, are likely to not be supported as expected. If in doubt, we encourage you
  * to run tests before sending real value to this contract.
  */
-contract TheopetraFounderVesting is IFounderVesting {
+contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
+    /* ========== DEPENDENCIES ========== */
+
+    using SafeMath for uint256;
+    using SafeERC20 for IERC20;
+
     /* ========== STATE VARIABLES ========== */
-    uint256 private _totalShares;
-    uint256 private _totalReleased;
+    ITreasury private treasury;
+    ITHEO private THEO;
 
-    mapping(address => uint256) private _shares;
-    mapping(address => uint256) private _released;
-    address[] private _payees;
+    uint256 private fdvTarget;
 
-    mapping(IERC20 => uint256) private _erc20TotalReleased;
-    mapping(IERC20 => mapping(address => uint256)) private _erc20Released;
+    uint256 private totalShares;
+    uint256 private totalReleased;
+
+    mapping(address => uint256) private shares;
+    mapping(address => uint256) private released;
+    address[] private payees;
+
+    mapping(IERC20 => uint256) private erc20TotalReleased;
+    mapping(IERC20 => mapping(address => uint256)) private erc20Released;
 
     /**
      * @notice return the decimals in the percentage values and
-     * thus the number of shares per percentage point (1% = 1_000_000_000 shares)
+     * thus the number of shares per percentage point (1% = 10_000_000 shares)
      */
-    function decimals() public view returns (uint8) {
+    function decimals() public pure returns (uint8) {
         return 9;
     }
 
@@ -49,93 +65,88 @@ contract TheopetraFounderVesting is IFounderVesting {
      * All addresses in `payees` must be non-zero. Both arrays must have the same non-zero length, and there must be no
      * duplicates in `payees`.
      */
-    constructor(address[] memory payees, uint256[] memory shares_) payable {
-        require(payees.length == shares_.length, "TheopetraFounderVesting: payees and shares length mismatch");
-        require(payees.length > 0, "TheopetraFounderVesting: no payees");
+    constructor(
+        ITheopetraAuthority _authority,
+        address _treasury,
+        address _theo,
+        uint256 _fdvTarget,
+        address[] memory _payees,
+        uint256[] memory _shares
+    ) TheopetraAccessControlled(_authority) {
+        require(_payees.length == _shares.length, "TheopetraFounderVesting: payees and shares length mismatch");
+        require(_payees.length > 0, "TheopetraFounderVesting: no payees");
 
-        for (uint256 i = 0; i < payees.length; i++) {
-            _addPayee(payees[i], shares_[i]);
+        fdvTarget = _fdvTarget;
+        THEO = ITHEO(_theo);
+        treasury = ITreasury(_treasury);
+
+        for (uint256 i = 0; i < _payees.length; i++) {
+            _addPayee(_payees[i], _shares[i]);
         }
-    }
 
-    /**
-     * @dev The THEO received will be logged with {PaymentReceived} events. Note that these events are not fully
-     * reliable: it's possible for a contract to receive THEO without triggering this function. This only affects the
-     * reliability of the events, and not the actual splitting of THEO.
-     *
-     * To learn more about this see the Solidity documentation for
-     * https://solidity.readthedocs.io/en/latest/contracts.html#fallback-function[fallback
-     * functions].
-     */
-    // receive() external payable virtual {
-    //     emit PaymentReceived(_msgSender(), msg.value);
-    // }
+        // mint tokens for the initial shares
+        uint256 tokensToMint = THEO.totalSupply().mul(totalShares.div(10**decimals()));
+        treasury.mint(address(this), tokensToMint);
+    }
 
     /**
      * @dev Getter for the total shares held by payees.
      */
-    function totalShares() public view returns (uint256) {
-        return _totalShares;
+    function getTotalShares() public view override returns (uint256) {
+        return totalShares;
     }
 
     /**
      * @dev Getter for the total amount of THEO already released.
      */
-    function totalReleased() public view returns (uint256) {
-        return _totalReleased;
+    function getTotalReleased() public view override returns (uint256) {
+        return totalReleased;
     }
 
     /**
      * @dev Getter for the total amount of `token` already released. `token` should be the address of an IERC20
      * contract.
      */
-    function totalReleased(IERC20 token) public view returns (uint256) {
-        return _erc20TotalReleased[token];
+    function getTotalReleased(IERC20 token) public view override returns (uint256) {
+        return erc20TotalReleased[token];
     }
 
     /**
      * @dev Getter for the amount of shares held by an account.
      */
-    function shares(address account) public view returns (uint256) {
-        return _shares[account];
+    function getShares(address account) public view override returns (uint256) {
+        return shares[account];
     }
 
     /**
      * @dev Getter for the amount of THEO already released to a payee.
      */
-    function released(address account) public view returns (uint256) {
-        return _released[account];
+    function getReleased(address account) public view override returns (uint256) {
+        return released[account];
     }
 
     /**
      * @dev Getter for the amount of `token` tokens already released to a payee. `token` should be the address of an
      * IERC20 contract.
      */
-    function released(IERC20 token, address account) public view returns (uint256) {
-        return _erc20Released[token][account];
-    }
-
-    /**
-     * @dev Getter for the address of the payee number `index`.
-     */
-    function payee(uint256 index) public view returns (address) {
-        return _payees[index];
+    function getReleased(IERC20 token, address account) public view override returns (uint256) {
+        return erc20Released[token][account];
     }
 
     /**
      * @dev Triggers a transfer to `account` of the amount of THEO they are owed, according to their percentage of the
      * total shares and their previous withdrawals.
      */
-    function release(address payable account) public virtual {
-        require(_shares[account] > 0, "TheopetraFounderVesting: account has no shares");
+    function release(address payable account) public virtual override {
+        require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
 
-        uint256 totalReceived = address(this).balance + totalReleased();
-        uint256 payment = _pendingPayment(account, totalReceived, released(account));
+        uint256 totalReceived = address(this).balance + getTotalReleased();
+        uint256 payment = _pendingPayment(account, totalReceived, getReleased(account));
 
         require(payment != 0, "TheopetraFounderVesting: account is not due payment");
 
-        _released[account] += payment;
-        _totalReleased += payment;
+        released[account] += payment;
+        totalReleased += payment;
 
         _sendValue(account, payment);
         emit PaymentReleased(account, payment);
@@ -146,16 +157,16 @@ contract TheopetraFounderVesting is IFounderVesting {
      * percentage of the total shares and their previous withdrawals. `token` must be the address of an IERC20
      * contract.
      */
-    function release(IERC20 token, address account) public virtual {
-        require(_shares[account] > 0, "TheopetraFounderVesting: account has no shares");
+    function release(IERC20 token, address account) public virtual override {
+        require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
 
-        uint256 totalReceived = token.balanceOf(address(this)) + totalReleased(token);
-        uint256 payment = _pendingPayment(account, totalReceived, released(token, account));
+        uint256 totalReceived = token.balanceOf(address(this)) + getTotalReleased(token);
+        uint256 payment = _pendingPayment(account, totalReceived, getReleased(token, account));
 
         require(payment != 0, "TheopetraFounderVesting: account is not due payment");
 
-        _erc20Released[token][account] += payment;
-        _erc20TotalReleased[token] += payment;
+        erc20Released[token][account] += payment;
+        erc20TotalReleased[token] += payment;
 
         SafeERC20.safeTransfer(token, account, payment);
         emit ERC20PaymentReleased(token, account, payment);
@@ -170,7 +181,7 @@ contract TheopetraFounderVesting is IFounderVesting {
         uint256 totalReceived,
         uint256 alreadyReleased
     ) private view returns (uint256) {
-        return (totalReceived * _shares[account]) / _totalShares - alreadyReleased;
+        return (totalReceived * shares[account]) / totalShares - alreadyReleased;
     }
 
     /**
@@ -181,11 +192,11 @@ contract TheopetraFounderVesting is IFounderVesting {
     function _addPayee(address account, uint256 shares_) private {
         require(account != address(0), "TheopetraFounderVesting: account is the zero address");
         require(shares_ > 0, "TheopetraFounderVesting: shares are 0");
-        require(_shares[account] == 0, "TheopetraFounderVesting: account already has shares");
+        require(shares[account] == 0, "TheopetraFounderVesting: account already has shares");
 
-        _payees.push(account);
-        _shares[account] = shares_;
-        _totalShares = _totalShares + shares_;
+        payees.push(account);
+        shares[account] = shares_;
+        totalShares = totalShares + shares_;
         emit PayeeAdded(account, shares_);
     }
 
@@ -206,10 +217,10 @@ contract TheopetraFounderVesting is IFounderVesting {
      * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
      */
     function _sendValue(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, "Address: insufficient balance");
+        require(address(this).balance >= amount, "FounderVesting: insufficient balance");
 
         (bool success, ) = recipient.call{value: amount}("");
-        require(success, "Address: unable to send value, recipient may have reverted");
+        require(success, "FounderVesting: unable to send, recipient may have reverted");
     }
 
 }

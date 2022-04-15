@@ -1,16 +1,14 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 import { setupUsers, waitFor } from './utils';
-import { CONTRACTS } from '../utils/constants';
+import { CAPTABLE, CONTRACTS } from '../utils/constants';
+import { getContracts } from '../utils/helpers';
 
 const setup = deployments.createFixture(async function () {
   await deployments.fixture([CONTRACTS.founderVesting]);
 
   const { deployer: owner } = await getNamedAccounts();
-
-  const contracts = {
-    TheopetraFounderVesting: await ethers.getContract(CONTRACTS.founderVesting),
-  };
+  const contracts = await getContracts();
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
@@ -23,16 +21,27 @@ const setup = deployments.createFixture(async function () {
 
 describe('Theopetra Founder Vesting', function () {
   let TheopetraFounderVesting: any;
+  let TheopetraTreasury: any;
+  let TheopetraERC20Token: any;
 
   let owner: any;
 
   beforeEach(async function () {
-    ({ TheopetraFounderVesting, owner } = await setup());
+    ({
+      TheopetraFounderVesting,
+      TheopetraTreasury,
+      TheopetraERC20Token,
+      owner,
+    } = await setup());
   });
 
   describe('Deployment', function () {
     it('can be deployed', async function () {
       expect(TheopetraFounderVesting).to.not.be.undefined;
+    });
+    it('mints tokens to cover the input shares', async function () {
+      const expectedMint = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero); //.div(10**TheopetraFounderVesting.decimals)*1_000_000_000;
+      console.log({expectedMint});
     });
   });
 
@@ -40,6 +49,26 @@ describe('Theopetra Founder Vesting', function () {
     it('returns 9', async function () {
       const decimals = await TheopetraFounderVesting.decimals();
       expect(decimals).to.equal(9);
+    });
+  });
+
+  describe('getTotalShares', function() {
+    it('returns the sum of all shares', async function() {
+      const totalShares = await TheopetraFounderVesting.getTotalShares();
+      const expectedShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      expect(totalShares).to.equal(expectedShares);
+    });
+  });
+
+  describe('getShares', function() {
+    it('returns the number of shares for a given account', async function() {
+      const acctShares = await TheopetraFounderVesting.getShares(CAPTABLE.addresses[0]);
+      const expectedShares = CAPTABLE.shares[0];
+      expect(acctShares).to.equal(expectedShares);
+    });
+    it('returns 0 for a unknown account', async function() {
+      const acctShares = await TheopetraFounderVesting.getShares('0x0000000000000000000000000000000000001234');
+      expect(acctShares).to.equal(0);
     });
   });
 

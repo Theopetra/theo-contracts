@@ -11,6 +11,7 @@ import {
   TheopetraERC20Token,
   TheopetraERC20Mock,
   TheopetraAuthority,
+  TheopetraFounderVesting,
   TheopetraYieldReporter,
   UsdcERC20Mock,
   WETH9,
@@ -55,5 +56,6 @@ export async function getContracts(currentContract?: string): Promise<any> {
     AggregatorMockETH: <AggregatorMockETH>await ethers.getContract(MOCKS.aggregatorMockETH),
     AggregatorMockUSDC: <AggregatorMockUSDC>await ethers.getContract(MOCKS.aggregatorMockUSDC),
     pTheo: <PTheopetra>await ethers.getContract(CONTRACTS.pTheo),
+    FounderVesting: <TheopetraFounderVesting>await ethers.getContract(CONTRACTS.foundersVesting),
   };
 }
