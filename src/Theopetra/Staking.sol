@@ -63,13 +63,15 @@ contract TheopetraStaking is TheopetraAccessControlled {
         uint256 warmupExpiry;
         uint256 stakingExpiry;
         bool inWarmup;
-        bool lock; // prevents malicious delays
     }
     mapping(address => Claim[]) public stakingInfo;
     mapping(address => bool) private isExternalLocked;
 
     /**
         @notice stake THEO to enter warmup
+        @dev    if warmupPeriod is 0 and _claim is true, store warmupExpiry 0:
+                this is so that the staker cannot retrieve sTHEO from warmup using the stored
+                Claim (see also `claim`)
         @param _amount uint
         @param _claim bool
         @return uint256
@@ -94,7 +96,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     Claim({
                         deposit: _amount,
                         gonsInWarmup: 0,
-                        warmupExpiry: epoch.end + warmupPeriod,
+                        warmupExpiry: 0,
                         stakingExpiry: block.timestamp + stakingTerm,
                         inWarmup: false
                     })
@@ -145,7 +147,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 require(_recipient == msg.sender, "External claims for account are locked");
             }
 
-            if (block.timestamp >= info.stakingExpiry && info.stakingExpiry != 0) {
+            if (block.timestamp >= info.warmupExpiry && info.warmupExpiry != 0) {
                 stakingInfo[_recipient][_indexes[i]].gonsInWarmup = 0;
 
                 gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
