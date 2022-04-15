@@ -20,7 +20,23 @@ contract TreasuryMock {
     }
 
     function baseSupply() external pure returns (uint256) {
-        return 10000000000000;
+        return 10_000_000_000_000_000;
+    }
+
+    function deltaTokenPrice() public view returns (int256) {
+        return 100_000_000; // 10%. 0.01 (9 decimals)
+    }
+
+    function deltaTreasuryYield() public view returns (int256) {
+        return 200_000_000; // 20%. 0.02 (9 decimals)
+    }
+
+    function getTheoBondingCalculator() public view returns (IBondCalculator) {
+        return IBondCalculator(theoBondingCalculator);
+    }
+
+    function setTheoBondingCalculator(address _theoBondingCalculator) public {
+        theoBondingCalculator = IBondCalculator(_theoBondingCalculator);
     }
 
     function deltaTokenPrice() public view returns (int256) {

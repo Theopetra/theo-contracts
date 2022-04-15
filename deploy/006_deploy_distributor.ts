@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
 import getNamedMockAddresses from './mocks/helpers';
-import { CONTRACTS } from '../utils/constants';
+import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   try {
@@ -13,14 +13,27 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     const chainId = await getChainId();
 
     const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
+    const TheopetraTreasury = await deployments.get(CONTRACTS.treasury);
+    const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
+    const Staking = await deployments.get(CONTRACTS.staking);
 
     let epochLength;
     let args: any = [];
 
-    // If on Hardhat network, use the following values for testing
     if (chainId === '1337') {
       epochLength = 60 * 60 * 24 * 365;
+    }
 
+    args = [
+      TheopetraTreasury.address,
+      TheopetraERC20Token.address,
+      epochLength,
+      TheopetraAuthority.address,
+      Staking.address,
+    ];
+
+    // If on Hardhat network, use the following values for testing
+    if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
       const { TheopetraERC20Mock, TreasuryMock, StakingMock } = await getNamedMockAddresses(hre);
       args = [TreasuryMock, TheopetraERC20Mock, epochLength, TheopetraAuthority.address, StakingMock];
     }
@@ -37,4 +50,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func;
 func.tags = [CONTRACTS.distributor];
-func.dependencies = hre?.network?.config?.chainId === 1337 ? [CONTRACTS.authority, 'Mocks'] : [CONTRACTS.authority];
+func.dependencies =
+  hre?.network?.config?.chainId === 1337
+    ? [CONTRACTS.authority, 'Mocks']
+    : [CONTRACTS.authority, CONTRACTS.treasury, CONTRACTS.theoToken, CONTRACTS.staking];

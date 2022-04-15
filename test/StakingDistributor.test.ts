@@ -1,42 +1,23 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
-
 import {
   StakingDistributor__factory,
   StakingDistributor,
-  TheopetraAuthority,
-  TreasuryMock,
-  TheopetraERC20Mock,
   StakingMock,
+  TheopetraERC20Mock,
+  TheopetraStaking,
+  TheopetraERC20Token,
+  TheopetraAuthority,
+  BondingCalculatorMock,
+  YieldReporterMock,
+  TheopetraYieldReporter,
 } from '../typechain-types';
-
-import { setupUsers } from './utils';
-import { CONTRACTS, MOCKS, MOCKSWITHARGS } from '../utils/constants';
-import { Contract } from 'ethers';
-
-interface TheoContracts {
-  [key: string]: Contract;
-}
-
-const getContracts = async (): Promise<TheoContracts> => {
-  await deployments.fixture([
-    CONTRACTS.distributor,
-    CONTRACTS.authority,
-    MOCKSWITHARGS.treasuryMock,
-    MOCKSWITHARGS.stakingMock,
-  ]);
-
-  return {
-    Distributor: <StakingDistributor>await ethers.getContract(CONTRACTS.distributor),
-    StakingMock: <StakingMock>await ethers.getContract(MOCKSWITHARGS.stakingMock),
-    TheopetraAuthority: <TheopetraAuthority>await ethers.getContract(CONTRACTS.authority),
-    TreasuryMock: <TreasuryMock>await ethers.getContract(MOCKSWITHARGS.treasuryMock),
-    TheopetraERC20Mock: <TheopetraERC20Mock>await ethers.getContract(MOCKS.theoTokenMock),
-  };
-};
+import { TESTWITHMOCKS } from '../utils/constants';
+import { setupUsers, performanceUpdate } from './utils';
+import { getContracts } from '../utils/helpers';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.distributor, MOCKSWITHARGS.stakingMock]);
+  await deployments.fixture();
   const { deployer: owner } = await getNamedAccounts();
   const contracts = await getContracts();
 
@@ -58,22 +39,47 @@ describe('Distributor', function () {
   const expectedDys = 20_000_000; // 2%
   const isLocked = false;
 
+  let BondingCalculatorMock: BondingCalculatorMock;
   let Distributor: StakingDistributor;
-  let StakingMock: StakingMock;
-  let TheopetraERC20Mock: TheopetraERC20Mock;
+  let Staking: StakingMock | TheopetraStaking;
+  let TheopetraERC20Token: TheopetraERC20Mock | TheopetraERC20Token;
+  let TheopetraAuthority: TheopetraAuthority;
+  let Treasury: any;
+  let YieldReporter: YieldReporterMock | TheopetraYieldReporter;
   let users: any;
+  let deltaTokenPrice: number;
+  let deltaTreasuryYield: number;
 
   function expectedRate(expectedStartRate: number, expectedDrs: number, expectedDys: number): number {
-    // Using values to match deltaTokenPrice and deltaTreasuryYield in TreasuryMock
     const expectedAPY =
-      expectedStartRate + (expectedDrs * 100_000_000) / 10 ** 9 + (expectedDys * 200_000_000) / 10 ** 9;
+      expectedStartRate + (expectedDrs * deltaTokenPrice) / 10 ** 9 + (expectedDys * deltaTreasuryYield) / 10 ** 9;
 
     return Math.floor((1095 * Math.exp(Math.log(expectedAPY / 10 ** 9 + 1) / 1095) - 1095) * 10 ** 9);
   }
 
   beforeEach(async function () {
-    ({ Distributor, StakingMock, TheopetraERC20Mock, users } = (await setup()) as any);
-    await Distributor.addRecipient(StakingMock.address, expectedStartRateUnlocked, expectedDrs, expectedDys, isLocked);
+    ({
+      Distributor,
+      Staking,
+      TheopetraERC20Token,
+      TheopetraAuthority,
+      Treasury,
+      BondingCalculatorMock,
+      YieldReporter,
+      users,
+    } = (await setup()) as any);
+    await Distributor.addRecipient(Staking.address, expectedStartRateUnlocked, expectedDrs, expectedDys, isLocked);
+
+    // Setup to get deltaTokenPrice and deltaTreasuryYield
+    if (process.env.NODE_ENV !== TESTWITHMOCKS) {
+      await performanceUpdate(Treasury, YieldReporter, BondingCalculatorMock.address);
+      deltaTokenPrice = await Treasury.deltaTokenPrice();
+      deltaTreasuryYield = await Treasury.deltaTreasuryYield();
+    } else {
+      // Using values to match deltaTokenPrice and deltaTreasuryYield in TreasuryMock
+      deltaTokenPrice = 100_000_000;
+      deltaTreasuryYield = 200_000_000;
+    }
   });
 
   describe('Deployment', function () {
@@ -83,42 +89,41 @@ describe('Distributor', function () {
 
     it('will revert if address zero is used as the Treasury address', async function () {
       const [owner] = await ethers.getSigners();
-      const { TheopetraERC20Mock, TheopetraAuthority, StakingMock } = await getContracts();
 
       await expect(
         new StakingDistributor__factory(owner).deploy(
           addressZero,
-          TheopetraERC20Mock.address,
+          TheopetraERC20Token.address,
           epochLength,
           TheopetraAuthority.address,
-          StakingMock.address
+          Staking.address
         )
       ).to.be.revertedWith('Zero address: Treasury');
     });
 
     it('will revert if address zero is used as the theo token address', async function () {
       const [owner] = await ethers.getSigners();
-      const { TreasuryMock, TheopetraAuthority, StakingMock } = await getContracts();
+      const { Treasury, TheopetraAuthority, Staking } = await getContracts();
 
       await expect(
         new StakingDistributor__factory(owner).deploy(
-          TreasuryMock.address,
+          Treasury.address,
           addressZero,
           epochLength,
           TheopetraAuthority.address,
-          StakingMock.address
+          Staking.address
         )
       ).to.be.revertedWith('Zero address: THEO');
     });
 
     it('will revert if address zero is used as the Staking address', async function () {
       const [owner] = await ethers.getSigners();
-      const { TreasuryMock, TheopetraERC20Mock, TheopetraAuthority } = await getContracts();
+      const { Treasury, TheopetraERC20Token, TheopetraAuthority } = await getContracts();
 
       await expect(
         new StakingDistributor__factory(owner).deploy(
-          TreasuryMock.address,
-          TheopetraERC20Mock.address,
+          Treasury.address,
+          TheopetraERC20Token.address,
           epochLength,
           TheopetraAuthority.address,
           addressZero
@@ -159,13 +164,7 @@ describe('Distributor', function () {
 
   describe('addRecipient', function () {
     it('stores the correct information for the staking pool', async function () {
-      await Distributor.addRecipient(
-        StakingMock.address,
-        expectedStartRateUnlocked,
-        expectedDrs,
-        expectedDys,
-        isLocked
-      );
+      await Distributor.addRecipient(Staking.address, expectedStartRateUnlocked, expectedDrs, expectedDys, isLocked);
 
       const [startStored, drs, dys, recipient, locked, nextEpochTime] = await Distributor.info(0);
       const latestBlock = await ethers.provider.getBlock('latest');
@@ -175,14 +174,14 @@ describe('Distributor', function () {
       expect(startStored).to.equal(expectedStartRateUnlocked);
       expect(Number(drs)).to.equal(expectedDrs);
       expect(Number(dys)).to.equal(expectedDys);
-      expect(recipient).to.equal(StakingMock.address);
+      expect(recipient).to.equal(Staking.address);
       expect(locked).to.equal(isLocked);
       expect(nextEpochTime).to.be.greaterThan(lowerBound).and.to.be.lessThan(upperBound);
     });
 
     it('limits the reward rate for a new recipient to be less than or equal to 100%', async function () {
       await expect(
-        Distributor.addRecipient(StakingMock.address, 1_000_000_001, expectedDrs, expectedDys, isLocked)
+        Distributor.addRecipient(Staking.address, 1_000_000_001, expectedDrs, expectedDys, isLocked)
       ).to.be.revertedWith('Rate cannot exceed denominator');
     });
   });
@@ -200,16 +199,20 @@ describe('Distributor', function () {
 
     beforeEach(async function () {
       [owner, staking] = await ethers.getSigners();
-      const { TreasuryMock, TheopetraERC20Mock, TheopetraAuthority } = await getContracts();
 
       // Deploy a new Distributor using a staking address that can call the distribute method
       DistributorNew = await new StakingDistributor__factory(owner).deploy(
-        TreasuryMock.address,
-        TheopetraERC20Mock.address,
+        Treasury.address,
+        TheopetraERC20Token.address,
         epochLength,
         TheopetraAuthority.address,
         staking.address
       );
+
+      if (process.env.NODE_ENV !== TESTWITHMOCKS) {
+        //Set the new Distributor as reward manager in Treasury (to allow call to mint from Distributor)
+        await Treasury.connect(owner).enable(8, DistributorNew.address, addressZero);
+      }
     });
 
     it('can be called', async function () {
@@ -296,16 +299,23 @@ describe('Distributor', function () {
       // TODO: Will need to change this in future if/when nextRewardAt changes (currently still uses THEO total supply)
       it('will mint the expected amount of THEO, to the Staking contract', async function () {
         const initialTheoToMint = '1000000'; // 1e6
-        await TheopetraERC20Mock.mint(owner.address, initialTheoToMint);
-        expect(Number(await TheopetraERC20Mock.totalSupply())).to.equal(Number(initialTheoToMint));
 
-        expect(await TheopetraERC20Mock.balanceOf(staking.address)).to.equal(0);
+        await TheopetraAuthority.pushVault(owner.address, true); // Push vault to owner (in tests without mocks the vault was previously set as Treasury)
+        await TheopetraERC20Token.mint(owner.address, initialTheoToMint);
+        await TheopetraAuthority.pushVault(Treasury.address, true); // Restore Treasury contract as Vault
+
+        expect(Number(await TheopetraERC20Token.totalSupply())).to.equal(Number(initialTheoToMint));
+
+        expect(await TheopetraERC20Token.balanceOf(staking.address)).to.equal(0);
 
         await DistributorNew.connect(staking).distribute();
         const calculatedExpectedRate = expectedRate(expectedStartRateUnlocked, expectedDrs, expectedDys);
+
         const expectedTheoToMint = Math.floor((Number(initialTheoToMint) * calculatedExpectedRate) / 10 ** 9); // rateDenominator is 1_000_000_000
-        expect(Number(await TheopetraERC20Mock.totalSupply())).to.equal(Number(initialTheoToMint) + expectedTheoToMint);
-        expect(Number(await TheopetraERC20Mock.balanceOf(staking.address))).to.equal(Number(expectedTheoToMint));
+        expect(Number(await TheopetraERC20Token.totalSupply())).to.equal(
+          Number(initialTheoToMint) + expectedTheoToMint
+        );
+        expect(Number(await TheopetraERC20Token.balanceOf(staking.address))).to.equal(Number(expectedTheoToMint));
       });
     });
 
@@ -428,7 +438,7 @@ describe('Distributor', function () {
         const secondPoolExpectedDys = 30_000_000; // 3%
 
         await Distributor.addRecipient(
-          StakingMock.address,
+          Staking.address,
           expectedStartRateUnlocked,
           secondPoolExpectedDrs,
           secondPoolExpectedDys,
@@ -450,7 +460,7 @@ describe('Distributor', function () {
         const secondPoolExpectedDys = 1_000_000_000; // 100% set high to attempt to breach max rate
 
         await Distributor.addRecipient(
-          StakingMock.address,
+          Staking.address,
           expectedStartRateUnlocked,
           secondPoolExpectedDrs,
           secondPoolExpectedDys,
@@ -469,10 +479,11 @@ describe('Distributor', function () {
           secondPoolExpectedDrs,
           secondPoolExpectedDys
         );
-        const expectedMaxRate = 60_000_000; // 6%
-        expect(expectedWithoutLimit).to.be.greaterThan(expectedMaxRate);
+        const expectedMaxRateCap = 60_000_000; // 6%
 
-        expect(actualRate).to.equal(expectedMaxRate);
+        expect(Number(expectedWithoutLimit)).to.be.greaterThan(expectedMaxRateCap);
+
+        expect(actualRate).to.equal(expectedMaxRateCap);
       });
     });
 
@@ -482,7 +493,7 @@ describe('Distributor', function () {
         const secondPoolExpectedDys = 33_000_000; // 3.3%
 
         await Distributor.addRecipient(
-          StakingMock.address,
+          Staking.address,
           expectedStartRateLocked,
           secondPoolExpectedDrs,
           secondPoolExpectedDys,
@@ -501,10 +512,10 @@ describe('Distributor', function () {
 
       it('returns the maximum rate if the reward rate exceeds the maximum rate', async function () {
         const secondPoolExpectedDrs = 1_000_000_000; // 100% set high to attempt to breach max rate
-        const secondPoolExpectedDys = 1_00_000_000; // 100% set high to attempt to breach max rate
+        const secondPoolExpectedDys = 3_00_000_000; // 300% set high to attempt to breach max rate
 
         await Distributor.addRecipient(
-          StakingMock.address,
+          Staking.address,
           expectedStartRateLocked,
           secondPoolExpectedDrs,
           secondPoolExpectedDys,
@@ -545,16 +556,19 @@ describe('Distributor', function () {
   describe('nextRewardFor', function () {
     // TODO: Will need to change this in future if/when nextRewardAt changes (currently still uses THEO total supply)
     it('returns the next reward expected for a specified recipient', async function () {
-      const [owner] = users;
+      const [owner] = await ethers.getSigners();
       const [, , , recipient] = await Distributor.info(0);
       const theoToMint = '1000000'; // 1e6
-      expect(recipient).to.equal(StakingMock.address);
-      await TheopetraERC20Mock.mint(owner.address, theoToMint);
+      expect(recipient).to.equal(Staking.address);
+
+      await TheopetraAuthority.pushVault(owner.address, true); // Push vault to owner (in tests without mocks the vault was previously set as Treasury)
+      await TheopetraERC20Token.mint(owner.address, theoToMint);
+      await TheopetraAuthority.pushVault(Treasury.address, true); // Restore Treasury contract as Vault
 
       const expectedReward = Math.floor(
         Number(theoToMint) * (expectedRate(expectedStartRateUnlocked, expectedDrs, expectedDys) / 10 ** 9)
       );
-      const actualReward = await Distributor.nextRewardFor(StakingMock.address);
+      const actualReward = await Distributor.nextRewardFor(Staking.address);
 
       expect(Number(actualReward)).to.equal(expectedReward);
     });

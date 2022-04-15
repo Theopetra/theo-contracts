@@ -3,18 +3,14 @@ import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardh
 import { BigNumber } from 'ethers';
 
 import { setupUsers, moveTimeForward } from './utils';
-import { CONTRACTS, MOCKS } from '../utils/constants';
+import { getContracts } from '../utils/helpers';
+import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 
 const setup = deployments.createFixture(async () => {
-  await deployments.fixture([CONTRACTS.staking, CONTRACTS.authority, MOCKS.theoTokenMock, MOCKS.sTheoMock]);
+  await deployments.fixture();
   const { deployer: owner } = await getNamedAccounts();
 
-  const contracts = {
-    Staking: await ethers.getContract(CONTRACTS.staking),
-    sTheoMock: await ethers.getContract(MOCKS.sTheoMock),
-    TheopetraAuthority: await ethers.getContract(CONTRACTS.authority),
-    TheopetraERC20Mock: await ethers.getContract(MOCKS.theoTokenMock),
-  };
+  const contracts = { ...(await getContracts(CONTRACTS.staking)) };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
@@ -31,9 +27,10 @@ describe.only('Staking', function () {
   const LARGE_APPROVAL = '100000000000000000000000000000000';
 
   let Staking: any;
-  let sTheoMock: any;
+  let sTheo: any;
   let TheopetraAuthority: any;
-  let TheopetraERC20Mock: any;
+  let TheopetraERC20Token: any;
+  let Treasury: any;
   let users: any;
   let owner: any;
   let addressZero: any;
@@ -48,16 +45,26 @@ describe.only('Staking', function () {
   }
 
   beforeEach(async function () {
-    ({ Staking, sTheoMock, TheopetraAuthority, TheopetraERC20Mock, users, owner, addressZero } = await setup());
+    ({ Staking, sTheo, TheopetraAuthority, TheopetraERC20Token, Treasury, users, owner, addressZero } = await setup());
 
     const [, bob, carol] = users;
+    // Setup to mint initial amount of THEO
+    const [, treasurySigner] = await ethers.getSigners();
+    if (process.env.NODE_ENV !== TESTWITHMOCKS) {
+      await TheopetraAuthority.pushVault(treasurySigner.address, true); // Use a valid signer for Vault
+      await TheopetraERC20Token.connect(treasurySigner).mint(bob.address, '10000000000000000'); // 1e16 Set to be same as return value in Treasury Mock for baseSupply
+      await TheopetraAuthority.pushVault(Treasury.address, true); // Restore Treasury contract as Vault
+    } else {
+      await TheopetraERC20Token.mint(bob.address, '10000000000000');
+    }
+    await bob.TheopetraERC20Token.approve(Staking.address, LARGE_APPROVAL);
+    await carol.TheopetraERC20Token.approve(Staking.address, LARGE_APPROVAL);
 
-    await TheopetraERC20Mock.mint(bob.address, '10000000000000');
-    await bob.TheopetraERC20Mock.approve(Staking.address, LARGE_APPROVAL);
-    await carol.TheopetraERC20Mock.approve(Staking.address, LARGE_APPROVAL);
-
-    // Mint enough to allow transfers when claiming staked THEO
-    await sTheoMock.mint(Staking.address, '1000000000000000000000');
+    if (process.env.NODE_ENV === TESTWITHMOCKS) {
+      // Mint enough to allow transfers when claiming staked THEO
+      // only call this if not performing full testing, as only mock sTheo has a mint function (sTheo itself uses `initialize` instead)
+      await sTheo.mint(Staking.address, '1000000000000000000000');
+    }
   });
 
   describe('Deployment', async function () {
@@ -72,8 +79,8 @@ describe.only('Staking', function () {
       const latestBlock = await ethers.provider.getBlock('latest');
       const lowerBound = latestBlock.timestamp * 0.999 + epochLength;
       const upperBound = latestBlock.timestamp * 1.001 + epochLength;
-      expect(await Staking.THEO()).to.equal(TheopetraERC20Mock.address);
-      expect(await Staking.sTHEO()).to.equal(sTheoMock.address);
+      expect(await Staking.THEO()).to.equal(TheopetraERC20Token.address);
+      expect(await Staking.sTHEO()).to.equal(sTheo.address);
 
       const epoch = await Staking.epoch();
 
@@ -148,17 +155,17 @@ describe.only('Staking', function () {
     });
   });
 
-  describe('stake', function () {
+  describe('stake', async function () {
     it('adds a Claim for the staked `_amount` to the staked collection when `_claim` is false and `warmupPeriod` is zero', async function () {
       const [, bob] = users;
       const claim = false;
+      const expectedGonsInWarmup = process.env.NODE_ENV !== TESTWITHMOCKS ? await sTheo.gonsForBalance(amountToStake) : 0; // if running test with mocks, use 0 gons for sTheo.gonsForBalance(), because it returns amountToStake, which is already added in the test below
 
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
       const stakingInfo = await Staking.stakingInfo(bob.address, 0);
 
       expect(stakingInfo.deposit.toNumber()).to.equal(amountToStake);
-      const expectedGonsInWarmup = await sTheoMock.gonsForBalance(amountToStake);
       expect(stakingInfo.gonsInWarmup.toNumber()).to.equal(expectedGonsInWarmup);
 
       const epochInfo = await Staking.epoch();
@@ -180,18 +187,18 @@ describe.only('Staking', function () {
       expect(await Staking.supplyInWarmup()).to.equal(0);
 
       await bob.Staking.stake(bob.address, amountToStake, claim);
-      expect(await Staking.supplyInWarmup()).to.equal(amountToStake); // sTheoMock.gonsForBalance(amount) returns amount
+      expect(await Staking.supplyInWarmup()).to.equal(amountToStake); // sTheo.gonsForBalance(amount) returns amount
     });
 
     it('allows the staker to claim sTHEO immediately if `_claim` is true and warmup is zero', async function () {
       const [, bob] = users;
       const claim = true;
 
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
 
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
       expect(await Staking.supplyInWarmup()).to.equal(0);
     });
 
@@ -219,7 +226,7 @@ describe.only('Staking', function () {
       const [, bob] = users;
       const claim = true;
 
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
 
       await bob.Staking.stake(bob.address, amountToStake, claim);
       const stakingInfo = await Staking.stakingInfo(bob.address, 0);
@@ -230,7 +237,7 @@ describe.only('Staking', function () {
       const secondStakingInfo = await Staking.stakingInfo(bob.address, 1);
       expect(secondStakingInfo.deposit.toNumber()).to.equal(secondAmountToStake);
 
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake + secondAmountToStake);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake + secondAmountToStake);
       expect(await Staking.supplyInWarmup()).to.equal(0);
     });
 
@@ -258,18 +265,18 @@ describe.only('Staking', function () {
       const [, bob] = users;
       const claim = true;
 
-      const bobStartingTheoBalance = Number(await TheopetraERC20Mock.balanceOf(bob.address));
+      const bobStartingTheoBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
 
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
-      expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(bobStartingTheoBalance - amountToStake);
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(bobStartingTheoBalance - amountToStake);
+      expect(Number(await sTheo.balanceOf(bob.address))).to.equal(amountToStake);
 
-      await bob.sTheoMock.approve(Staking.address, amountToStake);
+      await bob.sTheo.approve(Staking.address, amountToStake);
       await bob.Staking.unstake(bob.address, amountToStake, false, [0]);
 
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
-      expect(await TheopetraERC20Mock.balanceOf(bob.address)).to.equal(bobStartingTheoBalance);
+      expect(Number(await sTheo.balanceOf(bob.address))).to.equal(0);
+      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(bobStartingTheoBalance);
     });
   });
 
@@ -277,18 +284,18 @@ describe.only('Staking', function () {
     it('allows a recipient to claim sTHEO from warmup', async function () {
       const [, bob] = users;
       await createClaim();
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
 
       await bob.Staking.claim(bob.address, [0]);
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
     });
 
     it('does not transfer any sTHEO when there is no claim', async function () {
       const [, bob] = users;
 
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
       await bob.Staking.claim(bob.address);
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
     });
 
     it('does not transfer any sTHEO while the claim is still in warmup', async function () {
@@ -298,7 +305,7 @@ describe.only('Staking', function () {
 
       await bob.Staking.claim(bob.address);
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(0);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
     });
   });
 
@@ -364,7 +371,7 @@ describe.only('Staking', function () {
       await moveTimeForward(60 * 60 * 9); // Move time forward into the next epoch to allow claim amount to be sent
 
       await expect(carol.Staking.claim(bob.address, [0])).to.not.be.reverted;
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
     });
 
     it('allows an internal claim after the recipient has toggled the Claim lock', async function () {
@@ -375,7 +382,7 @@ describe.only('Staking', function () {
       await moveTimeForward(60 * 60 * 9); // Move time forward into the next epoch to allow claim amount to be sent
 
       await bob.Staking.claim(bob.address, [0]);
-      expect(await sTheoMock.balanceOf(bob.address)).to.equal(amountToStake);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
     });
   });
 
