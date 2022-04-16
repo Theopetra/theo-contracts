@@ -15,17 +15,13 @@ contract TheopetraStaking is TheopetraAccessControlled {
     using SafeERC20 for IsTHEO;
     using SafeERC20 for ITHEO;
 
+    /* ====== VARIABLES ====== */
+
+    Epoch public epoch;
+
     address public immutable THEO;
     address public immutable sTHEO;
     uint256 public immutable stakingTerm;
-
-    struct Epoch {
-        uint256 length;
-        uint256 number;
-        uint256 end;
-        uint256 distribute;
-    }
-    Epoch public epoch;
 
     address public distributor;
 
@@ -37,6 +33,26 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
     uint256 private gonsInWarmup;
     uint256 private slashedGons;
+
+    mapping(address => Claim[]) public stakingInfo;
+    mapping(address => bool) private isExternalLocked;
+
+    /* ====== STRUCTS ====== */
+
+    struct Epoch {
+        uint256 length;
+        uint256 number;
+        uint256 end;
+        uint256 distribute;
+    }
+
+    struct Claim {
+        uint256 deposit;
+        uint256 gonsInWarmup;
+        uint256 warmupExpiry;
+        uint256 stakingExpiry;
+        bool inWarmup;
+    }
 
     constructor(
         address _THEO,
@@ -57,16 +73,6 @@ contract TheopetraStaking is TheopetraAccessControlled {
         epoch = Epoch({ length: _epochLength, number: _firstEpochNumber, end: _firstEpochTime, distribute: 0 });
     }
 
-    struct Claim {
-        uint256 deposit;
-        uint256 gonsInWarmup;
-        uint256 warmupExpiry;
-        uint256 stakingExpiry;
-        bool inWarmup;
-    }
-    mapping(address => Claim[]) public stakingInfo;
-    mapping(address => bool) private isExternalLocked;
-
     /**
         @notice stake THEO to enter warmup
         @dev    if warmupPeriod is 0 and _claim is true, store warmupExpiry 0:
@@ -84,7 +90,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         rebase();
         IERC20(THEO).safeTransferFrom(msg.sender, address(this), _amount);
 
-        if (!isExternalLocked[_recipient]){
+        if (!isExternalLocked[_recipient]) {
             require(_recipient == msg.sender, "External deposits for account are locked");
         }
 
@@ -108,7 +114,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     Claim({
                         deposit: _amount,
                         gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
-                        warmupExpiry: epoch.end + warmupPeriod,
+                        warmupExpiry: block.timestamp + warmupPeriod,
                         stakingExpiry: block.timestamp + stakingTerm,
                         inWarmup: true
                     })
@@ -122,7 +128,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 Claim({
                     deposit: _amount,
                     gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
-                    warmupExpiry: epoch.end + warmupPeriod,
+                    warmupExpiry: block.timestamp + warmupPeriod,
                     stakingExpiry: block.timestamp + stakingTerm,
                     inWarmup: true
                 })

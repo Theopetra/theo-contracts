@@ -281,29 +281,60 @@ describe.only('Staking', function () {
   });
 
   describe('claim', function () {
-    it('allows a recipient to claim sTHEO from warmup', async function () {
+    it('allows a recipient to claim sTHEO from warmup when warmup period is zero', async function () {
       const [, bob] = users;
       await createClaim();
       expect(await sTheo.balanceOf(bob.address)).to.equal(0);
 
+      await bob.Staking.claim(bob.address, [0]); // Can claim straight away (no movement forward in time needed)
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
+    });
+
+    it('allows a recipient to claim sTHEO from warmup, when warmup period is non-zero, after the warmup period has passed', async function () {
+      const [, bob] = users;
+      await Staking.setWarmup(60*60*24*7); // Set warmup to be 7 days
+
+      await createClaim();
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
+
+      await moveTimeForward(60*60*24*7 + 60) // Move time past warmup period
       await bob.Staking.claim(bob.address, [0]);
       expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
     });
 
-    it('does not transfer any sTHEO when there is no claim', async function () {
+    it('errors and does not transfer any sTHEO when there is no claim', async function () {
       const [, bob] = users;
 
       expect(await sTheo.balanceOf(bob.address)).to.equal(0);
-      await bob.Staking.claim(bob.address);
+
+      try {
+        await bob.Staking.claim(bob.address, [0])
+      } catch (error: any) {
+        expect(error.message).to.include('VM Exception while processing transaction: invalid opcode');
+      }
+
       expect(await sTheo.balanceOf(bob.address)).to.equal(0);
     });
 
-    it('does not transfer any sTHEO while the claim is still in warmup', async function () {
+    it('does not transfer any sTHEO if an attempt is made to immediately claim a Claim that is still in warmup', async function () {
       const [, bob] = users;
-      await Staking.setWarmup(2);
+      await Staking.setWarmup(60*60*24*5); // Set warmup to be 5 days
+      await createClaim();
+      // No movement forward in time: claim still in warmup
+
+      await bob.Staking.claim(bob.address, [0]);
+      expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
+    });
+
+    it('does not transfer any sTHEO if an attempt is made to claim a Claim in warmup before the warmup period is over', async function () {
+      const [, bob] = users;
+      await Staking.setWarmup(60*60*24*5); // Set warmup to be 5 days
       await createClaim();
 
-      await bob.Staking.claim(bob.address);
+      await moveTimeForward(60 * 60 * 9); // Move time forward by less than warmup period
+      // Claim still in warmup
+      await bob.Staking.claim(bob.address, [0]);
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
       expect(await sTheo.balanceOf(bob.address)).to.equal(0);
     });
