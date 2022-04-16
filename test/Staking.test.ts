@@ -2,7 +2,7 @@ import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 import { BigNumber } from 'ethers';
 
-import { setupUsers, moveTimeForward } from './utils';
+import { setupUsers, moveTimeForward, randomIntFromInterval } from './utils';
 import { getContracts } from '../utils/helpers';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 
@@ -182,8 +182,6 @@ describe.only('Staking', function () {
       const lowerBound = (latestBlock.timestamp + 31536000) * 0.9967; // Using seconds in a year, as currently used in deploy script
       expect(stakingInfo.stakingExpiry.toNumber()).to.be.lessThan(upperBound);
       expect(stakingInfo.stakingExpiry.toNumber()).to.be.greaterThan(lowerBound);
-
-      expect(stakingInfo.inWarmup).to.equal(true);
     });
 
     it('adds to the `total supply in warmup`, which represents the total amount of sTHEO currently in warmup', async function () {
@@ -224,8 +222,6 @@ describe.only('Staking', function () {
       const lowerBound = (latestBlock.timestamp + 31536000) * 0.9967; // Using seconds in a year, as currently used in deploy script
       expect(stakingInfo.stakingExpiry.toNumber()).to.be.lessThan(upperBound);
       expect(stakingInfo.stakingExpiry.toNumber()).to.be.greaterThan(lowerBound);
-
-      expect(stakingInfo.inWarmup).to.equal(false);
     });
 
     it('can add multiple claims where `_claim` is true and warmup is zero', async function () {
@@ -275,7 +271,9 @@ describe.only('Staking', function () {
 
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
-      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(bobStartingTheoBalance.sub(amountToStake));
+      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(
+        bobStartingTheoBalance.sub(amountToStake)
+      );
       expect(Number(await sTheo.balanceOf(bob.address))).to.equal(amountToStake);
       const stakingInfo = await Staking.stakingInfo(bob.address, 0);
       const latestBlock = await ethers.provider.getBlock('latest');
@@ -288,7 +286,7 @@ describe.only('Staking', function () {
       expect(Number(await sTheo.balanceOf(bob.address))).to.equal(0);
     });
 
-    it.only('allows a staker to redeem their sTHEO for the correct amount of THEO, when 25% of their total staking expiry time has passed (75% remaining)', async function () {
+    it('allows a staker to redeem their sTHEO for the correct amount of THEO, when 25% of their total staking expiry time has passed (75% remaining)', async function () {
       const [, bob] = users;
       const claim = true;
 
@@ -306,9 +304,45 @@ describe.only('Staking', function () {
 
       expect(Number(await sTheo.balanceOf(bob.address))).to.equal(0);
 
-      const expectedPenalty = amountToStake*0.16;
-      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(bobStartingTheoBalance - expectedPenalty);
-    })
+      const expectedPenalty = amountToStake * 0.16;
+      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(
+        bobStartingTheoBalance - expectedPenalty
+      );
+    });
+
+    it('allows a staker to redeem their sTHEO for the correct amount of THEO, at any time before the staking expiry', async function () {
+      const [, bob] = users;
+      const claim = true;
+
+      const bobStartingTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
+
+      await bob.Staking.stake(bob.address, amountToStake, claim);
+
+      const stakingInfo = await Staking.stakingInfo(bob.address, 0);
+      const latestBlock = await ethers.provider.getBlock('latest');
+      expect(stakingInfo.stakingExpiry.toNumber()).to.be.greaterThan(latestBlock.timestamp);
+      await bob.sTheo.approve(Staking.address, amountToStake);
+
+      // calculate random time to move forward, between 0 and 99% of lockedStakingTerm
+      const percentageComplete = randomIntFromInterval(0, 99);
+      let expectedPenaltyProportion: number;
+      if (percentageComplete <= 5) {
+        expectedPenaltyProportion = 0.2;
+      } else {
+        // Taking into account whether or not the percentage complete is exactly at the start of a new penalty time-bracket
+        expectedPenaltyProportion = ((percentageComplete % 5 === 0 ? 21 : 20) - Math.floor(percentageComplete / 5)) / 100;
+      }
+      const expectedPenalty = amountToStake * expectedPenaltyProportion;
+
+      if (percentageComplete > 0) await moveTimeForward(lockedStakingTerm * (percentageComplete / 100));
+      await bob.Staking.unstake(bob.address, amountToStake, false, [0]);
+
+      expect(Number(await sTheo.balanceOf(bob.address))).to.equal(0);
+
+      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(
+        bobStartingTheoBalance - expectedPenalty
+      );
+    });
   });
 
   describe('claim', function () {
@@ -380,20 +414,20 @@ describe.only('Staking', function () {
       expect(await Staking.isUnClaimed(bob.address, 0)).to.equal(true);
     });
 
-    it('will return true for a claim that is out of warmup but that has not yet been claimed', async function() {
+    it('will return true for a claim that is out of warmup but that has not yet been claimed', async function () {
       const [, bob] = users;
       await createClaim(); // zero warmup
 
       expect(await Staking.isUnClaimed(bob.address, 0)).to.equal(true);
-    })
+    });
 
-    it('will return false for a claim that has been claimed', async function() {
+    it('will return false for a claim that has been claimed', async function () {
       const [, bob] = users;
       await createClaim(); // zero warmup
 
       await bob.Staking.claim(bob.address, [0]);
       expect(await Staking.isUnClaimed(bob.address, 0)).to.equal(false);
-    })
+    });
   });
 
   describe('indexesFor', function () {
@@ -406,7 +440,7 @@ describe.only('Staking', function () {
       await bob.Staking.claim(bob.address, [1]);
       const response = await Staking.indexesFor(bob.address);
       const returnedIndexes = response.map((element: any) => element.toNumber());
-      const expectedIndexes = [0,2];
+      const expectedIndexes = [0, 2];
       expect(returnedIndexes).to.deep.equal(expectedIndexes);
     });
   });

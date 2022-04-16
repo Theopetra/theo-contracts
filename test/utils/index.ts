@@ -77,3 +77,7 @@ export async function performanceUpdate<T>(
   await waitFor(YieldReporter.reportYield(50_000_000_000));
   await waitFor(YieldReporter.reportYield(65_000_000_000));
 }
+
+export function randomIntFromInterval<T>(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}

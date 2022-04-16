@@ -9,8 +9,6 @@ import "../Interfaces/IDistributor.sol";
 import "../Interfaces/IsTHEO.sol";
 import "../Interfaces/ITHEO.sol";
 
-import "hardhat/console.sol";
-
 contract TheopetraStaking is TheopetraAccessControlled {
     using SafeMath for *;
     using SafeERC20 for IERC20;
@@ -270,7 +268,6 @@ contract TheopetraStaking is TheopetraAccessControlled {
         }
 
         uint256 penaltyBand = ceil(stakingTimePercentComplete, 5).div(5);
-
         uint256 penaltyPercent = penaltyBands[penaltyBand];
 
         return _amount.mul(penaltyPercent).div(100);
