@@ -9,8 +9,10 @@ import "../Interfaces/IDistributor.sol";
 import "../Interfaces/IsTHEO.sol";
 import "../Interfaces/ITHEO.sol";
 
+import "hardhat/console.sol";
+
 contract TheopetraStaking is TheopetraAccessControlled {
-    using SafeMath for uint256;
+    using SafeMath for *;
     using SafeERC20 for IERC20;
     using SafeERC20 for IsTHEO;
     using SafeERC20 for ITHEO;
@@ -51,7 +53,6 @@ contract TheopetraStaking is TheopetraAccessControlled {
         uint256 gonsInWarmup;
         uint256 warmupExpiry;
         uint256 stakingExpiry;
-        bool inWarmup;
     }
 
     constructor(
@@ -103,8 +104,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                         deposit: _amount,
                         gonsInWarmup: 0,
                         warmupExpiry: 0,
-                        stakingExpiry: block.timestamp + stakingTerm,
-                        inWarmup: false
+                        stakingExpiry: block.timestamp + stakingTerm
                     })
                 );
                 _send(_recipient, _amount);
@@ -115,8 +115,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                         deposit: _amount,
                         gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
                         warmupExpiry: block.timestamp + warmupPeriod,
-                        stakingExpiry: block.timestamp + stakingTerm,
-                        inWarmup: true
+                        stakingExpiry: block.timestamp + stakingTerm
                     })
                 );
                 // funds are not sent as they went to warmup
@@ -129,8 +128,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     deposit: _amount,
                     gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
                     warmupExpiry: block.timestamp + warmupPeriod,
-                    stakingExpiry: block.timestamp + stakingTerm,
-                    inWarmup: true
+                    stakingExpiry: block.timestamp + stakingTerm
                 })
             );
             // sTheo is not sent as it has went into warmup
@@ -214,9 +212,9 @@ contract TheopetraStaking is TheopetraAccessControlled {
             } else if (block.timestamp < info.stakingExpiry) {
                 // Transfer the staked THEO
                 IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
-                // Determine the penalty for removing early
-                uint256 penalty = getPenalty(amount_, block.timestamp.div(info.stakingExpiry));
-                // uint256 penalty = 0;
+                // Determine the penalty for removing early. Percentage expressed with 4 decimals
+                uint256 percentageComplete = 1000000.sub(((info.stakingExpiry.sub(block.timestamp)).mul(1000000)).div(stakingTerm));
+                uint256 penalty = getPenalty(amount_, percentageComplete.div(10000));
 
                 // Add the penalty to slashed gons
                 slashedGons = slashedGons.add(penalty);
@@ -263,7 +261,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
     }
 
     function ceil(uint256 a, uint256 m) private view returns (uint256) {
-        return ((a + m - 1) / m) * m;
+        return a == 0 ? m : ((a + m - 1) / m) * m;
     }
 
     function getPenalty(uint256 _amount, uint256 stakingTimePercentComplete) public view returns (uint256) {

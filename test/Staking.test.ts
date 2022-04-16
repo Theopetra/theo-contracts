@@ -267,23 +267,48 @@ describe.only('Staking', function () {
   });
 
   describe('Unstake', function () {
-    it('allows a staker to redeem their sTHEO for THEO', async function () {
+    it('allows a staker to unstake before the staking expiry time', async function () {
       const [, bob] = users;
       const claim = true;
 
-      const bobStartingTheoBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
+      const bobStartingTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
 
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
-      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(bobStartingTheoBalance - amountToStake);
+      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(bobStartingTheoBalance.sub(amountToStake));
       expect(Number(await sTheo.balanceOf(bob.address))).to.equal(amountToStake);
+      const stakingInfo = await Staking.stakingInfo(bob.address, 0);
+      const latestBlock = await ethers.provider.getBlock('latest');
 
+      expect(stakingInfo.stakingExpiry.toNumber()).to.be.greaterThan(latestBlock.timestamp);
       await bob.sTheo.approve(Staking.address, amountToStake);
+
+      await expect(bob.Staking.unstake(bob.address, amountToStake, false, [0])).to.not.be.reverted;
+
+      expect(Number(await sTheo.balanceOf(bob.address))).to.equal(0);
+    });
+
+    it.only('allows a staker to redeem their sTHEO for the correct amount of THEO, when 25% of their total staking expiry time has passed (75% remaining)', async function () {
+      const [, bob] = users;
+      const claim = true;
+
+      const bobStartingTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
+
+      await bob.Staking.stake(bob.address, amountToStake, claim);
+
+      const stakingInfo = await Staking.stakingInfo(bob.address, 0);
+      const latestBlock = await ethers.provider.getBlock('latest');
+      expect(stakingInfo.stakingExpiry.toNumber()).to.be.greaterThan(latestBlock.timestamp);
+      await bob.sTheo.approve(Staking.address, amountToStake);
+
+      await moveTimeForward(lockedStakingTerm / 4); // 25% of total staking expiry time passed
       await bob.Staking.unstake(bob.address, amountToStake, false, [0]);
 
       expect(Number(await sTheo.balanceOf(bob.address))).to.equal(0);
-      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(bobStartingTheoBalance);
-    });
+
+      const expectedPenalty = amountToStake*0.16;
+      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(bobStartingTheoBalance - expectedPenalty);
+    })
   });
 
   describe('claim', function () {
