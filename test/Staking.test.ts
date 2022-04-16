@@ -119,7 +119,15 @@ describe.only('Staking', function () {
       await expect(
         deployments.deploy(CONTRACTS.staking, {
           from: owner,
-          args: [owner, addressZero, epochLength, firstEpochNumber, firstEpochTime, lockedStakingTerm, TheopetraAuthority.address],
+          args: [
+            owner,
+            addressZero,
+            epochLength,
+            firstEpochNumber,
+            firstEpochTime,
+            lockedStakingTerm,
+            TheopetraAuthority.address,
+          ],
         })
       ).to.be.revertedWith('Invalid address');
     });
@@ -168,10 +176,8 @@ describe.only('Staking', function () {
       expect(stakingInfo.deposit.toNumber()).to.equal(amountToStake);
       expect(stakingInfo.gonsInWarmup.toNumber()).to.equal(expectedGonsInWarmup);
 
-      const epochInfo = await Staking.epoch();
-      expect(stakingInfo.warmupExpiry.toNumber()).to.equal(epochInfo.end.toNumber()); // zero warmup period
-
       const latestBlock = await ethers.provider.getBlock('latest');
+      expect(stakingInfo.warmupExpiry.toNumber()).to.equal(latestBlock.timestamp); // zero warmup period
       const upperBound = (latestBlock.timestamp + 31536000) * 1.0033; // Using seconds in a year, as currently used in deploy script
       const lowerBound = (latestBlock.timestamp + 31536000) * 0.9967; // Using seconds in a year, as currently used in deploy script
       expect(stakingInfo.stakingExpiry.toNumber()).to.be.lessThan(upperBound);
@@ -254,9 +260,9 @@ describe.only('Staking', function () {
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
 
       const stakingInfo = await Staking.stakingInfo(bob.address, 0);
-      const epochInfo = await Staking.epoch();
+      const latestBlock = await ethers.provider.getBlock('latest');
       expect(stakingInfo.deposit).to.equal(amountToStake);
-      expect(stakingInfo.warmupExpiry).to.equal(epochInfo.end.toNumber() + warmupPeriod);
+      expect(stakingInfo.warmupExpiry).to.equal(latestBlock.timestamp + warmupPeriod);
     });
   });
 
@@ -292,12 +298,12 @@ describe.only('Staking', function () {
 
     it('allows a recipient to claim sTHEO from warmup, when warmup period is non-zero, after the warmup period has passed', async function () {
       const [, bob] = users;
-      await Staking.setWarmup(60*60*24*7); // Set warmup to be 7 days
+      await Staking.setWarmup(60 * 60 * 24 * 7); // Set warmup to be 7 days
 
       await createClaim();
       expect(await sTheo.balanceOf(bob.address)).to.equal(0);
 
-      await moveTimeForward(60*60*24*7 + 60) // Move time past warmup period
+      await moveTimeForward(60 * 60 * 24 * 7 + 60); // Move time past warmup period
       await bob.Staking.claim(bob.address, [0]);
       expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
     });
@@ -308,7 +314,7 @@ describe.only('Staking', function () {
       expect(await sTheo.balanceOf(bob.address)).to.equal(0);
 
       try {
-        await bob.Staking.claim(bob.address, [0])
+        await bob.Staking.claim(bob.address, [0]);
       } catch (error: any) {
         expect(error.message).to.include('VM Exception while processing transaction: invalid opcode');
       }
@@ -318,7 +324,7 @@ describe.only('Staking', function () {
 
     it('does not transfer any sTHEO if an attempt is made to immediately claim a Claim that is still in warmup', async function () {
       const [, bob] = users;
-      await Staking.setWarmup(60*60*24*5); // Set warmup to be 5 days
+      await Staking.setWarmup(60 * 60 * 24 * 5); // Set warmup to be 5 days
       await createClaim();
       // No movement forward in time: claim still in warmup
 
@@ -329,7 +335,7 @@ describe.only('Staking', function () {
 
     it('does not transfer any sTHEO if an attempt is made to claim a Claim in warmup before the warmup period is over', async function () {
       const [, bob] = users;
-      await Staking.setWarmup(60*60*24*5); // Set warmup to be 5 days
+      await Staking.setWarmup(60 * 60 * 24 * 5); // Set warmup to be 5 days
       await createClaim();
 
       await moveTimeForward(60 * 60 * 9); // Move time forward by less than warmup period
@@ -337,6 +343,46 @@ describe.only('Staking', function () {
       await bob.Staking.claim(bob.address, [0]);
       expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
       expect(await sTheo.balanceOf(bob.address)).to.equal(0);
+    });
+  });
+
+  describe('isUnClaimed', function () {
+    it('will return true for a claim that is in warmup', async function () {
+      const [, bob] = users;
+      await Staking.setWarmup(60 * 60 * 24 * 5); // Set warmup to be 5 days
+      await createClaim();
+
+      expect(await Staking.isUnClaimed(bob.address, 0)).to.equal(true);
+    });
+
+    it('will return true for a claim that is out of warmup but that has not yet been claimed', async function() {
+      const [, bob] = users;
+      await createClaim(); // zero warmup
+
+      expect(await Staking.isUnClaimed(bob.address, 0)).to.equal(true);
+    })
+
+    it('will return false for a claim that has been claimed', async function() {
+      const [, bob] = users;
+      await createClaim(); // zero warmup
+
+      await bob.Staking.claim(bob.address, [0]);
+      expect(await Staking.isUnClaimed(bob.address, 0)).to.equal(false);
+    })
+  });
+
+  describe('indexesFor', function () {
+    it('returns the indexes of un-claimed claims', async function () {
+      const [, bob] = users;
+      await createClaim();
+      await createClaim();
+      await createClaim();
+
+      await bob.Staking.claim(bob.address, [1]);
+      const response = await Staking.indexesFor(bob.address);
+      const returnedIndexes = response.map((element: any) => element.toNumber());
+      const expectedIndexes = [0,2];
+      expect(returnedIndexes).to.deep.equal(expectedIndexes);
     });
   });
 

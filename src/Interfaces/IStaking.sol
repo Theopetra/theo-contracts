@@ -34,4 +34,6 @@ interface IStaking {
     function totalStaked() external view returns (uint256);
 
     function supplyInWarmup() external view returns (uint256);
+
+    function indexesFor(address _user) external view returns (uint256[] memory);
 }

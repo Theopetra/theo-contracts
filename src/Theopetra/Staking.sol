@@ -396,4 +396,41 @@ contract TheopetraStaking is TheopetraAccessControlled {
     function supplyInWarmup() public view returns (uint256) {
         return IsTHEO(sTHEO).balanceForGons(gonsInWarmup);
     }
+
+    /**
+     * @notice             all un-claimed claims for user
+     * @param _user        the user to query claims for
+     * @return             the indexes of un-claimed claims for the user
+     */
+    function indexesFor(address _user) public view returns (uint256[] memory) {
+        Claim[] memory claims = stakingInfo[_user];
+
+        uint256 length;
+        for (uint256 i = 0; i < claims.length; i++) {
+            if (isUnClaimed(_user, i)) length++;
+        }
+
+        uint256[] memory indexes = new uint256[](length);
+        uint256 position;
+
+        for (uint256 i = 0; i < claims.length; i++) {
+            if (isUnClaimed(_user, i)) {
+                indexes[position] = i;
+                position++;
+            }
+        }
+
+        return indexes;
+    }
+
+        /**
+     * @notice             determine whether a claim has not yet been claimed
+     * @param _user        the user to query claims for
+     * @param _index       the index of the claim
+     * @return bool        true if the claim has not yet been claimed
+     */
+    function isUnClaimed(address _user, uint256 _index) public view returns (bool) {
+        Claim memory claim = stakingInfo[_user][_index];
+        return claim.gonsInWarmup > 0;
+    }
 }
