@@ -88,7 +88,7 @@ describe.only('Staking', function () {
       expect(epoch.number).to.equal(BigNumber.from(firstEpochNumber));
       expect(Number(epoch.end)).to.be.greaterThan(lowerBound);
       expect(Number(epoch.end)).to.be.lessThan(upperBound);
-
+      expect(Number(await Staking.stakingTerm())).to.equal(lockedStakingTerm);
       expect(await TheopetraAuthority.governor()).to.equal(owner);
     });
 
@@ -224,7 +224,7 @@ describe.only('Staking', function () {
       expect(stakingInfo.stakingExpiry.toNumber()).to.be.greaterThan(lowerBound);
     });
 
-    it('can add multiple claims where `_claim` is true and warmup is zero', async function () {
+    it('can add multiple claims (where `_claim` is true and warmup is zero)', async function () {
       const [, bob] = users;
       const claim = true;
 
@@ -330,7 +330,8 @@ describe.only('Staking', function () {
         expectedPenaltyProportion = 0.2;
       } else {
         // Taking into account whether or not the percentage complete is exactly at the start of a new penalty time-bracket
-        expectedPenaltyProportion = ((percentageComplete % 5 === 0 ? 21 : 20) - Math.floor(percentageComplete / 5)) / 100;
+        expectedPenaltyProportion =
+          ((percentageComplete % 5 === 0 ? 21 : 20) - Math.floor(percentageComplete / 5)) / 100;
       }
       const expectedPenalty = amountToStake * expectedPenaltyProportion;
 
@@ -339,6 +340,95 @@ describe.only('Staking', function () {
 
       expect(Number(await sTheo.balanceOf(bob.address))).to.equal(0);
 
+      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(
+        bobStartingTheoBalance - expectedPenalty
+      );
+    });
+
+    it('allows a staker to redeem their sTHEO for THEO with 1% penalty if greater than 99% but less than 100% of the staking term has passed', async function () {
+      const [, bob] = users;
+      const claim = true;
+
+      const bobStartingTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
+
+      await bob.Staking.stake(bob.address, amountToStake, claim);
+
+      const stakingInfo = await Staking.stakingInfo(bob.address, 0);
+      const latestBlock = await ethers.provider.getBlock('latest');
+      expect(stakingInfo.stakingExpiry.toNumber()).to.be.greaterThan(latestBlock.timestamp);
+      await bob.sTheo.approve(Staking.address, amountToStake);
+
+      const proportionOfStakingTermPassed = randomIntFromInterval(9900, 9999) / 10000;
+
+      await moveTimeForward(lockedStakingTerm * proportionOfStakingTermPassed);
+      await bob.Staking.unstake(bob.address, amountToStake, false, [0]);
+
+      expect(Number(await sTheo.balanceOf(bob.address))).to.equal(0);
+
+      const expectedPenalty = amountToStake * 0.01;
+      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(
+        bobStartingTheoBalance - expectedPenalty
+      );
+    });
+
+    it('allows a staker to redeem their sTHEO for THEO with zero penalty if exactly 100% of the staking term has passed', async function () {
+      const [, bob] = users;
+      const claim = true;
+
+      const bobStartingTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
+
+      await bob.Staking.stake(bob.address, amountToStake, claim);
+
+      const stakingInfo = await Staking.stakingInfo(bob.address, 0);
+      const latestBlock = await ethers.provider.getBlock('latest');
+      expect(stakingInfo.stakingExpiry.toNumber()).to.be.greaterThan(latestBlock.timestamp);
+      await bob.sTheo.approve(Staking.address, amountToStake);
+
+      const proportionOfStakingTermPassed = 1;
+
+      await moveTimeForward(lockedStakingTerm * proportionOfStakingTermPassed);
+
+
+      const newLatestBlock = await ethers.provider.getBlock('latest');
+      const upperBound = newLatestBlock.timestamp * 1.0001;
+      const lowerBound = newLatestBlock.timestamp * 0.9999;
+      expect(stakingInfo.stakingExpiry.toNumber()).to.be.greaterThan(lowerBound);
+      expect(stakingInfo.stakingExpiry.toNumber()).to.be.lessThan(upperBound);
+
+      await bob.Staking.unstake(bob.address, amountToStake, false, [0]);
+
+      expect(Number(await sTheo.balanceOf(bob.address))).to.equal(0);
+
+      const expectedPenalty = 0;
+      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(
+        bobStartingTheoBalance - expectedPenalty
+      );
+    });
+
+    it('allows a staker to redeem their sTHEO for THEO with zero penalty if greater than 100% of the staking term has passed', async function () {
+      const [, bob] = users;
+      const claim = true;
+
+      const bobStartingTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
+
+      await bob.Staking.stake(bob.address, amountToStake, claim);
+
+      const stakingInfo = await Staking.stakingInfo(bob.address, 0);
+      const latestBlock = await ethers.provider.getBlock('latest');
+      expect(stakingInfo.stakingExpiry.toNumber()).to.be.greaterThan(latestBlock.timestamp);
+      await bob.sTheo.approve(Staking.address, amountToStake);
+
+      const proportionOfStakingTermPassed = randomIntFromInterval(10001, 99999) / 10000;
+
+      await moveTimeForward(lockedStakingTerm * proportionOfStakingTermPassed);
+      const newLatestBlock = await ethers.provider.getBlock('latest');
+      expect(stakingInfo.stakingExpiry.toNumber()).to.be.lessThanOrEqual(newLatestBlock.timestamp);
+
+      await bob.Staking.unstake(bob.address, amountToStake, false, [0]);
+
+      expect(Number(await sTheo.balanceOf(bob.address))).to.equal(0);
+
+      const expectedPenalty = 0;
       expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(
         bobStartingTheoBalance - expectedPenalty
       );
@@ -366,6 +456,19 @@ describe.only('Staking', function () {
       await bob.Staking.claim(bob.address, [0]);
       expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
     });
+
+    it('updates the claim information with gonsInWarmup set to zero', async function () {
+      const [, bob] = users;
+      await createClaim();
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
+      const bobInitialStakingInfo = await Staking.stakingInfo(bob.address, 0);
+      expect(bobInitialStakingInfo.gonsInWarmup.toNumber()).to.equal(amountToStake);
+
+      await bob.Staking.claim(bob.address, [0]); // Can claim straight away (no movement forward in time needed)
+      const bobNewStakingInfo = await Staking.stakingInfo(bob.address, 0);
+      expect(bobNewStakingInfo.gonsInWarmup.toNumber()).to.equal(0);
+
+    })
 
     it('errors and does not transfer any sTHEO when there is no claim', async function () {
       const [, bob] = users;

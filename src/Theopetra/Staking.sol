@@ -102,7 +102,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                         deposit: _amount,
                         gonsInWarmup: 0,
                         warmupExpiry: 0,
-                        stakingExpiry: block.timestamp + stakingTerm
+                        stakingExpiry: block.timestamp.add(stakingTerm)
                     })
                 );
                 _send(_recipient, _amount);
@@ -112,8 +112,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     Claim({
                         deposit: _amount,
                         gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
-                        warmupExpiry: block.timestamp + warmupPeriod,
-                        stakingExpiry: block.timestamp + stakingTerm
+                        warmupExpiry: block.timestamp.add(warmupPeriod),
+                        stakingExpiry: block.timestamp.add(stakingTerm)
                     })
                 );
                 // funds are not sent as they went to warmup
@@ -125,8 +125,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 Claim({
                     deposit: _amount,
                     gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
-                    warmupExpiry: block.timestamp + warmupPeriod,
-                    stakingExpiry: block.timestamp + stakingTerm
+                    warmupExpiry: block.timestamp.add(warmupPeriod),
+                    stakingExpiry: block.timestamp.add(stakingTerm)
                 })
             );
             // sTheo is not sent as it has went into warmup
@@ -142,19 +142,17 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @return amount_                The amount of sTHEO sent
      */
     function claim(address _recipient, uint256[] memory _indexes) public returns (uint256 amount_) {
+        if (!isExternalLocked[_recipient]) {
+            require(_recipient == msg.sender, "External claims for account are locked");
+        }
         for (uint256 i = 0; i < _indexes.length; i++) {
             Claim memory info = stakingInfo[_recipient][_indexes[i]];
-
-            if (!isExternalLocked[_recipient]) {
-                require(_recipient == msg.sender, "External claims for account are locked");
-            }
 
             if (block.timestamp >= info.warmupExpiry && info.warmupExpiry != 0) {
                 stakingInfo[_recipient][_indexes[i]].gonsInWarmup = 0;
 
                 gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
-
-                amount_.add(_send(_recipient, IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup)));
+                return _send(_recipient, IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup));
             }
         }
     }
@@ -211,7 +209,9 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 // Transfer the staked THEO
                 IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
                 // Determine the penalty for removing early. Percentage expressed with 4 decimals
-                uint256 percentageComplete = 1000000.sub(((info.stakingExpiry.sub(block.timestamp)).mul(1000000)).div(stakingTerm));
+                uint256 percentageComplete = 1000000.sub(
+                    ((info.stakingExpiry.sub(block.timestamp)).mul(1000000)).div(stakingTerm)
+                );
                 uint256 penalty = getPenalty(amount_, percentageComplete.div(10000));
 
                 // Add the penalty to slashed gons
@@ -418,7 +418,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         return indexes;
     }
 
-        /**
+    /**
      * @notice             determine whether a claim has not yet been claimed
      * @param _user        the user to query claims for
      * @param _index       the index of the claim
