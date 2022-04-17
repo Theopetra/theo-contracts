@@ -22,7 +22,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe.only('Staking', function () {
+describe('Staking', function () {
   const amountToStake = 1000;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
 
@@ -174,7 +174,7 @@ describe.only('Staking', function () {
       const stakingInfo = await Staking.stakingInfo(bob.address, 0);
 
       expect(stakingInfo.deposit.toNumber()).to.equal(amountToStake);
-      expect(stakingInfo.gonsInWarmup.toNumber()).to.equal(expectedGonsInWarmup);
+      expect(stakingInfo.gonsInWarmup.toString()).to.equal(expectedGonsInWarmup.toString());
 
       const latestBlock = await ethers.provider.getBlock('latest');
       expect(stakingInfo.warmupExpiry.toNumber()).to.equal(latestBlock.timestamp); // zero warmup period
@@ -271,10 +271,10 @@ describe.only('Staking', function () {
 
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
-      expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(
-        bobStartingTheoBalance.sub(amountToStake)
+      expect((await TheopetraERC20Token.balanceOf(bob.address)).toString()).to.equal(
+        (bobStartingTheoBalance.sub(amountToStake)).toString()
       );
-      expect(Number(await sTheo.balanceOf(bob.address))).to.equal(amountToStake);
+      expect((await sTheo.balanceOf(bob.address)).toNumber()).to.equal(amountToStake);
       const stakingInfo = await Staking.stakingInfo(bob.address, 0);
       const latestBlock = await ethers.provider.getBlock('latest');
 
@@ -283,7 +283,7 @@ describe.only('Staking', function () {
 
       await expect(bob.Staking.unstake(bob.address, amountToStake, false, [0])).to.not.be.reverted;
 
-      expect(Number(await sTheo.balanceOf(bob.address))).to.equal(0);
+      expect((await sTheo.balanceOf(bob.address)).toNumber()).to.equal(0);
     });
 
     it('allows a staker to redeem their sTHEO for the correct amount of THEO, when 25% of their total staking expiry time has passed (75% remaining)', async function () {
@@ -388,7 +388,6 @@ describe.only('Staking', function () {
 
       await moveTimeForward(lockedStakingTerm * proportionOfStakingTermPassed);
 
-
       const newLatestBlock = await ethers.provider.getBlock('latest');
       const upperBound = newLatestBlock.timestamp * 1.0001;
       const lowerBound = newLatestBlock.timestamp * 0.9999;
@@ -462,7 +461,9 @@ describe.only('Staking', function () {
       await createClaim();
       expect(await sTheo.balanceOf(bob.address)).to.equal(0);
       const bobInitialStakingInfo = await Staking.stakingInfo(bob.address, 0);
-      expect(bobInitialStakingInfo.gonsInWarmup.toNumber()).to.equal(amountToStake);
+
+      const amountInGons = await sTheo.gonsForBalance(amountToStake);
+      expect(bobInitialStakingInfo.gonsInWarmup.toString()).to.equal(amountInGons.toString());
 
       await bob.Staking.claim(bob.address, [0]); // Can claim straight away (no movement forward in time needed)
       const bobNewStakingInfo = await Staking.stakingInfo(bob.address, 0);

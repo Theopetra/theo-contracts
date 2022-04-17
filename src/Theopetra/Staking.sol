@@ -107,7 +107,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 );
                 _send(_recipient, _amount);
             } else {
-                gonsInWarmup = gonsInWarmup.add(_amount);
+                gonsInWarmup = gonsInWarmup.add(IsTHEO(sTHEO).gonsForBalance(_amount));
                 stakingInfo[_recipient].push(
                     Claim({
                         deposit: _amount,
@@ -120,7 +120,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
             }
         } else {
             // funds go into warmup
-            gonsInWarmup = gonsInWarmup.add(_amount);
+            gonsInWarmup = gonsInWarmup.add(IsTHEO(sTHEO).gonsForBalance(_amount));
             stakingInfo[_recipient].push(
                 Claim({
                     deposit: _amount,
