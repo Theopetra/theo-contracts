@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.5;
 import "../Types/TheopetraAccessControlled.sol";
-import "hardhat/console.sol";
 import "../Libraries/SafeMath.sol";
 import "../Libraries/SafeERC20.sol";
 
@@ -51,6 +50,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         uint256 gonsInWarmup;
         uint256 warmupExpiry;
         uint256 stakingExpiry;
+        uint256 sTheoRemaining;
     }
 
     constructor(
@@ -102,7 +102,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
                         deposit: _amount,
                         gonsInWarmup: 0,
                         warmupExpiry: 0,
-                        stakingExpiry: block.timestamp.add(stakingTerm)
+                        stakingExpiry: block.timestamp.add(stakingTerm),
+                        sTheoRemaining: _amount
                     })
                 );
                 _send(_recipient, _amount);
@@ -113,7 +114,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
                         deposit: _amount,
                         gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
                         warmupExpiry: block.timestamp.add(warmupPeriod),
-                        stakingExpiry: block.timestamp.add(stakingTerm)
+                        stakingExpiry: block.timestamp.add(stakingTerm),
+                        sTheoRemaining: 0
                     })
                 );
                 // funds are not sent as they went to warmup
@@ -126,7 +128,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     deposit: _amount,
                     gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
                     warmupExpiry: block.timestamp.add(warmupPeriod),
-                    stakingExpiry: block.timestamp.add(stakingTerm)
+                    stakingExpiry: block.timestamp.add(stakingTerm),
+                    sTheoRemaining: 0
                 })
             );
             // sTheo is not sent as it has went into warmup
@@ -154,7 +157,9 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 stakingInfo[_recipient][_indexes[i]].gonsInWarmup = 0;
 
                 gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
-                amount_ = amount_.add(IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup));
+                uint256 balanceForGons = IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup);
+                stakingInfo[_recipient][_indexes[i]].sTheoRemaining = balanceForGons;
+                amount_ = amount_.add(balanceForGons);
             }
         }
 
@@ -193,18 +198,19 @@ contract TheopetraStaking is TheopetraAccessControlled {
     /**
      * @notice redeem sTHEO for THEO
      * @param _to address
-     * @param _amount uint
+     * @param _amounts uint
      * @param _trigger bool
      * @param _indexes uint256[]
      * @return amount_ uint
      */
     function unstake(
         address _to,
-        uint256 _amount,
+        uint256[] memory _amounts,
         bool _trigger,
         uint256[] memory _indexes
     ) external returns (uint256 amount_) {
-        amount_ = _amount;
+        require(_amounts.length == _indexes.length, "Amounts and indexes lengths do not match");
+        amount_ = 0;
         uint256 bounty;
         if (_trigger) {
             bounty = rebase();
@@ -213,34 +219,30 @@ contract TheopetraStaking is TheopetraAccessControlled {
         for (uint256 i = 0; i < _indexes.length; i++) {
             Claim memory info = stakingInfo[_to][_indexes[i]];
 
-            if (block.timestamp >= info.stakingExpiry) {
-                IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
-                amount_ = amount_.add(bounty);
+            stakingInfo[_to][_indexes[i]].sTheoRemaining = info.sTheoRemaining.sub(_amounts[i]);
 
-                require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
-                ITHEO(THEO).safeTransfer(_to, amount_);
+            if (block.timestamp >= info.stakingExpiry) {
+                IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amounts[i]);
+                amount_ = amount_.add(bounty).add(_amounts[i]);
             } else if (block.timestamp < info.stakingExpiry) {
                 // Transfer the staked THEO
-                IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
+                IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amounts[i]);
                 // Determine the penalty for removing early. Percentage expressed with 4 decimals
                 uint256 percentageComplete = 1000000.sub(
                     ((info.stakingExpiry.sub(block.timestamp)).mul(1000000)).div(stakingTerm)
                 );
-                uint256 penalty = getPenalty(amount_, percentageComplete.div(10000));
+                uint256 penalty = getPenalty(_amounts[i], percentageComplete.div(10000));
 
                 // Add the penalty to slashed gons
                 slashedGons = slashedGons.add(penalty);
 
                 // Figure out the amount to return based on this penalty
-                amount_ = amount_.sub(penalty);
-
-                // Ensure there is enough to make the transfer
-                require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
-
-                // Transfer the THEO to the recipient
-                ITHEO(THEO).safeTransfer(_to, amount_);
+                amount_ = amount_.add(_amounts[i]).sub(penalty);
             }
         }
+
+        require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
+        ITHEO(THEO).safeTransfer(_to, amount_);
     }
 
     mapping(uint256 => uint256) penaltyBands;
