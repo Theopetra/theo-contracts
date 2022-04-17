@@ -266,7 +266,7 @@ describe.only('Staking', function () {
     });
   });
 
-  describe.only('Unstake', function () {
+  describe('Unstake', function () {
     it('allows a staker to unstake before the staking expiry time', async function () {
       const [, bob] = users;
       const claim = true;

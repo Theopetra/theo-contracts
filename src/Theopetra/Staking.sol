@@ -220,13 +220,11 @@ contract TheopetraStaking is TheopetraAccessControlled {
             Claim memory info = stakingInfo[_to][_indexes[i]];
 
             stakingInfo[_to][_indexes[i]].sTheoRemaining = info.sTheoRemaining.sub(_amounts[i]);
+            IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amounts[i]);
 
             if (block.timestamp >= info.stakingExpiry) {
-                IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amounts[i]);
                 amount_ = amount_.add(bounty).add(_amounts[i]);
             } else if (block.timestamp < info.stakingExpiry) {
-                // Transfer the staked THEO
-                IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amounts[i]);
                 // Determine the penalty for removing early. Percentage expressed with 4 decimals
                 uint256 percentageComplete = 1000000.sub(
                     ((info.stakingExpiry.sub(block.timestamp)).mul(1000000)).div(stakingTerm)
