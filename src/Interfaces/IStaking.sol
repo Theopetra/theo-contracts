@@ -36,4 +36,6 @@ interface IStaking {
     function supplyInWarmup() external view returns (uint256);
 
     function indexesFor(address _user) external view returns (uint256[] memory);
+
+    function claimAll(address _recipient) external returns (uint256);
 }

@@ -162,6 +162,16 @@ contract TheopetraStaking is TheopetraAccessControlled {
     }
 
     /**
+     * @notice             claim all claimable claims for user
+     * @dev                if possible, query indexesFor() off-chain and input in claim() to save gas
+     * @param _recipient   address. The recipient to claim all claims for
+     * @return             sum of claim amounts sent, in sTHEO
+     */
+    function claimAll(address _recipient) external returns (uint256) {
+        return claim(_recipient, indexesFor(_recipient));
+    }
+
+    /**
         @notice forfeit sTHEO in warmup and retrieve THEO
      */
     function forfeit() external {

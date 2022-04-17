@@ -493,7 +493,7 @@ describe.only('Staking', function () {
 
       expect(await sTheo.balanceOf(bob.address)).to.equal(0);
 
-      await bob.Staking.claim(bob.address, [0, 1, 2]); // Can claim straight away (no movement forward in time needed)
+      await bob.Staking.claim(bob.address, [0, 1, 2]);
 
       expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake + secondStakeAmount);
     });
@@ -561,6 +561,25 @@ describe.only('Staking', function () {
       expect(await sTheo.balanceOf(bob.address)).to.equal(0);
     });
   });
+
+  describe('claimAll', function () {
+    it('allows a recipient to claim all of their claims that are out of warmup', async function () {
+      const [, bob] = users;
+      await Staking.setWarmup(60 * 60 * 24 * 7); // Set warmup to be 7 days
+
+      await createClaim();
+      const secondStakeAmount = 10_000_000_000_000;
+      await createClaim(secondStakeAmount);
+      await moveTimeForward(60 * 60 * 24 * 7 + 60); // Move time past warmup period
+
+      const thirdStakeAmount = 7_000_000_000_000;
+      await createClaim(thirdStakeAmount);
+      // Third stake is still in warmup; Only first and second stakes can be claimed
+
+      await bob.Staking.claimAll(bob.address);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake + secondStakeAmount);
+    })
+  })
 
   describe('isUnClaimed', function () {
     it('will return true for a claim that is in warmup', async function () {
