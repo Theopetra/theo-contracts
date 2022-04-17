@@ -139,12 +139,14 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @notice retrieve sTHEO from warmup
         @param _recipient address
         @param _indexes uint256[]      indexes of the sTHEO to retrieve
-        @return amount_                The amount of sTHEO sent
+        @return amount_                The sum total amount of sTHEO sent
      */
     function claim(address _recipient, uint256[] memory _indexes) public returns (uint256 amount_) {
         if (!isExternalLocked[_recipient]) {
             require(_recipient == msg.sender, "External claims for account are locked");
         }
+
+        uint256 amount_ = 0;
         for (uint256 i = 0; i < _indexes.length; i++) {
             Claim memory info = stakingInfo[_recipient][_indexes[i]];
 
@@ -152,9 +154,11 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 stakingInfo[_recipient][_indexes[i]].gonsInWarmup = 0;
 
                 gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
-                return _send(_recipient, IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup));
+                amount_ = amount_.add(IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup));
             }
         }
+
+        return _send(_recipient, amount_);
     }
 
     /**

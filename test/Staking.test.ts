@@ -2,9 +2,10 @@ import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 import { BigNumber } from 'ethers';
 
-import { setupUsers, moveTimeForward, randomIntFromInterval } from './utils';
+import { setupUsers, moveTimeForward, randomIntFromInterval, waitFor } from './utils';
 import { getContracts } from '../utils/helpers';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
+import { TheopetraAuthority, TheopetraStaking } from '../typechain-types';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture();
@@ -22,13 +23,13 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe('Staking', function () {
-  const amountToStake = 1000;
+describe.only('Staking', function () {
+  const amountToStake = 1_000_000_000_000;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
 
-  let Staking: any;
+  let Staking: TheopetraStaking;
   let sTheo: any;
-  let TheopetraAuthority: any;
+  let TheopetraAuthority: TheopetraAuthority;
   let TheopetraERC20Token: any;
   let Treasury: any;
   let users: any;
@@ -37,11 +38,10 @@ describe('Staking', function () {
   const unlockedStakingTerm = 0;
   const lockedStakingTerm = 31536000;
 
-  async function createClaim() {
+  async function createClaim(amount: number = amountToStake, claim = false) {
     const [, bob] = users;
-    const claim = false;
 
-    await bob.Staking.stake(bob.address, amountToStake, claim);
+    await bob.Staking.stake(bob.address, amount, claim);
   }
 
   beforeEach(async function () {
@@ -55,7 +55,7 @@ describe('Staking', function () {
       await TheopetraERC20Token.connect(treasurySigner).mint(bob.address, '10000000000000000'); // 1e16 Set to be same as return value in Treasury Mock for baseSupply
       await TheopetraAuthority.pushVault(Treasury.address, true); // Restore Treasury contract as Vault
     } else {
-      await TheopetraERC20Token.mint(bob.address, '10000000000000');
+      await TheopetraERC20Token.mint(bob.address, '10000000000000000');
     }
     await bob.TheopetraERC20Token.approve(Staking.address, LARGE_APPROVAL);
     await carol.TheopetraERC20Token.approve(Staking.address, LARGE_APPROVAL);
@@ -77,12 +77,16 @@ describe('Staking', function () {
 
     it('is deployed with the correct constructor arguments', async function () {
       const latestBlock = await ethers.provider.getBlock('latest');
-      const lowerBound = latestBlock.timestamp * 0.999 + epochLength;
-      const upperBound = latestBlock.timestamp * 1.001 + epochLength;
+
+      const expectedFirstEpochTime =
+        latestBlock.timestamp + (process.env.NODE_ENV === TESTWITHMOCKS ? 60 * 60 * 24 * 30 : epochLength); // Same values as used in deployment script
+
+      const lowerBound = expectedFirstEpochTime * 0.999;
+      const upperBound = expectedFirstEpochTime * 1.001;
       expect(await Staking.THEO()).to.equal(TheopetraERC20Token.address);
       expect(await Staking.sTHEO()).to.equal(sTheo.address);
 
-      const epoch = await Staking.epoch();
+      const epoch: any = await Staking.epoch();
 
       expect(epoch._length).to.equal(BigNumber.from(epochLength));
       expect(epoch.number).to.equal(BigNumber.from(firstEpochNumber));
@@ -272,7 +276,7 @@ describe('Staking', function () {
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
       expect((await TheopetraERC20Token.balanceOf(bob.address)).toString()).to.equal(
-        (bobStartingTheoBalance.sub(amountToStake)).toString()
+        bobStartingTheoBalance.sub(amountToStake).toString()
       );
       expect((await sTheo.balanceOf(bob.address)).toNumber()).to.equal(amountToStake);
       const stakingInfo = await Staking.stakingInfo(bob.address, 0);
@@ -444,6 +448,56 @@ describe('Staking', function () {
       expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
     });
 
+    it('allows a recipient to claims all of their claims from warmup (with warmup period zero)', async function () {
+      const [, bob] = users;
+      await createClaim();
+      const secondStakeAmount = 10_000_000_000_000;
+      await createClaim(secondStakeAmount);
+      const thirdStakeAmount = 7_000_000_000_000;
+      await createClaim(thirdStakeAmount);
+
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
+
+      await bob.Staking.claim(bob.address, [0, 1, 2]); // Can claim straight away (no movement forward in time needed)
+
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake + secondStakeAmount + thirdStakeAmount);
+    });
+
+    it('allows a recipient to claim multiple of their claims from warmup (with warmup period zero)', async function () {
+      const [, bob] = users;
+      await createClaim();
+      const secondStakeAmount = 10_000_000_000_000;
+      await createClaim(secondStakeAmount);
+      const thirdStakeAmount = 7_000_000_000_000;
+      await createClaim(thirdStakeAmount);
+
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
+
+      await bob.Staking.claim(bob.address, [0, 2]); // Can claim straight away (no movement forward in time needed)
+
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake + thirdStakeAmount);
+    });
+
+    it('allows a recipient to claim only claims that are out of warmup when making multiple claims', async function () {
+      const [, bob] = users;
+      await Staking.setWarmup(60 * 60 * 24 * 7); // Set warmup to be 7 days
+
+      await createClaim();
+      const secondStakeAmount = 10_000_000_000_000;
+      await createClaim(secondStakeAmount);
+      await moveTimeForward(60 * 60 * 24 * 7 + 60); // Move time past warmup period
+
+      const thirdStakeAmount = 7_000_000_000_000;
+      await createClaim(thirdStakeAmount);
+      // Third stake is still in warmup; Only first and second stakes can be claimed
+
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
+
+      await bob.Staking.claim(bob.address, [0, 1, 2]); // Can claim straight away (no movement forward in time needed)
+
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake + secondStakeAmount);
+    });
+
     it('allows a recipient to claim sTHEO from warmup, when warmup period is non-zero, after the warmup period has passed', async function () {
       const [, bob] = users;
       await Staking.setWarmup(60 * 60 * 24 * 7); // Set warmup to be 7 days
@@ -468,8 +522,7 @@ describe('Staking', function () {
       await bob.Staking.claim(bob.address, [0]); // Can claim straight away (no movement forward in time needed)
       const bobNewStakingInfo = await Staking.stakingInfo(bob.address, 0);
       expect(bobNewStakingInfo.gonsInWarmup.toNumber()).to.equal(0);
-
-    })
+    });
 
     it('errors and does not transfer any sTHEO when there is no claim', async function () {
       const [, bob] = users;

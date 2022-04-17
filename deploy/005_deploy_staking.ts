@@ -29,7 +29,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       firstEpochNumber = '1';
       const currentBlock = await ethers.provider.send('eth_blockNumber', []);
       const blockTimestamp = (await ethers.provider.getBlock(currentBlock)).timestamp;
-      firstEpochTime = blockTimestamp + 10000; // set the rebase far enough in the future to not hit it in tests
+
+      // If using mocks, then set the rebase far enough in the future to not hit it in tests
+      firstEpochTime = process.env.NODE_ENV === TESTWITHMOCKS ? (blockTimestamp + 60*60*24*30) : blockTimestamp + epochLength;
     }
 
     args = [
