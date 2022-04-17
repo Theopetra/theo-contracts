@@ -209,7 +209,11 @@ contract TheopetraStaking is TheopetraAccessControlled {
         bool _trigger,
         uint256[] memory _indexes
     ) external returns (uint256 amount_) {
+        if (!isExternalLocked[_to]) {
+            require(_to == msg.sender, "External unstaking for account is locked");
+        }
         require(_amounts.length == _indexes.length, "Amounts and indexes lengths do not match");
+
         amount_ = 0;
         uint256 bounty;
         if (_trigger) {

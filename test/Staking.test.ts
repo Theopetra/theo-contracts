@@ -267,6 +267,15 @@ describe.only('Staking', function () {
   });
 
   describe('Unstake', function () {
+    it('will revert if the lengths of amounts and indexes do not match', async function () {
+      const [, bob] = users;
+
+      // Immediately claim sTheo (claim == true)
+      await createClaim(amountToStake, true);
+      await createClaim(amountToStake, true);
+      await expect(bob.Staking.unstake(bob.address, [amountToStake], false, [0, 1])).to.be.revertedWith('Amounts and indexes lengths do not match');
+    })
+
     it('allows a staker to unstake before the staking expiry time', async function () {
       const [, bob] = users;
       const claim = true;
@@ -383,7 +392,7 @@ describe.only('Staking', function () {
     });
 
     it('allows a staker to redeem their sTHEO for the correct amount of THEO, when 25% of their total staking expiry time has passed (75% remaining)', async function () {
-      const [, bob] = users;
+      const [, bob, carol] = users;
       const claim = true;
 
       const bobStartingTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
@@ -767,7 +776,7 @@ describe.only('Staking', function () {
       await expect(carol.Staking.claim(bob.address, [0])).to.be.revertedWith('External claims for account are locked');
     });
 
-    it('allows an external claim to be made for sTHEO, if the receipient has toggled their Claim lock', async function () {
+    it('allows an external claim to be made for sTHEO, if the receipient has toggled their lock', async function () {
       const [, bob, carol] = users;
       await createClaim(); // Create a claim for Bob
 
@@ -778,7 +787,7 @@ describe.only('Staking', function () {
       expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
     });
 
-    it('allows an internal claim after the recipient has toggled the Claim lock', async function () {
+    it('allows an internal claim after the recipient has toggled the lock', async function () {
       const [, bob] = users;
       await createClaim(); // Create a claim for Bob
 
@@ -788,6 +797,26 @@ describe.only('Staking', function () {
       await bob.Staking.claim(bob.address, [0]);
       expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
     });
+
+    it('prevents an external unstake by default', async function() {
+      const [, bob, carol] = users;
+
+      await createClaim();
+
+      await expect(carol.Staking.unstake(bob.address, [amountToStake], false, [0])).to.be.revertedWith('External unstaking for account is locked');
+    })
+
+    it('allows an external unstake if the recipient has toggled the lock', async function() {
+      const [, bob, carol] = users;
+
+      await createClaim(amountToStake, true);
+      await bob.Staking.toggleLock();
+      await bob.sTheo.transfer(carol.address, amountToStake);
+
+      await carol.sTheo.approve(Staking.address, amountToStake);
+
+      await expect(carol.Staking.unstake(bob.address, [amountToStake], false, [0])).to.not.be.reverted;
+    })
   });
 
   describe('getPenalty', function () {
