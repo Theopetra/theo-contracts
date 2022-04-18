@@ -90,8 +90,8 @@ describe('Staking', function () {
         firstEpochTime,
         unlockedStakingTerm,
         TheopetraAuthority.address
-      )
-    })
+      );
+    });
 
     it('is deployed with the correct constructor arguments', async function () {
       const latestBlock = await ethers.provider.getBlock('latest');
@@ -697,7 +697,6 @@ describe('Staking', function () {
       await bob.Staking.claim(bob.address, [0]);
       const bobFinalStakingInfo = await Staking.stakingInfo(bob.address, 0);
       expect(bobFinalStakingInfo.gonsRemaining.toString()).to.equal(bobSecondStakingInfo.gonsRemaining.toString());
-
     });
 
     it('errors and does not transfer any sTHEO when there is no claim', async function () {

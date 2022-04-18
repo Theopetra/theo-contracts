@@ -94,16 +94,16 @@ contract TheopetraStaking is TheopetraAccessControlled {
         }
 
         if (warmupPeriod == 0 && _claim) {
-                stakingInfo[_recipient].push(
-                    Claim({
-                        deposit: _amount,
-                        gonsInWarmup: 0,
-                        warmupExpiry: 0,
-                        stakingExpiry: block.timestamp.add(stakingTerm),
-                        gonsRemaining: IsTHEO(sTHEO).gonsForBalance(_amount)
-                    })
-                );
-                _send(_recipient, _amount);
+            stakingInfo[_recipient].push(
+                Claim({
+                    deposit: _amount,
+                    gonsInWarmup: 0,
+                    warmupExpiry: 0,
+                    stakingExpiry: block.timestamp.add(stakingTerm),
+                    gonsRemaining: IsTHEO(sTHEO).gonsForBalance(_amount)
+                })
+            );
+            _send(_recipient, _amount);
         } else {
             gonsInWarmup = gonsInWarmup.add(IsTHEO(sTHEO).gonsForBalance(_amount));
             stakingInfo[_recipient].push(

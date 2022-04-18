@@ -23,7 +23,6 @@
 //   };
 // });
 
-
 // describe('Rebasing', function () {
 //   const amountToStake = 1000;
 //   const LARGE_APPROVAL = '100000000000000000000000000000000';

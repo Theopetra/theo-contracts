@@ -1,9 +1,7 @@
 import { Contract, Event } from 'ethers';
-import { LogDescription } from "@ethersproject/abi";
+import { LogDescription } from '@ethersproject/abi';
 import { ethers } from 'hardhat';
 import { TheopetraTreasury, TheopetraYieldReporter, YieldReporterMock } from '../../typechain-types';
-
-
 
 export async function setupUsers<T extends { [contractName: string]: Contract }>(
   addresses: string[],
@@ -40,7 +38,6 @@ export async function moveTimeForward<T>(timeInSeconds: number): Promise<void & 
 }
 
 export function decodeLogs(logs: Event[], targets: Contract[]): LogDescription[] {
-
   const decoded: LogDescription[] = [];
 
   logs.forEach((log) => {
