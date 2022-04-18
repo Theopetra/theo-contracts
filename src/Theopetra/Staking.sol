@@ -140,6 +140,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
     /**
         @notice retrieve sTHEO from warmup
+        @dev    After a claim has been retrieved (and a subsequent call to `isUnRetrieved` returns false),
+                the claim cannot be re-retrieved; gonsRemaining is therefore only set once by this method for each Claim
         @param _recipient address
         @param _indexes uint256[]      indexes of the sTHEO to retrieve
         @return amount_                The sum total amount of sTHEO sent
@@ -151,15 +153,17 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
         uint256 amount_ = 0;
         for (uint256 i = 0; i < _indexes.length; i++) {
-            Claim memory info = stakingInfo[_recipient][_indexes[i]];
+            if (isUnRetrieved(_recipient, i)) {
+                Claim memory info = stakingInfo[_recipient][_indexes[i]];
 
-            if (block.timestamp >= info.warmupExpiry && info.warmupExpiry != 0) {
-                stakingInfo[_recipient][_indexes[i]].gonsInWarmup = 0;
+                if (block.timestamp >= info.warmupExpiry && info.warmupExpiry != 0) {
+                    stakingInfo[_recipient][_indexes[i]].gonsInWarmup = 0;
 
-                gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
-                uint256 balanceForGons = IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup);
-                stakingInfo[_recipient][_indexes[i]].gonsRemaining = info.gonsInWarmup;
-                amount_ = amount_.add(balanceForGons);
+                    gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
+                    uint256 balanceForGons = IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup);
+                    stakingInfo[_recipient][_indexes[i]].gonsRemaining = info.gonsInWarmup;
+                    amount_ = amount_.add(balanceForGons);
+                }
             }
         }
 

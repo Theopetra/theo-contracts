@@ -650,10 +650,9 @@ describe.only('Staking', function () {
       expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
     });
 
-    it('updates the claim information with gonsInWarmup set to zero', async function () {
+    it('updates the claim information with gonsInWarmup set to zero and gonsRemaining set to the the original value for gonsInWarmup', async function () {
       const [, bob] = users;
       await createClaim();
-      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
       const bobInitialStakingInfo = await Staking.stakingInfo(bob.address, 0);
 
       const amountInGons = await sTheo.gonsForBalance(amountToStake);
@@ -662,6 +661,25 @@ describe.only('Staking', function () {
       await bob.Staking.claim(bob.address, [0]); // Can claim straight away (no movement forward in time needed)
       const bobNewStakingInfo = await Staking.stakingInfo(bob.address, 0);
       expect(bobNewStakingInfo.gonsInWarmup.toNumber()).to.equal(0);
+      expect(bobNewStakingInfo.gonsRemaining.toString()).to.equal(bobInitialStakingInfo.gonsInWarmup.toString());
+    });
+
+    it('only sets gonsRemaining once per Claim: it prevents re-retrieval of already retrieved claims', async function () {
+      const [, bob] = users;
+      await createClaim();
+      const bobInitialStakingInfo = await Staking.stakingInfo(bob.address, 0);
+
+      // First claim
+      await bob.Staking.claim(bob.address, [0]); // Can claim straight away (no movement forward in time needed)
+
+      const bobSecondStakingInfo = await Staking.stakingInfo(bob.address, 0);
+      expect(bobSecondStakingInfo.gonsRemaining.toString()).to.equal(bobInitialStakingInfo.gonsInWarmup.toString());
+
+      // Second claim on the same index as the first
+      await bob.Staking.claim(bob.address, [0]);
+      const bobFinalStakingInfo = await Staking.stakingInfo(bob.address, 0);
+      expect(bobFinalStakingInfo.gonsRemaining.toString()).to.equal(bobSecondStakingInfo.gonsRemaining.toString());
+
     });
 
     it('errors and does not transfer any sTHEO when there is no claim', async function () {
@@ -780,7 +798,7 @@ describe.only('Staking', function () {
 
       await bob.Staking.claim(bob.address, [0]);
 
-      await moveTimeForward(lockedStakingTerm * 1.05) // move passed 100% of staking term to allow partial redeems
+      await moveTimeForward(lockedStakingTerm * 1.05); // move passed 100% of staking term to allow partial redeems
 
       await bob.sTheo.approve(Staking.address, amountToStake);
       await bob.Staking.unstake(bob.address, [amountToStake - amountToStake / 2], false, [0]);
