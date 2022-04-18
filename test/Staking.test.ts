@@ -2,10 +2,10 @@ import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 import { BigNumber } from 'ethers';
 
-import { setupUsers, moveTimeForward, randomIntFromInterval, waitFor } from './utils';
+import { setupUsers, moveTimeForward, randomIntFromInterval } from './utils';
 import { getContracts } from '../utils/helpers';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
-import { TheopetraAuthority, TheopetraStaking } from '../typechain-types';
+import { TheopetraAuthority, TheopetraStaking, TheopetraStaking__factory } from '../typechain-types';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture();
@@ -23,7 +23,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe.only('Staking', function () {
+describe('Staking', function () {
   const amountToStake = 1_000_000_000_000;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
 
@@ -74,6 +74,24 @@ describe.only('Staking', function () {
     it('can be deployed', async function () {
       await setup();
     });
+
+    it('can be deployed for an unlocked tranche', async function () {
+      const [owner] = await ethers.getSigners();
+      const epochLength = 8 * 60 * 60;
+      const firstEpochNumber = '1';
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const firstEpochTime = latestBlock.timestamp + epochLength;
+
+      await new TheopetraStaking__factory(owner).deploy(
+        TheopetraERC20Token.address,
+        sTheo.address,
+        epochLength,
+        firstEpochNumber,
+        firstEpochTime,
+        unlockedStakingTerm,
+        TheopetraAuthority.address
+      )
+    })
 
     it('is deployed with the correct constructor arguments', async function () {
       const latestBlock = await ethers.provider.getBlock('latest');

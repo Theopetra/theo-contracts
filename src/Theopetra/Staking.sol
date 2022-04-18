@@ -74,9 +74,9 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
     /**
         @notice stake THEO to enter warmup
-        @dev    if warmupPeriod is 0 and _claim is true, store warmupExpiry 0:
+        @dev    if warmupPeriod is 0 and _claim is true, funds are sent immediately, and warmupExpiry is 0:
                 this is so that the staker cannot retrieve sTHEO from warmup using the stored
-                Claim (see also `claim`)
+                Claim (see also `claim`). If warmupPeriod is not 0, or if _claim is false, then funds go into warmup (sTheo is not sent)
         @param _amount uint
         @param _claim bool
         @return uint256
@@ -93,10 +93,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
             require(_recipient == msg.sender, "External deposits for account are locked");
         }
 
-        if (warmupPeriod == 0) {
-            // funds are sent if _claim is true
-            // and go to warmup if _claim is false
-            if (_claim) {
+        if (warmupPeriod == 0 && _claim) {
                 stakingInfo[_recipient].push(
                     Claim({
                         deposit: _amount,
@@ -107,21 +104,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     })
                 );
                 _send(_recipient, _amount);
-            } else {
-                gonsInWarmup = gonsInWarmup.add(IsTHEO(sTHEO).gonsForBalance(_amount));
-                stakingInfo[_recipient].push(
-                    Claim({
-                        deposit: _amount,
-                        gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
-                        warmupExpiry: block.timestamp.add(warmupPeriod),
-                        stakingExpiry: block.timestamp.add(stakingTerm),
-                        gonsRemaining: 0
-                    })
-                );
-                // funds are not sent as they went to warmup
-            }
         } else {
-            // funds go into warmup
             gonsInWarmup = gonsInWarmup.add(IsTHEO(sTHEO).gonsForBalance(_amount));
             stakingInfo[_recipient].push(
                 Claim({
@@ -132,7 +115,6 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     gonsRemaining: 0
                 })
             );
-            // sTheo is not sent as it has went into warmup
         }
 
         return _amount;
