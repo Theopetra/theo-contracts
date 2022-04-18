@@ -190,6 +190,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
      *         For unstaking at or beyond 100% of the staking term, a part-redeem can be made: that is, a user may redeem less than 100% of the total amount available to redeem
      *         (as represented by gonsRemaining), during a call to `unstake`
      *         The penalty is added (after conversion to gons) to slashed gons and subtracted from the amount to return
+     *         gonsRemaining keeps track of the amount of sTheo (as gons) that can be redeemed for a Claim
      * @param _to address
      * @param _amounts uint
      * @param _trigger bool
