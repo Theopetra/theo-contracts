@@ -276,7 +276,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
     }
 
     function ceil(uint256 a, uint256 m) private view returns (uint256) {
-        return a == 0 ? m : ((a + m - 1) / m) * m;
+        return a == 0 ? m : ((a.add(m).sub(1)).div(m)).mul(m);
     }
 
     function getPenalty(uint256 _amount, uint256 stakingTimePercentComplete) public view returns (uint256) {
