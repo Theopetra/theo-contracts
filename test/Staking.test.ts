@@ -682,20 +682,20 @@ describe.only('Staking', function () {
     });
   });
 
-  describe('isUnClaimed', function () {
+  describe('isUnRetrieved', function () {
     it('will return true for a claim that is in warmup', async function () {
       const [, bob] = users;
       await Staking.setWarmup(60 * 60 * 24 * 5); // Set warmup to be 5 days
       await createClaim();
 
-      expect(await Staking.isUnClaimed(bob.address, 0)).to.equal(true);
+      expect(await Staking.isUnRetrieved(bob.address, 0)).to.equal(true);
     });
 
     it('will return true for a claim that is out of warmup but that has not yet been claimed', async function () {
       const [, bob] = users;
       await createClaim(); // zero warmup
 
-      expect(await Staking.isUnClaimed(bob.address, 0)).to.equal(true);
+      expect(await Staking.isUnRetrieved(bob.address, 0)).to.equal(true);
     });
 
     it('will return false for a claim that has been claimed', async function () {
@@ -703,23 +703,69 @@ describe.only('Staking', function () {
       await createClaim(); // zero warmup
 
       await bob.Staking.claim(bob.address, [0]);
-      expect(await Staking.isUnClaimed(bob.address, 0)).to.equal(false);
+      expect(await Staking.isUnRetrieved(bob.address, 0)).to.equal(false);
+    });
+  });
+
+  describe('isUnRedeemed', function () {
+    it.only('will return false for a claim that is in warmup', async function () {
+      const [, bob] = users;
+      await Staking.setWarmup(60 * 60 * 24 * 5); // Set warmup to be 5 days
+      await createClaim();
+
+      expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(false);
+    });
+
+    it.only('will return true for a claim has sTHEO remaining to be redeemed (after being claimed from warmup)', async function () {
+      const [, bob] = users;
+      await createClaim(); // zero warmup period
+
+      await bob.Staking.claim(bob.address, [0]);
+      expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(true);
+    });
+
+
+
+    it.only('will return false for a claim has had all sTHEO redeemed (unstaked)', async function () {
+      const [, bob] = users;
+      await createClaim(); // zero warmup period
+
+      await bob.Staking.claim(bob.address, [0]);
+
+      await bob.sTheo.approve(Staking.address, amountToStake);
+      await bob.Staking.unstake(bob.address, [amountToStake], false, [0]);
+      expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(false);
+    });
+
+    it.only('will return true until all of the available sTHEO has been redeemed (unstaked)', async function () {
+      const [, bob] = users;
+      await createClaim(); // zero warmup period
+
+      await bob.Staking.claim(bob.address, [0]);
+
+      await bob.sTheo.approve(Staking.address, amountToStake);
+      await bob.Staking.unstake(bob.address, [amountToStake - (amountToStake / 2)], false, [0]);
+      expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(true);
+      await bob.Staking.unstake(bob.address, [amountToStake - (amountToStake / 2)], false, [0]);
+      expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(false);
     });
   });
 
   describe('indexesFor', function () {
-    it('returns the indexes of un-claimed claims', async function () {
+    it('returns the indexes of un-retrieved claims (that is, claims that have sTHEO that can be retrieved from warmup)', async function () {
       const [, bob] = users;
       await createClaim();
       await createClaim();
       await createClaim();
 
       await bob.Staking.claim(bob.address, [1]);
-      const response = await Staking.indexesFor(bob.address);
+      const response = await Staking.indexesFor(bob.address, true); //
       const returnedIndexes = response.map((element: any) => element.toNumber());
       const expectedIndexes = [0, 2];
       expect(returnedIndexes).to.deep.equal(expectedIndexes);
     });
+
+
   });
 
   describe('isExternalLocked', function () {

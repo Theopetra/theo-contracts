@@ -167,13 +167,13 @@ contract TheopetraStaking is TheopetraAccessControlled {
     }
 
     /**
-     * @notice             claim all claimable claims for user
+     * @notice             claim all retrievable (from warmup) claims for user
      * @dev                if possible, query indexesFor() off-chain and input in claim() to save gas
-     * @param _recipient   address. The recipient to claim all claims for
+     * @param _recipient   address. The recipient to retrieve sTHEO from all claims for
      * @return             sum of claim amounts sent, in sTHEO
      */
     function claimAll(address _recipient) external returns (uint256) {
-        return claim(_recipient, indexesFor(_recipient));
+        return claim(_recipient, indexesFor(_recipient, true));
     }
 
     /**
@@ -197,6 +197,9 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
     /**
      * @notice redeem sTHEO for THEO
+     * @dev    if `stakingExpiry` has not yet passed, Determine the penalty for removing early.
+     *         `percentageComplete` is the percentage of time that the stake has completed (versus the `stakingTerm`), expressed with 4 decimals
+     *         The penalty is added to slashed gons and subtracted from the amount to return
      * @param _to address
      * @param _amounts uint
      * @param _trigger bool
@@ -229,16 +232,14 @@ contract TheopetraStaking is TheopetraAccessControlled {
             if (block.timestamp >= info.stakingExpiry) {
                 amount_ = amount_.add(bounty).add(_amounts[i]);
             } else if (block.timestamp < info.stakingExpiry) {
-                // Determine the penalty for removing early. Percentage expressed with 4 decimals
+                //
                 uint256 percentageComplete = 1000000.sub(
                     ((info.stakingExpiry.sub(block.timestamp)).mul(1000000)).div(stakingTerm)
                 );
                 uint256 penalty = getPenalty(_amounts[i], percentageComplete.div(10000));
 
-                // Add the penalty to slashed gons
                 slashedGons = slashedGons.add(penalty);
 
-                // Figure out the amount to return based on this penalty
                 amount_ = amount_.add(_amounts[i]).sub(penalty);
             }
         }
@@ -411,23 +412,24 @@ contract TheopetraStaking is TheopetraAccessControlled {
     }
 
     /**
-     * @notice             all un-claimed claims for user
-     * @param _user        the user to query claims for
-     * @return             the indexes of un-claimed claims for the user
+     * @notice                all un-retrieved claims (sTHEO available to retrieve from warmup), or all un-redeemed claims (sTHEO retrieved but yet to be redeemed for THEO) for a user
+     * @param _user           the user to query claims for
+     * @param unRetrieved   bool. If true, return indexes of all un-claimed claims from warmup, else return indexes of all claims with un-redeemed sTheo
+     * @return                indexes of un-retrieved claims, or of un-redeemed claims, for the user
      */
-    function indexesFor(address _user) public view returns (uint256[] memory) {
+    function indexesFor(address _user, bool unRetrieved) public view returns (uint256[] memory) {
         Claim[] memory claims = stakingInfo[_user];
 
         uint256 length;
         for (uint256 i = 0; i < claims.length; i++) {
-            if (isUnClaimed(_user, i)) length++;
+            if (unRetrieved ? isUnRetrieved(_user, i) : isUnRedeemed(_user, i)) length++;
         }
 
         uint256[] memory indexes = new uint256[](length);
         uint256 position;
 
         for (uint256 i = 0; i < claims.length; i++) {
-            if (isUnClaimed(_user, i)) {
+            if (unRetrieved ? isUnRetrieved(_user, i) : isUnRedeemed(_user, i)) {
                 indexes[position] = i;
                 position++;
             }
@@ -437,13 +439,24 @@ contract TheopetraStaking is TheopetraAccessControlled {
     }
 
     /**
-     * @notice             determine whether a claim has not yet been claimed
+     * @notice             determine whether sTHEO has been retrieved (via `claim`) for a Claim
      * @param _user        the user to query claims for
      * @param _index       the index of the claim
-     * @return bool        true if the claim has not yet been claimed
+     * @return bool        true if the sTHEO has not yet been retrieved for the claim
      */
-    function isUnClaimed(address _user, uint256 _index) public view returns (bool) {
+    function isUnRetrieved(address _user, uint256 _index) public view returns (bool) {
         Claim memory claim = stakingInfo[_user][_index];
         return claim.gonsInWarmup > 0;
+    }
+
+    /**
+     * @notice             determine whether a claim has a (non-zero) sTHEO balance remaining that can be redeemed for THEO
+     * @param _user        the user to query claims for
+     * @param _index       the index of the claim
+     * @return bool        true if the total sTHEO on the claim has not yet been redeemed for THEO
+     */
+    function isUnRedeemed(address _user, uint256 _index) public view returns (bool) {
+        Claim memory claim = stakingInfo[_user][_index];
+        return claim.gonsInWarmup == 0 && claim.sTheoRemaining > 0;
     }
 }
