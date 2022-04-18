@@ -50,7 +50,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         uint256 gonsInWarmup;
         uint256 warmupExpiry;
         uint256 stakingExpiry;
-        uint256 sTheoRemaining;
+        uint256 gonsRemaining;
     }
 
     constructor(
@@ -103,7 +103,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                         gonsInWarmup: 0,
                         warmupExpiry: 0,
                         stakingExpiry: block.timestamp.add(stakingTerm),
-                        sTheoRemaining: _amount
+                        gonsRemaining: IsTHEO(sTHEO).gonsForBalance(_amount)
                     })
                 );
                 _send(_recipient, _amount);
@@ -115,7 +115,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                         gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
                         warmupExpiry: block.timestamp.add(warmupPeriod),
                         stakingExpiry: block.timestamp.add(stakingTerm),
-                        sTheoRemaining: 0
+                        gonsRemaining: 0
                     })
                 );
                 // funds are not sent as they went to warmup
@@ -129,7 +129,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
                     warmupExpiry: block.timestamp.add(warmupPeriod),
                     stakingExpiry: block.timestamp.add(stakingTerm),
-                    sTheoRemaining: 0
+                    gonsRemaining: 0
                 })
             );
             // sTheo is not sent as it has went into warmup
@@ -158,7 +158,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
                 gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
                 uint256 balanceForGons = IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup);
-                stakingInfo[_recipient][_indexes[i]].sTheoRemaining = balanceForGons;
+                stakingInfo[_recipient][_indexes[i]].gonsRemaining = info.gonsInWarmup;
                 amount_ = amount_.add(balanceForGons);
             }
         }
@@ -196,10 +196,14 @@ contract TheopetraStaking is TheopetraAccessControlled {
     }
 
     /**
-     * @notice redeem sTHEO for THEO
+     * @notice redeem sTHEO for THEO from un-redeemed claims
      * @dev    if `stakingExpiry` has not yet passed, Determine the penalty for removing early.
-     *         `percentageComplete` is the percentage of time that the stake has completed (versus the `stakingTerm`), expressed with 4 decimals
-     *         The penalty is added to slashed gons and subtracted from the amount to return
+     *         `percentageComplete` is the percentage of time that the stake has completed (versus the `stakingTerm`), expressed with 4 decimals.
+     *         For unstaking before 100% of staking term, only the principle deposit -- less a penalty -- is returned. In this case, the full claim must be redeemed
+     *         and gonsRemaining becomes zero.
+     *         For unstaking at or beyond 100% of the staking term, a part-redeem can be made: that is, a user may redeem less than 100% of the total amount available to redeem
+     *         (as represented by gonsRemaining), during a call to `unstake`
+     *         The penalty is added (after conversion to gons) to slashed gons and subtracted from the amount to return
      * @param _to address
      * @param _amounts uint
      * @param _trigger bool
@@ -226,21 +230,28 @@ contract TheopetraStaking is TheopetraAccessControlled {
         for (uint256 i = 0; i < _indexes.length; i++) {
             Claim memory info = stakingInfo[_to][_indexes[i]];
 
-            stakingInfo[_to][_indexes[i]].sTheoRemaining = info.sTheoRemaining.sub(_amounts[i]);
-            IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amounts[i]);
-
-            if (block.timestamp >= info.stakingExpiry) {
-                amount_ = amount_.add(bounty).add(_amounts[i]);
-            } else if (block.timestamp < info.stakingExpiry) {
-                //
-                uint256 percentageComplete = 1000000.sub(
-                    ((info.stakingExpiry.sub(block.timestamp)).mul(1000000)).div(stakingTerm)
+            if (isUnRedeemed(_to, i)) {
+                stakingInfo[_to][_indexes[i]].gonsRemaining = info.gonsRemaining.sub(
+                    IsTHEO(sTHEO).gonsForBalance(_amounts[i])
                 );
-                uint256 penalty = getPenalty(_amounts[i], percentageComplete.div(10000));
+                IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amounts[i]);
 
-                slashedGons = slashedGons.add(penalty);
+                if (block.timestamp >= info.stakingExpiry) {
+                    amount_ = amount_.add(bounty).add(_amounts[i]);
+                } else if (block.timestamp < info.stakingExpiry) {
+                    require(
+                        stakingInfo[_to][_indexes[i]].gonsRemaining == 0,
+                        "Amount does not match available remaining to redeem"
+                    );
+                    uint256 percentageComplete = 1000000.sub(
+                        ((info.stakingExpiry.sub(block.timestamp)).mul(1000000)).div(stakingTerm)
+                    );
+                    uint256 penalty = getPenalty(stakingInfo[_to][_indexes[i]].deposit, percentageComplete.div(10000));
 
-                amount_ = amount_.add(_amounts[i]).sub(penalty);
+                    slashedGons = slashedGons.add(IsTHEO(sTHEO).gonsForBalance(penalty));
+
+                    amount_ = amount_.add(stakingInfo[_to][_indexes[i]].deposit).sub(penalty);
+                }
             }
         }
 
@@ -451,12 +462,13 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
     /**
      * @notice             determine whether a claim has a (non-zero) sTHEO balance remaining that can be redeemed for THEO
+     *                     if the claim is still in warmup, this method will return false (as no sTheo can yet be redeemed against the claim)
      * @param _user        the user to query claims for
      * @param _index       the index of the claim
      * @return bool        true if the total sTHEO on the claim has not yet been redeemed for THEO
      */
     function isUnRedeemed(address _user, uint256 _index) public view returns (bool) {
         Claim memory claim = stakingInfo[_user][_index];
-        return claim.gonsInWarmup == 0 && claim.sTheoRemaining > 0;
+        return claim.gonsInWarmup == 0 && claim.gonsRemaining > 0;
     }
 }

@@ -273,10 +273,12 @@ describe.only('Staking', function () {
       // Immediately claim sTheo (claim == true)
       await createClaim(amountToStake, true);
       await createClaim(amountToStake, true);
-      await expect(bob.Staking.unstake(bob.address, [amountToStake], false, [0, 1])).to.be.revertedWith('Amounts and indexes lengths do not match');
-    })
+      await expect(bob.Staking.unstake(bob.address, [amountToStake], false, [0, 1])).to.be.revertedWith(
+        'Amounts and indexes lengths do not match'
+      );
+    });
 
-    it('allows a staker to unstake before the staking expiry time', async function () {
+    it('allows a staker to unstake before the staking expiry time, providing that the amount to unstake matches the remaining amount available to redeem', async function () {
       const [, bob] = users;
       const claim = true;
 
@@ -294,12 +296,13 @@ describe.only('Staking', function () {
       expect(stakingInfo.stakingExpiry.toNumber()).to.be.greaterThan(latestBlock.timestamp);
       await bob.sTheo.approve(Staking.address, amountToStake);
 
+      // Unstake the same amount that was originally staked
       await expect(bob.Staking.unstake(bob.address, [amountToStake], false, [0])).to.not.be.reverted;
 
       expect((await sTheo.balanceOf(bob.address)).toNumber()).to.equal(0);
     });
 
-    it('allows a staker to unstake less than the claim limit', async function () {
+    it('will revert if a staker requests to unstake less than the remaining amount to redeem before 100% of the staking term', async function () {
       const [, bob] = users;
 
       const bobStartingTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
@@ -316,10 +319,12 @@ describe.only('Staking', function () {
       expect(stakingInfo.stakingExpiry.toNumber()).to.be.greaterThan(latestBlock.timestamp);
       await bob.sTheo.approve(Staking.address, amountToStake);
 
-      await expect(bob.Staking.unstake(bob.address, [amountToStake - 10_000_000_000], false, [0])).to.not.be.reverted;
+      await expect(bob.Staking.unstake(bob.address, [amountToStake - 10_000_000_000], false, [0])).to.be.revertedWith(
+        'Amount does not match available remaining to redeem'
+      );
     });
 
-    it('reverts if a staker attempts to unstake more than the claim limit (using sTheo immediately claimed, with no warmup)', async function () {
+    it('reverts if a staker attempts to unstake more than the remaining amount available to redeem (using sTheo immediately claimed, with no warmup)', async function () {
       const [, bob] = users;
 
       // Immediately claim sTheo (claim == true)
@@ -338,7 +343,7 @@ describe.only('Staking', function () {
       expect((await sTheo.balanceOf(bob.address)).toNumber()).to.equal(amountToStake * 2);
     });
 
-    it('reverts if a staker attempts to unstake more than the claim limit (using sTheo claimed via warmup)', async function () {
+    it('reverts if a staker attempts to unstake more than the remaining amount available to redeem (using sTheo claimed via warmup)', async function () {
       const [, bob] = users;
 
       await createClaim(amountToStake, false);
@@ -358,21 +363,44 @@ describe.only('Staking', function () {
       expect((await sTheo.balanceOf(bob.address)).toNumber()).to.equal(amountToStake * 2);
     });
 
-    it('correctly reduces the amount of sTheo remaining to be claimed on a Claim', async function () {
+    it('correctly reduces -- to zero -- the amount of gons remaining to be redeemed on a Claim when redeeming before 100% of staking term', async function () {
       const [, bob] = users;
 
       await createClaim(amountToStake, false);
       await bob.Staking.claimAll(bob.address); // Can claim straight away (no movement forward in time needed)
 
       await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
-      const amountToUnstake = amountToStake - 2_000_000_000;
-      await bob.Staking.unstake(bob.address, [amountToUnstake], false, [0]);
+      await bob.Staking.unstake(bob.address, [amountToStake], false, [0]);
 
       const firstClaimUpdatedInfo = await Staking.stakingInfo(bob.address, 0);
-      expect(firstClaimUpdatedInfo.sTheoRemaining).to.equal(amountToStake - amountToUnstake);
+
+      expect(firstClaimUpdatedInfo.gonsRemaining).to.equal(0);
     });
 
-    it('correctly reduces the amount of sTheo remaining to be claimed on multiple Claims', async function () {
+    it('correctly reduces the amount of gons remaining to be redeemed on a Claim, when redeeming a partial amount of the total available, after 100% of staking term has passed', async function () {
+      const [, bob] = users;
+
+      await createClaim(amountToStake, false);
+      await bob.Staking.claimAll(bob.address); // Can claim straight away (no movement forward in time needed)
+
+      await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
+
+      const amountToUnStake = amountToStake - 2_000_000_000;
+
+      // Move time forward past 100% of staking term to allow partial redeem
+      await moveTimeForward(lockedStakingTerm * 1.05);
+
+      await bob.Staking.unstake(bob.address, [amountToUnStake], false, [0]);
+
+      const firstClaimUpdatedInfo = await Staking.stakingInfo(bob.address, 0);
+      const expectedGonsRemaining = (await sTheo.gonsForBalance(amountToStake)).sub(
+        await sTheo.gonsForBalance(amountToUnStake)
+      );
+
+      expect(firstClaimUpdatedInfo.gonsRemaining).to.equal(expectedGonsRemaining);
+    });
+
+    it('correctly reduces the amount of gons remaining to be redeemed on multiple Claims, when unstaking after 100% of staking term has passed', async function () {
       const [, bob] = users;
 
       await createClaim(amountToStake, false);
@@ -383,15 +411,26 @@ describe.only('Staking', function () {
       await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
       const firstAmountToUnstake = amountToStake - 2_000_000_000;
       const secondAmountToUnstake = secondAmountToStake - 1_000_000_000;
-      await bob.Staking.unstake(bob.address, [firstAmountToUnstake,secondAmountToUnstake], false, [0, 1]);
+
+      // Move time forward past 100% of staking term to allow partial redeem
+      await moveTimeForward(lockedStakingTerm * 1.05);
+
+      await bob.Staking.unstake(bob.address, [firstAmountToUnstake, secondAmountToUnstake], false, [0, 1]);
 
       const firstClaimUpdatedInfo = await Staking.stakingInfo(bob.address, 0);
       const secondClaimUpdatedInfo = await Staking.stakingInfo(bob.address, 1);
-      expect(firstClaimUpdatedInfo.sTheoRemaining).to.equal(amountToStake - firstAmountToUnstake );
-      expect(secondClaimUpdatedInfo.sTheoRemaining).to.equal(secondAmountToStake - secondAmountToUnstake );
+      const firstExpectedGonsRemaining = (await sTheo.gonsForBalance(amountToStake)).sub(
+        await sTheo.gonsForBalance(firstAmountToUnstake)
+      );
+      const secondExpectedGonsRemaining = (await sTheo.gonsForBalance(secondAmountToStake)).sub(
+        await sTheo.gonsForBalance(secondAmountToUnstake)
+      );
+
+      expect(firstClaimUpdatedInfo.gonsRemaining).to.equal(firstExpectedGonsRemaining);
+      expect(secondClaimUpdatedInfo.gonsRemaining).to.equal(secondExpectedGonsRemaining);
     });
 
-    it('allows a staker to redeem their sTHEO for the correct amount of THEO, when 25% of their total staking expiry time has passed (75% remaining)', async function () {
+    it('allows a staker to redeem their sTHEO for the correct amount of THEO -- that is, their principal deposit minus penalty -- when 25% of their total staking expiry time has passed (75% remaining)', async function () {
       const [, bob, carol] = users;
       const claim = true;
 
@@ -415,7 +454,7 @@ describe.only('Staking', function () {
       );
     });
 
-    it('allows a staker to redeem their sTHEO for the correct amount of THEO, at any time before the staking expiry', async function () {
+    it('allows a staker to redeem their sTHEO for the correct amount of THEO -- deposit minus penalty -- at any time before the staking expiry', async function () {
       const [, bob] = users;
       const claim = true;
 
@@ -708,7 +747,7 @@ describe.only('Staking', function () {
   });
 
   describe('isUnRedeemed', function () {
-    it.only('will return false for a claim that is in warmup', async function () {
+    it('will return false for a claim that is in warmup', async function () {
       const [, bob] = users;
       await Staking.setWarmup(60 * 60 * 24 * 5); // Set warmup to be 5 days
       await createClaim();
@@ -716,7 +755,7 @@ describe.only('Staking', function () {
       expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(false);
     });
 
-    it.only('will return true for a claim has sTHEO remaining to be redeemed (after being claimed from warmup)', async function () {
+    it('will return true for a claim that has sTHEO remaining to be redeemed (after being claimed from warmup)', async function () {
       const [, bob] = users;
       await createClaim(); // zero warmup period
 
@@ -724,9 +763,7 @@ describe.only('Staking', function () {
       expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(true);
     });
 
-
-
-    it.only('will return false for a claim has had all sTHEO redeemed (unstaked)', async function () {
+    it('will return false for a claim has had all sTHEO redeemed (unstaked)', async function () {
       const [, bob] = users;
       await createClaim(); // zero warmup period
 
@@ -737,16 +774,18 @@ describe.only('Staking', function () {
       expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(false);
     });
 
-    it.only('will return true until all of the available sTHEO has been redeemed (unstaked)', async function () {
+    it('will return true until all of the available sTHEO has been redeemed (unstaked)', async function () {
       const [, bob] = users;
       await createClaim(); // zero warmup period
 
       await bob.Staking.claim(bob.address, [0]);
 
+      await moveTimeForward(lockedStakingTerm * 1.05) // move passed 100% of staking term to allow partial redeems
+
       await bob.sTheo.approve(Staking.address, amountToStake);
-      await bob.Staking.unstake(bob.address, [amountToStake - (amountToStake / 2)], false, [0]);
+      await bob.Staking.unstake(bob.address, [amountToStake - amountToStake / 2], false, [0]);
       expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(true);
-      await bob.Staking.unstake(bob.address, [amountToStake - (amountToStake / 2)], false, [0]);
+      await bob.Staking.unstake(bob.address, [amountToStake - amountToStake / 2], false, [0]);
       expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(false);
     });
   });
@@ -764,8 +803,6 @@ describe.only('Staking', function () {
       const expectedIndexes = [0, 2];
       expect(returnedIndexes).to.deep.equal(expectedIndexes);
     });
-
-
   });
 
   describe('isExternalLocked', function () {
@@ -844,15 +881,17 @@ describe.only('Staking', function () {
       expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
     });
 
-    it('prevents an external unstake by default', async function() {
+    it('prevents an external unstake by default', async function () {
       const [, bob, carol] = users;
 
       await createClaim();
 
-      await expect(carol.Staking.unstake(bob.address, [amountToStake], false, [0])).to.be.revertedWith('External unstaking for account is locked');
-    })
+      await expect(carol.Staking.unstake(bob.address, [amountToStake], false, [0])).to.be.revertedWith(
+        'External unstaking for account is locked'
+      );
+    });
 
-    it('allows an external unstake if the recipient has toggled the lock', async function() {
+    it('allows an external unstake if the recipient has toggled the lock', async function () {
       const [, bob, carol] = users;
 
       await createClaim(amountToStake, true);
@@ -862,7 +901,7 @@ describe.only('Staking', function () {
       await carol.sTheo.approve(Staking.address, amountToStake);
 
       await expect(carol.Staking.unstake(bob.address, [amountToStake], false, [0])).to.not.be.reverted;
-    })
+    });
   });
 
   describe('getPenalty', function () {
