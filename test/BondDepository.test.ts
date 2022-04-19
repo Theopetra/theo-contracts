@@ -779,7 +779,7 @@ describe('Bond depository', function () {
       expect(await TheopetraERC20Token.balanceOf(bob.address)).to.equal(balance);
     });
 
-    it('can be redeemed after the vesting time has passed', async function () {
+    it('can be redeemed after the vesting time has passed, sending sTHEO when `_stake` is true', async function () {
       const [, , bob, carol] = users;
       const autoStake = true;
 
@@ -801,6 +801,34 @@ describe('Bond depository', function () {
 
       await BondDepository.redeemAll(bob.address, autoStake);
       const bobBalance = Number(await sTheo.balanceOf(bob.address));
+
+      expect(bobBalance).to.greaterThanOrEqual(Number(expectedPayout));
+      expect(bobBalance).to.lessThan(Number(expectedPayout) * 1.0001);
+    });
+
+    it.only('can be redeemed after the vesting time has passed, sending THEO when `_stake` is false', async function () {
+      const [, , bob, carol] = users;
+      const autoStake = false;
+
+      const [expectedPayout] = await bob.BondDepository.callStatic.deposit(
+        bid,
+        depositAmount,
+        initialPrice,
+        bob.address,
+        carol.address
+      );
+
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address);
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+
+      expect(bobNotesIndexes.length).to.equal(1);
+
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const newTimestampInSeconds = latestBlock.timestamp + vesting * 2;
+      await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+
+      await BondDepository.redeemAll(bob.address, autoStake);
+      const bobBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
 
       expect(bobBalance).to.greaterThanOrEqual(Number(expectedPayout));
       expect(bobBalance).to.lessThan(Number(expectedPayout) * 1.0001);
