@@ -100,7 +100,6 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     string internal notAccepted = "Treasury: not accepted";
     string internal notApproved = "Treasury: not approved";
     string internal invalidToken = "Treasury: invalid token";
-    string internal insufficientReserves = "Treasury: insufficient reserves";
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -184,7 +183,6 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         }
         if (permissions[STATUS.RESERVETOKEN][_token] || permissions[STATUS.LIQUIDITYTOKEN][_token]) {
             uint256 value = tokenValue(_token, _amount);
-            require(value <= excessReserves(), insufficientReserves);
             totalReserves = totalReserves.sub(value);
         }
         IERC20(_token).safeTransfer(msg.sender, _amount);
@@ -513,14 +511,6 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     }
 
     /* ========== VIEW FUNCTIONS ========== */
-
-    /**
-     * @notice returns excess reserves not backing tokens
-     * @return uint
-     */
-    function excessReserves() public view override returns (uint256) {
-        return totalReserves.sub(THEO.totalSupply().sub(totalDebt));
-    }
 
     /**
      * @notice returns THEO valuation for an amount of Quote Tokens
