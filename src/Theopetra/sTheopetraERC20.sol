@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.7.5;
 
-import "../Interfaces/IsTHEO.sol";
+import "../Interfaces/IStakedTHEOToken.sol";
+import "../Interfaces/ITokenDebt.sol";
 
 import "../Types/ERC20Permit.sol";
 import "../Types/TheopetraAccessControlled.sol";
 
-contract sTheopetra is IsTHEO, ERC20Permit, TheopetraAccessControlled {
+contract sTheopetra is IStakedTHEOToken, ITokenDebt, ERC20Permit, TheopetraAccessControlled {
     using SafeMath for uint256;
 
     modifier onlyStakingContract() {
@@ -148,7 +149,7 @@ contract sTheopetra is IsTHEO, ERC20Permit, TheopetraAccessControlled {
         return true;
     }
 
-    function balanceOf(address who) public view override(IsTHEO, ERC20) returns (uint256) {
+    function balanceOf(address who) public view override(IStakedTHEOToken, IERC20, ERC20) returns (uint256) {
         return _gonBalances[who].div(_gonsPerFragment);
     }
 

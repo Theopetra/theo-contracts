@@ -54,7 +54,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     constructor(
         ITheopetraAuthority _authority,
         IERC20 _theo,
-        IsTHEO _stheo,
+        IStakedTHEOToken _stheo,
         IStaking _staking,
         ITreasury _treasury
     ) NoteKeeper(_authority, _theo, _stheo, _staking, _treasury) {

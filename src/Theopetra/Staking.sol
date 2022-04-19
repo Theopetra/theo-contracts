@@ -7,13 +7,13 @@ import "../Libraries/SafeMath.sol";
 import "../Libraries/SafeERC20.sol";
 
 import "../Interfaces/IDistributor.sol";
-import "../Interfaces/IsTHEO.sol";
+import "../Interfaces/IStakedTHEOToken.sol";
 import "../Interfaces/ITHEO.sol";
 
 contract TheopetraStaking is TheopetraAccessControlled {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    using SafeERC20 for IsTHEO;
+    using SafeERC20 for IStakedTHEOToken;
     using SafeERC20 for ITHEO;
 
     address public immutable THEO;
@@ -87,12 +87,12 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
             warmupInfo[_recipient] = Claim({
                 deposit: info.deposit.add(_amount),
-                gons: info.gons.add(IsTHEO(sTHEO).gonsForBalance(_amount)),
+                gons: info.gons.add(IStakedTHEOToken(sTHEO).gonsForBalance(_amount)),
                 expiry: epoch.number.add(warmupPeriod),
                 lock: info.lock
             });
 
-            gonsInWarmup = gonsInWarmup.add(IsTHEO(sTHEO).gonsForBalance(_amount));
+            gonsInWarmup = gonsInWarmup.add(IStakedTHEOToken(sTHEO).gonsForBalance(_amount));
 
             return _amount;
         }
@@ -114,7 +114,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
             gonsInWarmup = gonsInWarmup.sub(info.gons);
 
-            return _send(_recipient, IsTHEO(sTHEO).balanceForGons(info.gons));
+            return _send(_recipient, IStakedTHEOToken(sTHEO).balanceForGons(info.gons));
         }
 
         return 0;
@@ -157,7 +157,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
             bounty = rebase();
         }
 
-        IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
+        IStakedTHEOToken(sTHEO).safeTransferFrom(msg.sender, address(this), _amount);
         amount_ = amount_.add(bounty);
 
         require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
@@ -171,7 +171,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
     function rebase() public returns (uint256) {
         uint256 bounty;
         if (epoch.end <= block.timestamp) {
-            IsTHEO(sTHEO).rebase(epoch.distribute, epoch.number);
+            IStakedTHEOToken(sTHEO).rebase(epoch.distribute, epoch.number);
 
             epoch.end = epoch.end.add(epoch.length);
             epoch.number++;
@@ -182,7 +182,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
             }
 
             uint256 balance = contractBalance();
-            uint256 staked = IsTHEO(sTHEO).circulatingSupply();
+            uint256 staked = IStakedTHEOToken(sTHEO).circulatingSupply();
 
             if (balance <= staked.add(bounty)) {
                 epoch.distribute = 0;
@@ -262,7 +262,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
      * @param _amount uint
      */
     function _send(address _recipient, uint256 _amount) internal returns (uint256) {
-        IsTHEO(sTHEO).safeTransfer(_recipient, _amount);
+        IStakedTHEOToken(sTHEO).safeTransfer(_recipient, _amount);
         return _amount;
     }
 
@@ -273,13 +273,13 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @return uint
      */
     function index() public view returns (uint256) {
-        return IsTHEO(sTHEO).index();
+        return IStakedTHEOToken(sTHEO).index();
     }
 
     /**
      * @notice total supply in warmup
      */
     function supplyInWarmup() public view returns (uint256) {
-        return IsTHEO(sTHEO).balanceForGons(gonsInWarmup);
+        return IStakedTHEOToken(sTHEO).balanceForGons(gonsInWarmup);
     }
 }
