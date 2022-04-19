@@ -806,7 +806,7 @@ describe('Bond depository', function () {
       expect(bobBalance).to.lessThan(Number(expectedPayout) * 1.0001);
     });
 
-    it.only('can be redeemed after the vesting time has passed, sending THEO when `_stake` is false', async function () {
+    it('can be redeemed after the vesting time has passed, sending THEO when `_stake` is false', async function () {
       const [, , bob, carol] = users;
       const autoStake = false;
 
