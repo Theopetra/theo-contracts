@@ -24,8 +24,6 @@ interface ITreasury {
 
     function tokenPerformanceUpdate() external;
 
-    function excessReserves() external view returns (uint256);
-
     function baseSupply() external view returns (uint256);
 
     function deltaTokenPrice() external view returns (int256);
