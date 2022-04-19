@@ -19,7 +19,11 @@ interface INoteKeeper {
         uint48 discount;
     }
 
-    function redeem(address _user, uint256[] memory _indexes, bool _stake) external returns (uint256);
+    function redeem(
+        address _user,
+        uint256[] memory _indexes,
+        bool _stake
+    ) external returns (uint256);
 
     function redeemAll(address _user, bool _stake) external returns (uint256);
 
