@@ -1025,7 +1025,7 @@ describe('Staking', function () {
     });
   });
 
-  describe.only('transfer claim', function () {
+  describe('transfer claim', function () {
     it('allows a user to transfer a claim to a new user', async function () {
       const [, bob, carol] = users;
       await createClaim();

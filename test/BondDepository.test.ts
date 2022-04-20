@@ -1,6 +1,6 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } from 'hardhat';
-import { setupUsers, performanceUpdate, waitFor } from './utils';
+import { setupUsers, performanceUpdate, waitFor, moveTimeForward } from './utils';
 import { getContracts } from '../utils/helpers';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 import {
@@ -53,7 +53,7 @@ describe('Bond depository', function () {
   let BondDepository: TheopetraBondDepository;
   let BondingCalculatorMock: BondingCalculatorMock;
   let conclusion: number;
-  let Staking: TheopetraStaking | StakingMock;
+  let Staking: any;
   let sTheo: any;
   let TheopetraAuthority: TheopetraAuthority;
   let TheopetraERC20Token: any;
@@ -840,6 +840,50 @@ describe('Bond depository', function () {
       expect(bobBalance).to.greaterThanOrEqual(Number(firstExpectedPayout));
       expect(bobBalance).to.lessThan(Number(firstExpectedPayout * 1.0001));
       expect(bobBalance).to.be.lessThan(Number(totalExpectedPayoutsOverAllTime));
+    });
+
+    it('allows a user to unstake sTHEO that has been redeemed', async function () {
+      // Run test only with actual staking contract (mock does not have unstake functionality)
+      if (process.env.NODE_ENV !== TESTWITHMOCKS) {
+        const [, , bob] = users;
+        await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address);
+
+        // Get the original claims from the bond depo, which have been created when bob depoisited
+        const initialBondDepoClaimOne = await Staking.stakingInfo(BondDepository.address, 0);
+        expect(Number(initialBondDepoClaimOne.gonsRemaining)).to.be.greaterThan(0);
+        expect(Number(initialBondDepoClaimOne.stakingExpiry)).to.be.greaterThan(0);
+
+        // Bob does not have any claims
+        await expect(Staking.stakingInfo(bob.address, 0)).to.be.reverted;
+
+        await moveTimeForward(vesting * 2);
+
+        await BondDepository.redeem(bob.address, [0]);
+
+        // Get the claims from the bond depo, which should now have zero values
+        const bondDepoClaim = await Staking.stakingInfo(BondDepository.address, 0);
+        expect(bondDepoClaim.gonsRemaining).to.equal(0);
+        expect(bondDepoClaim.stakingExpiry).to.equal(0);
+
+        // The bond depo claim should have been transfered to bob
+        const bobClaim = await Staking.stakingInfo(bob.address, 0);
+        expect(Number(bobClaim.gonsRemaining)).to.equal(Number(initialBondDepoClaimOne.gonsRemaining));
+        expect(Number(bobClaim.stakingExpiry)).to.equal(Number(initialBondDepoClaimOne.stakingExpiry));
+
+        // Bob should be able to redeem the sTHEO for THEO, using the transfered claim
+        const bobTHEOBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
+        const bobSTHEOBalance = Number(await sTheo.balanceOf(bob.address));
+        expect(bobTHEOBalance).to.equal(0);
+
+        await moveTimeForward(31536000 * 2);
+        await bob.sTheo.approve(Staking.address, bobSTHEOBalance);
+        await bob.Staking.unstake(bob.address, [bobSTHEOBalance], false, [0]);
+
+        const bobFinalSTHEOBalance = Number(await sTheo.balanceOf(bob.address));
+        const bobFinalTHEOBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
+        expect(bobFinalSTHEOBalance).to.equal(0);
+        expect(bobFinalTHEOBalance).to.be.greaterThan(0);
+      }
     });
   });
 

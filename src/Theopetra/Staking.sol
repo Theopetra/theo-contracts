@@ -36,6 +36,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
     mapping(address => Claim[]) public stakingInfo;
     mapping(address => bool) private isExternalLocked;
     mapping(address => mapping(uint256 => address)) private claimTransfers; // change claim ownership
+    mapping(address => bool) private bondDepos;
 
     /* ====== STRUCTS ====== */
 
@@ -80,19 +81,22 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 Claim (see also `claim`). If warmupPeriod is not 0, or if _claim is false, then funds go into warmup (sTheo is not sent)
         @param _amount uint
         @param _claim bool
-        @return uint256
+        @return uint256 _amount staked
+        @return _index uint256 the index of the claim added for the recipient in the recipient's stakingInfo
      */
     function stake(
         address _recipient,
         uint256 _amount,
         bool _claim
-    ) external returns (uint256) {
+    ) external returns (uint256, uint256 _index) {
         rebase();
         IERC20(THEO).safeTransferFrom(msg.sender, address(this), _amount);
 
         if (!isExternalLocked[_recipient]) {
             require(_recipient == msg.sender, "External deposits for account are locked");
         }
+
+        uint256 _index = stakingInfo[_recipient].length;
 
         if (warmupPeriod == 0 && _claim) {
             stakingInfo[_recipient].push(
@@ -118,7 +122,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
             );
         }
 
-        return _amount;
+        return (_amount, _index);
     }
 
     /**
@@ -381,6 +385,19 @@ contract TheopetraStaking is TheopetraAccessControlled {
         warmupPeriod = _warmupPeriod;
     }
 
+    /**
+     * @notice set the address of a bond depo to allow it to push claims to users when redeeming bonds
+     * @dev    see also `pushClaimForBond`
+     * @param _bondDepo address of the bond depo
+     */
+    function setBondDepo(address _bondDepo, bool isAdd) external onlyGovernor {
+        if (isAdd) {
+            bondDepos[_bondDepo] = true;
+        } else {
+            bondDepos[_bondDepo] = false;
+        }
+    }
+
     /* ========== INTERNAL FUNCTIONS ========== */
 
     /**
@@ -421,6 +438,25 @@ contract TheopetraStaking is TheopetraAccessControlled {
         stakingInfo[msg.sender].push(stakingInfo[_from][_index]);
 
         delete stakingInfo[_from][_index];
+    }
+
+    /**
+     * @notice             transfer a claim that has been approved by an address
+     * @param _to          the address to push the claim to (must be pre-approved for transfer via `pushClaim`)
+     * @param _index       the index of the claim to transfer (in the sender's array)
+     */
+    function pushClaimForBond(address _to, uint256 _index) external returns (uint256 newIndex_) {
+        require(bondDepos[msg.sender], "Caller is not a bond depository");
+        require(claimTransfers[msg.sender][_index] == _to, "Staking: claim not found");
+        require(
+            stakingInfo[msg.sender][_index].gonsInWarmup > 0 || stakingInfo[msg.sender][_index].gonsRemaining > 0,
+            "Staking: claim redeemed"
+        );
+
+        newIndex_ = stakingInfo[_to].length;
+        stakingInfo[_to].push(stakingInfo[msg.sender][_index]);
+
+        delete stakingInfo[msg.sender][_index];
     }
 
     /* ========== VIEW FUNCTIONS ========== */

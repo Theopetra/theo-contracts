@@ -69,6 +69,7 @@ describe('Whitelist Bond depository', function () {
   let expectedPayoutTheoWEth: number;
   let expectedPricePerUSDC: number;
   let expectedPayoutTheoUsdc: number;
+  let usdcMarketId: any;
 
   beforeEach(async function () {
     ({
@@ -128,6 +129,45 @@ describe('Whitelist Bond depository', function () {
     // Expect payout of 10_000_000_000 THEO (10 THEO, with 9 decimals)
     expectedPayoutTheoUsdc = Math.floor((Number(usdcDepositAmount) * 1e18) / expectedPricePerUSDC / 10 ** 6); // 1e18 = theo decimals (9) + fixed bond price decimals (9); 10**6 decimals for USDC
   });
+
+  async function setupForDeposit() {
+
+    const [governorWallet] = await ethers.getSigners();
+      const [, , bob] = users;
+
+      // Deploy SignerHelper contract
+      const signerHelperFactory = new SignerHelper__factory(governorWallet);
+      const SignerHelper = await signerHelperFactory.deploy();
+      // Create a hash in the same way as created by Signed contract
+      const bobHash = await SignerHelper.createHash(
+        'somedata',
+        bob.address,
+        WhitelistBondDepository.address,
+        'supersecret'
+      );
+
+      // Set the secret on the Signed contract
+      await WhitelistBondDepository.setSecret('supersecret');
+
+      // 32 bytes of data in Uint8Array
+      const messageHashBinary = ethers.utils.arrayify(bobHash);
+
+      // To sign the 32 bytes of data, pass in the data
+      signature = await governorWallet.signMessage(messageHashBinary);
+
+      // Create second market, with USDC as quote token
+      const usdcMarketblock = await ethers.provider.getBlock('latest');
+      const usdcMarketconclusion = usdcMarketblock.timestamp + timeToConclusion;
+      await WhitelistBondDepository.create(
+        UsdcTokenMock.address,
+        AggregatorMockUSDC.address,
+        [capacity, fixedBondPrice],
+        [capacityInQuote, fixedTerm],
+        [vesting, usdcMarketconclusion]
+      );
+      [usdcMarketId] = await WhitelistBondDepository.liveMarketsFor(UsdcTokenMock.address);
+      expect(Number(usdcMarketId)).to.equal(1);
+  }
 
   describe('Deployment', function () {
     it('can be deployed', async function () {
@@ -411,44 +451,10 @@ describe('Whitelist Bond depository', function () {
   });
 
   describe('Deposit success', function () {
-    let usdcMarketId: any;
+
 
     beforeEach(async function () {
-      const [governorWallet] = await ethers.getSigners();
-      const [, , bob] = users;
-
-      // Deploy SignerHelper contract
-      const signerHelperFactory = new SignerHelper__factory(governorWallet);
-      const SignerHelper = await signerHelperFactory.deploy();
-      // Create a hash in the same way as created by Signed contract
-      const bobHash = await SignerHelper.createHash(
-        'somedata',
-        bob.address,
-        WhitelistBondDepository.address,
-        'supersecret'
-      );
-
-      // Set the secret on the Signed contract
-      await WhitelistBondDepository.setSecret('supersecret');
-
-      // 32 bytes of data in Uint8Array
-      const messageHashBinary = ethers.utils.arrayify(bobHash);
-
-      // To sign the 32 bytes of data, pass in the data
-      signature = await governorWallet.signMessage(messageHashBinary);
-
-      // Create second market, with USDC as quote token
-      const usdcMarketblock = await ethers.provider.getBlock('latest');
-      const usdcMarketconclusion = usdcMarketblock.timestamp + timeToConclusion;
-      await WhitelistBondDepository.create(
-        UsdcTokenMock.address,
-        AggregatorMockUSDC.address,
-        [capacity, fixedBondPrice],
-        [capacityInQuote, fixedTerm],
-        [vesting, usdcMarketconclusion]
-      );
-      [usdcMarketId] = await WhitelistBondDepository.liveMarketsFor(UsdcTokenMock.address);
-      expect(Number(usdcMarketId)).to.equal(1);
+      await setupForDeposit();
     });
 
     it('should allow a deposit to a WETH-THEO market', async function () {
@@ -733,6 +739,31 @@ describe('Whitelist Bond depository', function () {
       ).to.be.revertedWith('Depository: capacity exceeded');
     });
   });
+
+  describe('Redeem', function() {
+    beforeEach(async function () {
+      await setupForDeposit();
+    });
+
+    it('should allow a note to be redeemed', async function () {
+      const [, , bob] = users;
+
+      await bob.WhitelistBondDepository.deposit(
+        usdcMarketId,
+        usdcDepositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
+
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const newTimestampInSeconds = latestBlock.timestamp + vesting * 2;
+      await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+
+      await expect(WhitelistBondDepository.redeemAll(bob.address)).to.not.be.reverted;
+    });
+  })
 
   describe('External view', function () {
     it('can give the current price of THEO per quote token', async function () {

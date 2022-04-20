@@ -6,7 +6,7 @@ interface IStaking {
         address _to,
         uint256 _amount,
         bool _claim
-    ) external returns (uint256);
+    ) external returns (uint256, uint256 _index);
 
     function claim(address _recipient, bool _rebasing) external returns (uint256);
 
@@ -42,4 +42,6 @@ interface IStaking {
     function pushClaim(address _to, uint256 _index) external;
 
     function pullClaim(address _from, uint256 _index) external returns (uint256 newIndex_);
+
+    function pushClaimForBond(address _to, uint256 _index) external returns (uint256 newIndex_);
 }
