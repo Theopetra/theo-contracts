@@ -10,7 +10,7 @@ interface IStaking {
 
     function claim(address _recipient, bool _rebasing) external returns (uint256);
 
-    function forfeit() external returns (uint256);
+    function forfeit(uint256 _index) external;
 
     function toggleLock() external;
 

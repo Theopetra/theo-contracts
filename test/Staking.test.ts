@@ -1084,4 +1084,34 @@ describe('Staking', function () {
       await expect(carol.Staking.pullClaim(bob.address, 0)).to.be.revertedWith('Staking: claim redeemed');
     });
   });
+
+  describe('forfeit', function () {
+    it('allows a user to forfeit', async function () {
+      const [, bob] = users;
+      const claim = false;
+      const secondAmountToStake = 300_000_000_000;
+      const thirdAmountToStake = 500_000_000_000;
+      const mistakeAmount = 700_000_000_000;
+      await createClaim(amountToStake, claim);
+      await createClaim(secondAmountToStake, claim);
+      await createClaim(thirdAmountToStake, claim);
+      await createClaim(mistakeAmount, false);
+
+      const bobStartingTheoBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
+      // expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(0);
+
+      const mistakenClaimInfo = await Staking.stakingInfo(bob.address, 3);
+      expect(Number(mistakenClaimInfo.gonsInWarmup)).to.be.greaterThan(0);
+
+      await bob.Staking.forfeit(3);
+      const mistakenClaimInfoUpdated = await Staking.stakingInfo(bob.address, 3);
+      const firstClaimInfo = await Staking.stakingInfo(bob.address, 0);
+
+      expect(Number(mistakenClaimInfoUpdated.gonsInWarmup)).to.equal(0);
+      expect(Number(firstClaimInfo.gonsInWarmup)).to.be.greaterThan(0);
+
+      const bobNewTheoBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
+      expect(bobNewTheoBalance).to.be.greaterThan(bobStartingTheoBalance);
+    })
+  })
 });

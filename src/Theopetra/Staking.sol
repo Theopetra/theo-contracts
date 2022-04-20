@@ -170,9 +170,9 @@ contract TheopetraStaking is TheopetraAccessControlled {
     /**
         @notice forfeit sTHEO in warmup and retrieve THEO
      */
-    function forfeit() external {
-        Claim memory info = stakingInfo[msg.sender][0];
-        delete stakingInfo[msg.sender];
+    function forfeit(uint256 _index) external {
+        Claim memory info = stakingInfo[msg.sender][_index];
+        delete stakingInfo[msg.sender][_index];
 
         gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
 
