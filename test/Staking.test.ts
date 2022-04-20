@@ -1098,7 +1098,6 @@ describe('Staking', function () {
       await createClaim(mistakeAmount, false);
 
       const bobStartingTheoBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
-      // expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(0);
 
       const mistakenClaimInfo = await Staking.stakingInfo(bob.address, 3);
       expect(Number(mistakenClaimInfo.gonsInWarmup)).to.be.greaterThan(0);
