@@ -1,8 +1,9 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 import { setupUsers, waitFor } from './utils';
-import { CAPTABLE, CONTRACTS } from '../utils/constants';
+import { CAPTABLE, CONTRACTS, INITIALMINT, MOCKS } from '../utils/constants';
 import { getContracts } from '../utils/helpers';
+import { TheopetraTreasury, TheopetraERC20Token, TheopetraAuthority, TheopetraERC20Mock } from '../typechain-types';
 
 const setup = deployments.createFixture(async function () {
   await deployments.fixture([CONTRACTS.founderVesting]);
@@ -28,7 +29,7 @@ describe('Theopetra Founder Vesting', function () {
 
   beforeEach(async function () {
     ({
-      TheopetraFounderVesting,
+      FounderVesting: TheopetraFounderVesting,
       TheopetraTreasury,
       TheopetraERC20Token,
       owner,
@@ -40,8 +41,9 @@ describe('Theopetra Founder Vesting', function () {
       expect(TheopetraFounderVesting).to.not.be.undefined;
     });
     it('mints tokens to cover the input shares', async function () {
-      const expectedMint = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero); //.div(10**TheopetraFounderVesting.decimals)*1_000_000_000;
-      console.log({expectedMint});
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedMint = totalShares.mul(INITIALMINT).div(10**(await TheopetraFounderVesting.decimals()));
+      expect(await TheopetraERC20Token.totalSupply() - INITIALMINT).to.equal(expectedMint);
     });
   });
 

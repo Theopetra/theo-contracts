@@ -3,7 +3,7 @@ import { DeployFunction } from 'hardhat-deploy/types';
 import { ethers } from 'hardhat';
 
 import getNamedMockAddresses from './mocks/helpers';
-import { CONTRACTS, MOCKS, CAPTABLE, FDVTARGET, TESTWITHMOCKS } from '../utils/constants';
+import { CONTRACTS, MOCKS, CAPTABLE, FDVTARGET, TESTWITHMOCKS, INITIALMINT } from '../utils/constants';
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, getChainId, getNamedAccounts } = hre;
@@ -27,7 +27,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   // If on Hardhat network, use the following values for testing
   if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
     const {TreasuryMock, TheopetraERC20Mock } = await getNamedMockAddresses(hre);
-    (await ethers.getContract(MOCKS.theoTokenMock)).mint(deployer, 1_000);
+    await (await ethers.getContract(MOCKS.theoTokenMock)).mint(deployer, INITIALMINT);
     args = [
       TheopetraAuthority.address,
       TreasuryMock,
