@@ -8,8 +8,6 @@ import "../Interfaces/IStaking.sol";
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/INoteKeeper.sol";
 
-import "hardhat/console.sol";
-
 abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
     mapping(address => Note[]) public notes; // user deposit data
     mapping(address => mapping(uint256 => address)) private noteTransfers; // change note ownership
