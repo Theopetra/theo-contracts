@@ -842,7 +842,7 @@ describe('Bond depository', function () {
       expect(bobBalance).to.be.lessThan(Number(totalExpectedPayoutsOverAllTime));
     });
 
-    it('allows a user to unstake sTHEO that has been redeemed', async function () {
+    it('allows a user to unstake sTHEO that has been redeemed from a bond note', async function () {
       // Run test only with actual staking contract (mock does not have unstake functionality)
       if (process.env.NODE_ENV !== TESTWITHMOCKS) {
         const [, , bob] = users;
@@ -883,6 +883,66 @@ describe('Bond depository', function () {
         const bobFinalTHEOBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
         expect(bobFinalSTHEOBalance).to.equal(0);
         expect(bobFinalTHEOBalance).to.be.greaterThan(0);
+      }
+    });
+
+    it('allows a user to unstake sTHEO redeemed from multiple bond notes', async function () {
+      // Run test only with actual staking contract (mock does not have unstake functionality)
+      if (process.env.NODE_ENV !== TESTWITHMOCKS) {
+        const [, , bob] = users;
+        const secondDepositAmount = 50000000;
+        const thirdDepositAmount = 70000000;
+        await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address);
+        await bob.BondDepository.deposit(bid, secondDepositAmount, initialPrice, bob.address, bob.address);
+        await bob.BondDepository.deposit(bid, thirdDepositAmount, initialPrice, bob.address, bob.address);
+
+        await moveTimeForward(vesting * 2);
+
+        await BondDepository.redeem(bob.address, [0, 2]);
+
+        // Get the transfered claims from the bond depo; these should now have zero values for the bond depo
+        const bondDepoClaimOne = await Staking.stakingInfo(BondDepository.address, 0);
+        expect(bondDepoClaimOne.gonsRemaining).to.equal(0);
+        expect(bondDepoClaimOne.stakingExpiry).to.equal(0);
+        const bondDepoClaimThree = await Staking.stakingInfo(BondDepository.address, 2);
+        expect(bondDepoClaimThree.gonsRemaining).to.equal(0);
+        expect(bondDepoClaimThree.stakingExpiry).to.equal(0);
+
+        // Claim two is not yet redeemed and should have non-zero values for the bond depo
+        const bondDepoClaimTwo = await Staking.stakingInfo(BondDepository.address, 1);
+        expect(Number(bondDepoClaimTwo.gonsRemaining)).to.be.greaterThan(0);
+        expect(Number(bondDepoClaimTwo.stakingExpiry)).to.be.greaterThan(0);
+
+        const bobTHEOBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
+        const bobSTHEOBalance = Number(await sTheo.balanceOf(bob.address));
+        expect(bobTHEOBalance).to.equal(0);
+
+        // Setup for unstake by bob
+        await moveTimeForward(31536000 * 2);
+        await bob.sTheo.approve(Staking.address, bobSTHEOBalance);
+
+        // Get gons remaining on each claim and convert to sTHEO amount
+        // Bob now has two claims for sTHEO in Staking that can be redeemed for THEO
+        const bobClaimOne = await Staking.stakingInfo(bob.address, 0);
+        const bobClaimTwo = await Staking.stakingInfo(bob.address, 1);
+
+        const sTheoRemainingClaimOne = await sTheo.balanceForGons(bobClaimOne.gonsRemaining.toBigInt());
+        const sTheoRemainingClaimTwo = await sTheo.balanceForGons(bobClaimTwo.gonsRemaining.toBigInt());
+
+        // First unstake by bob, redeeming sTHEO for THEO
+        await bob.Staking.unstake(bob.address, [sTheoRemainingClaimOne.toNumber()], false, [0]);
+        const bobUpdatedSTHEOBalance = Number(await sTheo.balanceOf(bob.address));
+        expect(bobUpdatedSTHEOBalance).to.equal(sTheoRemainingClaimTwo); // Bob's sTHEO from claim two is not yet redeemed
+
+        // Second unstake by bob
+        await bob.Staking.unstake(bob.address, [sTheoRemainingClaimTwo.toNumber()], false, [1]);
+
+        const bobFinalSTHEOBalance = Number(await sTheo.balanceOf(bob.address)); // Bob redeems sTHEO from next claim, for THEO
+        const expectedSTheoRemaining = await sTheo.balanceForGons(bondDepoClaimTwo.gonsRemaining.toBigInt()); // bond depo claim two (not yet redeemed by bob)
+        expect(bobFinalSTHEOBalance).to.equal(expectedSTheoRemaining);
+
+        const bobFinalTHEOBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
+        expect(bobFinalTHEOBalance).to.equal(sTheoRemainingClaimOne.toNumber() + sTheoRemainingClaimTwo.toNumber());
       }
     });
   });

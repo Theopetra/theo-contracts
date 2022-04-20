@@ -222,7 +222,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         for (uint256 i = 0; i < _indexes.length; i++) {
             Claim memory info = stakingInfo[_to][_indexes[i]];
 
-            if (isUnRedeemed(_to, i)) {
+            if (isUnRedeemed(_to, _indexes[i])) {
                 stakingInfo[_to][_indexes[i]].gonsRemaining = info.gonsRemaining.sub(
                     IsTHEO(sTHEO).gonsForBalance(_amounts[i])
                 );
