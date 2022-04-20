@@ -937,8 +937,9 @@ describe('Bond depository', function () {
         // Second unstake by bob
         await bob.Staking.unstake(bob.address, [sTheoRemainingClaimTwo.toNumber()], false, [1]);
 
+        await BondDepository.redeem(bob.address, [1]); // Bob redeems remaining note for sTHEO
         const bobFinalSTHEOBalance = Number(await sTheo.balanceOf(bob.address)); // Bob redeems sTHEO from next claim, for THEO
-        const expectedSTheoRemaining = await sTheo.balanceForGons(bondDepoClaimTwo.gonsRemaining.toBigInt()); // bond depo claim two (not yet redeemed by bob)
+        const expectedSTheoRemaining = await sTheo.balanceForGons(bondDepoClaimTwo.gonsRemaining.toBigInt()); // Use the original value for bond depo claim two gons Remaining to determine expected sTHEO remaining
         expect(bobFinalSTHEOBalance).to.equal(expectedSTheoRemaining);
 
         const bobFinalTHEOBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
