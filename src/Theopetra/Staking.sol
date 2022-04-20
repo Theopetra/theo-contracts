@@ -35,6 +35,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
     mapping(address => Claim[]) public stakingInfo;
     mapping(address => bool) private isExternalLocked;
+    mapping(address => mapping(uint256 => address)) private claimTransfers; // change claim ownership
 
     /* ====== STRUCTS ====== */
 
@@ -390,6 +391,36 @@ contract TheopetraStaking is TheopetraAccessControlled {
     function _send(address _recipient, uint256 _amount) internal returns (uint256) {
         IsTHEO(sTHEO).safeTransfer(_recipient, _amount);
         return _amount;
+    }
+
+    /* ========== TRANSFER ========== */
+
+    /**
+     * @notice             approve an address to transfer a claim
+     * @param _to          address to approve claim transfer for
+     * @param _index       index of claim to approve transfer for
+     */
+    function pushClaim(address _to, uint256 _index) external {
+        require(stakingInfo[msg.sender][_index].stakingExpiry != 0, "Staking: claim not found");
+        claimTransfers[msg.sender][_index] = _to;
+    }
+
+    /**
+     * @notice             transfer a claim that has been approved by an address
+     * @param _from        the address that approved the claim transfer
+     * @param _index       the index of the claim to transfer (in the sender's array)
+     */
+    function pullClaim(address _from, uint256 _index) external returns (uint256 newIndex_) {
+        require(claimTransfers[_from][_index] == msg.sender, "Staking: claim not found");
+        require(
+            stakingInfo[_from][_index].gonsInWarmup > 0 || stakingInfo[_from][_index].gonsRemaining > 0,
+            "Staking: claim redeemed"
+        );
+
+        newIndex_ = stakingInfo[msg.sender].length;
+        stakingInfo[msg.sender].push(stakingInfo[_from][_index]);
+
+        delete stakingInfo[_from][_index];
     }
 
     /* ========== VIEW FUNCTIONS ========== */

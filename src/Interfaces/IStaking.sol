@@ -38,4 +38,8 @@ interface IStaking {
     function indexesFor(address _user) external view returns (uint256[] memory);
 
     function claimAll(address _recipient) external returns (uint256);
+
+    function pushClaim(address _to, uint256 _index) external;
+
+    function pullClaim(address _from, uint256 _index) external returns (uint256 newIndex_);
 }

@@ -1024,4 +1024,64 @@ describe('Staking', function () {
       // expect(await Staking.getPenalty(800,)).to.equal(BigNumber.from(0));
     });
   });
+
+  describe.only('transfer claim', function () {
+    it('allows a user to transfer a claim to a new user', async function () {
+      const [, bob, carol] = users;
+      await createClaim();
+      await expect(Staking.stakingInfo(bob.address, 0)).to.not.be.reverted;
+      await expect(Staking.stakingInfo(carol.address, 0)).to.be.reverted;
+
+      await bob.Staking.pushClaim(carol.address, 0);
+      await carol.Staking.pullClaim(bob.address, 0);
+
+      const carolStakingInfo = await Staking.stakingInfo(carol.address, 0);
+      const bobStakingInfo = await Staking.stakingInfo(bob.address, 0);
+
+      expect(carolStakingInfo.deposit.toNumber()).to.equal(amountToStake);
+      expect(bobStakingInfo.deposit.toNumber()).to.equal(0);
+      expect(bobStakingInfo.stakingExpiry.toNumber()).to.equal(0);
+    });
+
+    it('allows a user to unstake against a claim after it has been transfered to them', async function () {
+      const [, bob, carol] = users;
+      await createClaim(amountToStake, true); // Immediate claim (no warmup)
+      await bob.Staking.pushClaim(carol.address, 0);
+      await carol.Staking.pullClaim(bob.address, 0);
+      expect(Number(await TheopetraERC20Token.balanceOf(carol.address))).to.equal(0);
+
+      // Transfer sTHEO from bob to carol
+      expect(Number(await sTheo.balanceOf(bob.address))).to.be.greaterThan(0);
+      const bobSTheoBalance = await sTheo.balanceOf(bob.address);
+      await bob.sTheo.transfer(carol.address, bobSTheoBalance);
+      expect(Number(await sTheo.balanceOf(carol.address))).to.equal(bobSTheoBalance);
+
+      await moveTimeForward(lockedStakingTerm * 2); // Move past locked staking term to avoid penalty
+
+      await carol.sTheo.approve(Staking.address, amountToStake);
+      await carol.Staking.unstake(carol.address, [amountToStake], false, [0]);
+      expect(Number(await sTheo.balanceOf(carol.address))).to.equal(0);
+      expect(Number(await TheopetraERC20Token.balanceOf(carol.address))).to.be.greaterThan(0);
+    });
+
+    it('reverts if a user tries to pull a claim from the transfers mapping that was not previously pushed to them', async function () {
+      const [, bob, carol, alice] = users;
+      await createClaim(amountToStake, true); // Immediate claim (no warmup)
+      await bob.Staking.pushClaim(carol.address, 0);
+      await expect(alice.Staking.pullClaim(bob.address, 0)).to.be.revertedWith('Staking: claim not found');
+    });
+
+    it('reverts if a user tries to pull claim claim that has previously been redeemed', async function () {
+      const [, bob, carol] = users;
+      await createClaim(amountToStake, true); // Immediate claim (no warmup)
+      await bob.Staking.pushClaim(carol.address, 0);
+
+      // Before carol pulls claim, bob redeems
+      await moveTimeForward(lockedStakingTerm * 2); // Move past locked staking term to avoid penalty
+      await bob.sTheo.approve(Staking.address, amountToStake);
+      await bob.Staking.unstake(bob.address, [amountToStake], false, [0]);
+
+      await expect(carol.Staking.pullClaim(bob.address, 0)).to.be.revertedWith('Staking: claim redeemed');
+    });
+  });
 });
