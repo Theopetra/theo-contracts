@@ -15,7 +15,7 @@ import {
   TheopetraTreasury,
 } from '../typechain-types';
 import { setupUsers } from './utils';
-import { CONTRACTS } from '../utils/constants';
+import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 import { getContracts } from '../utils/helpers';
 
 const setup = deployments.createFixture(async function () {
@@ -58,6 +58,7 @@ describe('Whitelist Bond depository', function () {
   let TheopetraAuthority: TheopetraAuthority;
   let TheopetraERC20Token: TheopetraERC20Token;
   let Staking: TheopetraStaking;
+  let sTheo: any;
   let AggregatorMockETH: AggregatorMockETH;
   let UsdcTokenMock: UsdcERC20Mock;
   let AggregatorMockUSDC: AggregatorMockUSDC;
@@ -78,6 +79,7 @@ describe('Whitelist Bond depository', function () {
       TheopetraAuthority,
       TheopetraERC20Token,
       Staking,
+      sTheo,
       AggregatorMockETH,
       AggregatorMockUSDC,
       UsdcTokenMock,
@@ -107,6 +109,11 @@ describe('Whitelist Bond depository', function () {
       [capacityInQuote, fixedTerm],
       [vesting, conclusion]
     );
+
+    if (process.env.NODE_ENV === TESTWITHMOCKS) {
+      // Only call this if using mock sTheo, as only the mock has a mint function (sTheo itself uses `initialize` instead)
+      await sTheo.mint(WhitelistBondDepository.address, '1000000000000000000000');
+    }
 
     // Calculate the `expectedPricePerWETH` (9 decimals) of THEO per ETH using mock price consumer values
     const [, mockPriceConsumerPrice] = await AggregatorMockETH.latestRoundData();
@@ -756,6 +763,8 @@ describe('Whitelist Bond depository', function () {
         bob.address,
         signature
       );
+
+
 
       const latestBlock = await ethers.provider.getBlock('latest');
       const newTimestampInSeconds = latestBlock.timestamp + vesting * 2;

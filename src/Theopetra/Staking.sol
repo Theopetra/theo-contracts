@@ -194,8 +194,10 @@ contract TheopetraStaking is TheopetraAccessControlled {
      *         and gonsRemaining becomes zero.
      *         For unstaking at or beyond 100% of the staking term, a part-redeem can be made: that is, a user may redeem less than 100% of the total amount available to redeem
      *         (as represented by gonsRemaining), during a call to `unstake`
-     *         The penalty is added (after conversion to gons) to slashed gons and subtracted from the amount to return
+     *         The penalty is added (after conversion to gons) to `slashedons` and subtracted from the amount to return
      *         gonsRemaining keeps track of the amount of sTheo (as gons) that can be redeemed for a Claim
+     *         When unstaking from the locked tranche (stakingTerm > 0) after the stake reaches maturity,
+     *         the Stake becomes eligible to claim against bonus pool rewards (tracked in `slashedGons`; see also `getSlashedRewards`)
      * @param _to address
      * @param _amounts uint
      * @param _trigger bool
@@ -229,7 +231,14 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amounts[i]);
 
                 if (block.timestamp >= info.stakingExpiry) {
-                    amount_ = amount_.add(bounty).add(_amounts[i]);
+                    uint256 slashedRewards = 0;
+                    if (stakingTerm > 0) {
+                        slashedRewards = getSlashedRewards(_amounts[i]);
+                    }
+
+                    amount_ = amount_.add(bounty).add(_amounts[i]).add(
+                        slashedRewards
+                    );
                 } else if (block.timestamp < info.stakingExpiry) {
                     require(
                         stakingInfo[_to][_indexes[i]].gonsRemaining == 0,
@@ -242,13 +251,33 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
                     slashedGons = slashedGons.add(IsTHEO(sTHEO).gonsForBalance(penalty));
 
-                    amount_ = amount_.add(stakingInfo[_to][_indexes[i]].deposit).sub(penalty);
+                    amount_ = amount_.add(stakingInfo[_to][_indexes[i]].deposit).sub(
+                        penalty
+                    );
                 }
             }
         }
 
-        require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
+        require(
+            amount_ <= ITHEO(THEO).balanceOf(address(this)),
+            "Insufficient THEO balance in contract"
+        );
         ITHEO(THEO).safeTransfer(_to, amount_);
+    }
+
+    function getSlashedRewards(uint256 amount) private returns (uint256) {
+        uint256 circulatingSupply = IsTHEO(sTHEO).circulatingSupply();
+        uint baseDecimals = 10**9;
+
+        return circulatingSupply > 0 ?
+            ((
+                amount.add(circulatingSupply))
+                .mul(baseDecimals)
+                .div(circulatingSupply)
+                .sub(baseDecimals))
+                .mul(
+                IsTHEO(sTHEO).balanceForGons(slashedGons)
+            ).div(baseDecimals) : 0;
     }
 
     mapping(uint256 => uint256) penaltyBands;
@@ -390,12 +419,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
      * @dev    see also `pushClaimForBond`
      * @param _bondDepo address of the bond depo
      */
-    function setBondDepo(address _bondDepo, bool isAdd) external onlyGovernor {
-        if (isAdd) {
-            bondDepos[_bondDepo] = true;
-        } else {
-            bondDepos[_bondDepo] = false;
-        }
+    function setBondDepo(address _bondDepo, bool val) external onlyGovernor {
+        bondDepos[_bondDepo] = val;
     }
 
     /* ========== INTERNAL FUNCTIONS ========== */

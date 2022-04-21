@@ -593,6 +593,38 @@ describe('Staking', function () {
       expect(Number(await TheopetraERC20Token.balanceOf(bob.address))).to.equal(
         bobStartingTheoBalance - expectedPenalty
       );
+
+    });
+    it('adds slashed rewards to the redeemed amount, for a user unstaking against a claim after 100% of its staking term', async function () {
+      const [, bob] = users;
+      const claim = true;
+
+      await bob.Staking.stake(bob.address, amountToStake, claim);
+
+      const secondAmountToStake = 2_000_000_000_000;
+      await bob.Staking.stake(bob.address, secondAmountToStake, claim);
+
+      // Add a third stake to ensure that there is non-zero circulating supply while unstaking the first two claims
+      const thirdAmountToStake = 5_000_000_000_000;
+      await bob.Staking.stake(bob.address, thirdAmountToStake, claim);
+      await bob.sTheo.approve(Staking.address, (amountToStake + secondAmountToStake));
+
+      // Bob unstakes against second claim, before staking expiry time, and is slashed (adding to slashed gons)
+      await bob.Staking.unstake(bob.address, [secondAmountToStake], false, [1]);
+
+      // Move time beyond staking expiry, then unstake against first claim
+      await moveTimeForward(lockedStakingTerm * 1.5);
+
+      const bobTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
+      await bob.Staking.unstake(bob.address, [amountToStake], false, [0]);
+
+      // Calculate expected slashed rewards that will be added to the claimed amount
+      const expectedTotalSlashedTokens = secondAmountToStake * 0.2; // Bob will unstake the second stake immediately (20% penalty on principal)
+      const currentSTHEOCirculatingSupply = await sTheo.circulatingSupply();
+      const expectedSlashedRewards = (amountToStake / currentSTHEOCirculatingSupply.toNumber()) * expectedTotalSlashedTokens;
+
+      const bobNewTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
+      expect((bobNewTheoBalance.sub(bobTheoBalance)).toNumber()).to.equal(amountToStake + Math.floor(expectedSlashedRewards));
     });
   });
 
