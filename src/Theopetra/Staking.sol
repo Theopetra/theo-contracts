@@ -5,13 +5,13 @@ import "../Libraries/SafeMath.sol";
 import "../Libraries/SafeERC20.sol";
 
 import "../Interfaces/IDistributor.sol";
-import "../Interfaces/IsTHEO.sol";
+import "../Interfaces/IStakedTHEOToken.sol";
 import "../Interfaces/ITHEO.sol";
 
 contract TheopetraStaking is TheopetraAccessControlled {
     using SafeMath for *;
     using SafeERC20 for IERC20;
-    using SafeERC20 for IsTHEO;
+    using SafeERC20 for IStakedTHEOToken;
     using SafeERC20 for ITHEO;
 
     /* ====== VARIABLES ====== */
@@ -105,16 +105,16 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     gonsInWarmup: 0,
                     warmupExpiry: 0,
                     stakingExpiry: block.timestamp.add(stakingTerm),
-                    gonsRemaining: IsTHEO(sTHEO).gonsForBalance(_amount)
+                    gonsRemaining: IStakedTHEOToken(sTHEO).gonsForBalance(_amount)
                 })
             );
             _send(_recipient, _amount);
         } else {
-            gonsInWarmup = gonsInWarmup.add(IsTHEO(sTHEO).gonsForBalance(_amount));
+            gonsInWarmup = gonsInWarmup.add(IStakedTHEOToken(sTHEO).gonsForBalance(_amount));
             stakingInfo[_recipient].push(
                 Claim({
                     deposit: _amount,
-                    gonsInWarmup: IsTHEO(sTHEO).gonsForBalance(_amount),
+                    gonsInWarmup: IStakedTHEOToken(sTHEO).gonsForBalance(_amount),
                     warmupExpiry: block.timestamp.add(warmupPeriod),
                     stakingExpiry: block.timestamp.add(stakingTerm),
                     gonsRemaining: 0
@@ -147,7 +147,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     stakingInfo[_recipient][_indexes[i]].gonsInWarmup = 0;
 
                     gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
-                    uint256 balanceForGons = IsTHEO(sTHEO).balanceForGons(info.gonsInWarmup);
+                    uint256 balanceForGons = IStakedTHEOToken(sTHEO).balanceForGons(info.gonsInWarmup);
                     stakingInfo[_recipient][_indexes[i]].gonsRemaining = info.gonsInWarmup;
                     amount_ = amount_.add(balanceForGons);
                 }
@@ -226,9 +226,9 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
             if (isUnRedeemed(_to, _indexes[i])) {
                 stakingInfo[_to][_indexes[i]].gonsRemaining = info.gonsRemaining.sub(
-                    IsTHEO(sTHEO).gonsForBalance(_amounts[i])
+                    IStakedTHEOToken(sTHEO).gonsForBalance(_amounts[i])
                 );
-                IsTHEO(sTHEO).safeTransferFrom(msg.sender, address(this), _amounts[i]);
+                IStakedTHEOToken(sTHEO).safeTransferFrom(msg.sender, address(this), _amounts[i]);
 
                 if (block.timestamp >= info.stakingExpiry) {
                     uint256 slashedRewards = 0;
@@ -249,7 +249,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     );
                     uint256 penalty = getPenalty(stakingInfo[_to][_indexes[i]].deposit, percentageComplete.div(10000));
 
-                    slashedGons = slashedGons.add(IsTHEO(sTHEO).gonsForBalance(penalty));
+                    slashedGons = slashedGons.add(IStakedTHEOToken(sTHEO).gonsForBalance(penalty));
 
                     amount_ = amount_.add(stakingInfo[_to][_indexes[i]].deposit).sub(
                         penalty
@@ -266,7 +266,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
     }
 
     function getSlashedRewards(uint256 amount) private returns (uint256) {
-        uint256 circulatingSupply = IsTHEO(sTHEO).circulatingSupply();
+        uint256 circulatingSupply = IStakedTHEOToken(sTHEO).circulatingSupply();
         uint baseDecimals = 10**9;
 
         return circulatingSupply > 0 ?
@@ -276,7 +276,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 .div(circulatingSupply)
                 .sub(baseDecimals))
                 .mul(
-                IsTHEO(sTHEO).balanceForGons(slashedGons)
+                IStakedTHEOToken(sTHEO).balanceForGons(slashedGons)
             ).div(baseDecimals) : 0;
     }
 
@@ -331,7 +331,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
     function rebase() public returns (uint256) {
         uint256 bounty;
         if (epoch.end <= block.timestamp) {
-            IsTHEO(sTHEO).rebase(epoch.distribute, epoch.number);
+            IStakedTHEOToken(sTHEO).rebase(epoch.distribute, epoch.number);
 
             epoch.end = epoch.end.add(epoch.length);
             epoch.number++;
@@ -342,7 +342,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
             }
 
             uint256 balance = contractBalance();
-            uint256 staked = IsTHEO(sTHEO).circulatingSupply();
+            uint256 staked = IStakedTHEOToken(sTHEO).circulatingSupply();
 
             if (balance <= staked.add(bounty)) {
                 epoch.distribute = 0;
@@ -431,7 +431,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
      * @param _amount uint
      */
     function _send(address _recipient, uint256 _amount) internal returns (uint256) {
-        IsTHEO(sTHEO).safeTransfer(_recipient, _amount);
+        IStakedTHEOToken(sTHEO).safeTransfer(_recipient, _amount);
         return _amount;
     }
 
@@ -491,14 +491,14 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @return uint
      */
     function index() public view returns (uint256) {
-        return IsTHEO(sTHEO).index();
+        return IStakedTHEOToken(sTHEO).index();
     }
 
     /**
      * @notice total supply in warmup
      */
     function supplyInWarmup() public view returns (uint256) {
-        return IsTHEO(sTHEO).balanceForGons(gonsInWarmup);
+        return IStakedTHEOToken(sTHEO).balanceForGons(gonsInWarmup);
     }
 
     /**

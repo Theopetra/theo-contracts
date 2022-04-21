@@ -9,7 +9,7 @@ import "../Libraries/SafeCast.sol";
 import "../Interfaces/IERC20.sol";
 import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/ITHEO.sol";
-import "../Interfaces/IsTHEO.sol";
+import "../Interfaces/ITokenDebt.sol";
 import "../Interfaces/IBondCalculator.sol";
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IYieldReporter.sol";
@@ -73,7 +73,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     /* ========== STATE VARIABLES ========== */
 
     ITHEO public immutable THEO;
-    IsTHEO public sTHEO;
+    ITokenDebt public sTHEO;
     IYieldReporter private yieldReporter;
     IBondCalculator private theoBondingCalculator;
 
@@ -100,7 +100,6 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     string internal notAccepted = "Treasury: not accepted";
     string internal notApproved = "Treasury: not approved";
     string internal invalidToken = "Treasury: invalid token";
-    string internal insufficientReserves = "Treasury: insufficient reserves";
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -184,7 +183,6 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         }
         if (permissions[STATUS.RESERVETOKEN][_token] || permissions[STATUS.LIQUIDITYTOKEN][_token]) {
             uint256 value = tokenValue(_token, _amount);
-            require(value <= excessReserves(), insufficientReserves);
             totalReserves = totalReserves.sub(value);
         }
         IERC20(_token).safeTransfer(msg.sender, _amount);
@@ -342,7 +340,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     ) external onlyGovernor {
         require(timelockEnabled == false, "Use queueTimelock");
         if (_status == STATUS.STHEO) {
-            sTHEO = IsTHEO(_address);
+            sTHEO = ITokenDebt(_address);
         } else if (_status == STATUS.YIELDREPORTER) {
             yieldReporter = IYieldReporter(_address);
         } else {
@@ -455,7 +453,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
 
         if (info.managing == STATUS.STHEO) {
             // 9
-            sTHEO = IsTHEO(info.toPermit);
+            sTHEO = ITokenDebt(info.toPermit);
         } else {
             permissions[info.managing][info.toPermit] = true;
 
@@ -513,14 +511,6 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     }
 
     /* ========== VIEW FUNCTIONS ========== */
-
-    /**
-     * @notice returns excess reserves not backing tokens
-     * @return uint
-     */
-    function excessReserves() public view override returns (uint256) {
-        return totalReserves.sub(THEO.totalSupply().sub(totalDebt));
-    }
 
     /**
      * @notice returns THEO valuation for an amount of Quote Tokens

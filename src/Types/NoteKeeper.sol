@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import "./FrontEndRewarder.sol";
 
-import "../Interfaces/IsTHEO.sol";
+import "../Interfaces/IStakedTHEOToken.sol";
 import "../Interfaces/IStaking.sol";
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/INoteKeeper.sol";
@@ -13,14 +13,14 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
     mapping(address => mapping(uint256 => address)) private noteTransfers; // change note ownership
     mapping(address => mapping(uint256 => uint256)) private noteForClaim; // index of staking claim for a user's note
 
-    IsTHEO internal immutable sTHEO;
+    IStakedTHEOToken internal immutable sTHEO;
     IStaking internal immutable staking;
     ITreasury internal treasury;
 
     constructor(
         ITheopetraAuthority _authority,
         IERC20 _theo,
-        IsTHEO _stheo,
+        IStakedTHEOToken _stheo,
         IStaking _staking,
         ITreasury _treasury
     ) FrontEndRewarder(_authority, _theo) {
