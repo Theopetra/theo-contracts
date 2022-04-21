@@ -82,7 +82,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
 
         // note that only the payout gets staked (front end rewards are in THEO)
         // Get index for the claim to approve for pushing
-        ( , uint256 claimIndex) = staking.stake(address(this), _payout, true);
+        (, uint256 claimIndex) = staking.stake(address(this), _payout, true);
         // approve the user to transfer the staking claim
         staking.pushClaim(_user, claimIndex);
 

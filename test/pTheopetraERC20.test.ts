@@ -5,7 +5,6 @@ import { setupUsers } from './utils';
 import { CONTRACTS } from '../utils/constants';
 import { getContracts } from '../utils/helpers';
 
-
 const setup = deployments.createFixture(async () => {
   await deployments.fixture();
   const { deployer: owner } = await getNamedAccounts();

@@ -18,7 +18,7 @@ import {
   STheopetra,
   BondingCalculatorMock,
   YieldReporterMock,
-  PTheopetra
+  PTheopetra,
 } from '../typechain-types';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTWITHMOCKS } from './constants';
 

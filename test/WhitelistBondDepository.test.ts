@@ -138,42 +138,41 @@ describe('Whitelist Bond depository', function () {
   });
 
   async function setupForDeposit() {
-
     const [governorWallet] = await ethers.getSigners();
-      const [, , bob] = users;
+    const [, , bob] = users;
 
-      // Deploy SignerHelper contract
-      const signerHelperFactory = new SignerHelper__factory(governorWallet);
-      const SignerHelper = await signerHelperFactory.deploy();
-      // Create a hash in the same way as created by Signed contract
-      const bobHash = await SignerHelper.createHash(
-        'somedata',
-        bob.address,
-        WhitelistBondDepository.address,
-        'supersecret'
-      );
+    // Deploy SignerHelper contract
+    const signerHelperFactory = new SignerHelper__factory(governorWallet);
+    const SignerHelper = await signerHelperFactory.deploy();
+    // Create a hash in the same way as created by Signed contract
+    const bobHash = await SignerHelper.createHash(
+      'somedata',
+      bob.address,
+      WhitelistBondDepository.address,
+      'supersecret'
+    );
 
-      // Set the secret on the Signed contract
-      await WhitelistBondDepository.setSecret('supersecret');
+    // Set the secret on the Signed contract
+    await WhitelistBondDepository.setSecret('supersecret');
 
-      // 32 bytes of data in Uint8Array
-      const messageHashBinary = ethers.utils.arrayify(bobHash);
+    // 32 bytes of data in Uint8Array
+    const messageHashBinary = ethers.utils.arrayify(bobHash);
 
-      // To sign the 32 bytes of data, pass in the data
-      signature = await governorWallet.signMessage(messageHashBinary);
+    // To sign the 32 bytes of data, pass in the data
+    signature = await governorWallet.signMessage(messageHashBinary);
 
-      // Create second market, with USDC as quote token
-      const usdcMarketblock = await ethers.provider.getBlock('latest');
-      const usdcMarketconclusion = usdcMarketblock.timestamp + timeToConclusion;
-      await WhitelistBondDepository.create(
-        UsdcTokenMock.address,
-        AggregatorMockUSDC.address,
-        [capacity, fixedBondPrice],
-        [capacityInQuote, fixedTerm],
-        [vesting, usdcMarketconclusion]
-      );
-      [usdcMarketId] = await WhitelistBondDepository.liveMarketsFor(UsdcTokenMock.address);
-      expect(Number(usdcMarketId)).to.equal(1);
+    // Create second market, with USDC as quote token
+    const usdcMarketblock = await ethers.provider.getBlock('latest');
+    const usdcMarketconclusion = usdcMarketblock.timestamp + timeToConclusion;
+    await WhitelistBondDepository.create(
+      UsdcTokenMock.address,
+      AggregatorMockUSDC.address,
+      [capacity, fixedBondPrice],
+      [capacityInQuote, fixedTerm],
+      [vesting, usdcMarketconclusion]
+    );
+    [usdcMarketId] = await WhitelistBondDepository.liveMarketsFor(UsdcTokenMock.address);
+    expect(Number(usdcMarketId)).to.equal(1);
   }
 
   describe('Deployment', function () {
@@ -458,8 +457,6 @@ describe('Whitelist Bond depository', function () {
   });
 
   describe('Deposit success', function () {
-
-
     beforeEach(async function () {
       await setupForDeposit();
     });
@@ -747,7 +744,7 @@ describe('Whitelist Bond depository', function () {
     });
   });
 
-  describe('Redeem', function() {
+  describe('Redeem', function () {
     beforeEach(async function () {
       await setupForDeposit();
     });
@@ -764,15 +761,13 @@ describe('Whitelist Bond depository', function () {
         signature
       );
 
-
-
       const latestBlock = await ethers.provider.getBlock('latest');
       const newTimestampInSeconds = latestBlock.timestamp + vesting * 2;
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       await expect(WhitelistBondDepository.redeemAll(bob.address)).to.not.be.reverted;
     });
-  })
+  });
 
   describe('External view', function () {
     it('can give the current price of THEO per quote token', async function () {

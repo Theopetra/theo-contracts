@@ -26,7 +26,7 @@ contract StakingMock {
 
     function pushClaim(address _to, uint256 _index) external {}
 
-    function pushClaimForBond(address _to, uint256 _index) external returns (uint256 newIndex_){
+    function pushClaimForBond(address _to, uint256 _index) external returns (uint256 newIndex_) {
         return 0;
     }
 }

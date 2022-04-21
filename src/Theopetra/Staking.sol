@@ -236,9 +236,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                         slashedRewards = getSlashedRewards(_amounts[i]);
                     }
 
-                    amount_ = amount_.add(bounty).add(_amounts[i]).add(
-                        slashedRewards
-                    );
+                    amount_ = amount_.add(bounty).add(_amounts[i]).add(slashedRewards);
                 } else if (block.timestamp < info.stakingExpiry) {
                     require(
                         stakingInfo[_to][_indexes[i]].gonsRemaining == 0,
@@ -251,33 +249,25 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
                     slashedGons = slashedGons.add(IStakedTHEOToken(sTHEO).gonsForBalance(penalty));
 
-                    amount_ = amount_.add(stakingInfo[_to][_indexes[i]].deposit).sub(
-                        penalty
-                    );
+                    amount_ = amount_.add(stakingInfo[_to][_indexes[i]].deposit).sub(penalty);
                 }
             }
         }
 
-        require(
-            amount_ <= ITHEO(THEO).balanceOf(address(this)),
-            "Insufficient THEO balance in contract"
-        );
+        require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
         ITHEO(THEO).safeTransfer(_to, amount_);
     }
 
     function getSlashedRewards(uint256 amount) private returns (uint256) {
         uint256 circulatingSupply = IStakedTHEOToken(sTHEO).circulatingSupply();
-        uint baseDecimals = 10**9;
+        uint256 baseDecimals = 10**9;
 
-        return circulatingSupply > 0 ?
-            ((
-                amount.add(circulatingSupply))
-                .mul(baseDecimals)
-                .div(circulatingSupply)
-                .sub(baseDecimals))
-                .mul(
-                IStakedTHEOToken(sTHEO).balanceForGons(slashedGons)
-            ).div(baseDecimals) : 0;
+        return
+            circulatingSupply > 0
+                ? ((amount.add(circulatingSupply)).mul(baseDecimals).div(circulatingSupply).sub(baseDecimals))
+                    .mul(IStakedTHEOToken(sTHEO).balanceForGons(slashedGons))
+                    .div(baseDecimals)
+                : 0;
     }
 
     mapping(uint256 => uint256) penaltyBands;
