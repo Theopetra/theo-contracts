@@ -744,7 +744,7 @@ describe('Whitelist Bond depository', function () {
     });
   });
 
-  describe.only('Redeem', function () {
+  describe('Redeem', function () {
     beforeEach(async function () {
       await setupForDeposit();
     });
