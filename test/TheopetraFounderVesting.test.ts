@@ -147,13 +147,118 @@ describe('Theopetra Founder Vesting', function () {
     });
   });
 
-  //   it('should emit a ReportYield event with the new ID and amount', async function () {
-  //     const amount = 150_000_000_000;
-  //     const { events } = await waitFor(TheopetraFounderVesting.reportYield(amount));
+  describe('scheduled release', function() {
+    it('reverts if no payment due to address at deploy time', async function() {
+      // Attempting release at time 0 should fail
+      expect(TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0])).to.be.revertedWith("TheopetraFounderVesting: account is not due payment");
+    });
+    it('increases balance of address by full shares after full schedule', async function() {
+      const expectedReleased = ethers.BigNumber.from(INITIALMINT).mul(CAPTABLE.shares[0]).div(10**(await TheopetraFounderVesting.decimals()));
+      const initialBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
+      await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
 
-  //     expect(events).to.have.length(1);
-  //     expect(events[0].event).to.equal('ReportYield');
-  //     expect(events[0].args.id).to.equal(1);
-  //     expect(events[0].args.yield).to.equal(amount);
-  //   });
+      await TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+      const releasedBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
+
+      expect(initialBalance).to.equal(0);
+      expect(releasedBalance).to.equal(expectedReleased);
+    });
+    it('increases balance of address proportionally to the time in the schedule', async function() {
+      const travelTime = UNLOCKSCHEDULE.times[2] + 3600;
+      const unlockedMultiplier = UNLOCKSCHEDULE.amounts[2];
+      const expectedReleased = ethers.BigNumber.from(INITIALMINT)
+          .mul(CAPTABLE.shares[0]).mul(unlockedMultiplier)
+          .div(10**(await TheopetraFounderVesting.decimals())).div(10**(await TheopetraFounderVesting.decimals()));
+      const initialBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
+
+      await moveTimeForward(travelTime);
+
+      await TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+      const releasedBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
+
+      expect(initialBalance).to.equal(0);
+      expect(releasedBalance).to.equal(expectedReleased);
+    });
+  });
+
+  describe('releaseAmount', function() {
+    beforeEach(async function() {
+      // move forward 1 hour past unlock schedule
+      await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
+    });
+    it('reverts if no shares designated to address', async function() {
+      expect(TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, badAddress, 1)).to.be.revertedWith("TheopetraFounderVesting: account has no shares");
+    });
+    it('reverts if amount is 0', async function() {
+      expect(TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, badAddress, 0)).to.be.revertedWith("TheopetraFounderVesting: amount cannot be 0");
+    });
+    it('reverts if no payment due to address', async function() {
+      // clean out initial funds
+      await TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+      // Trying again should fail
+      expect(TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, CAPTABLE.addresses[0], 1)).to.be.revertedWith("TheopetraFounderVesting: account is not due payment");
+    });
+    it('reverts if amount is greater than amount due', async function() {
+      const reallyBigAmount = 1_000_000_000_000_000_000_000_000;
+      expect(TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, badAddress, reallyBigAmount)).to.be.revertedWith("TheopetraFounderVesting: requested amount is more than due payment for account");
+    });
+    it('increases total released', async function() {
+      const expectedReleased = 100;
+      const initialReleased = await TheopetraFounderVesting.getTotalReleased(TheopetraERC20Token.address);
+
+      await TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, CAPTABLE.addresses[0], expectedReleased);
+      const totalReleased = await TheopetraFounderVesting.getTotalReleased(TheopetraERC20Token.address);
+
+      expect(initialReleased).to.equal(0);
+      expect(totalReleased).to.equal(expectedReleased);
+    });
+    it('increases balance of address', async function() {
+      const expectedReleased = 100;
+      const initialBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
+
+      await TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, CAPTABLE.addresses[0], expectedReleased);
+      const releasedBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
+
+      expect(initialBalance).to.equal(0);
+      expect(releasedBalance).to.equal(expectedReleased);
+    });
+    it('emits an event', async function() {
+      const expectedReleased = 100;
+
+      await expect(TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, CAPTABLE.addresses[0], expectedReleased))
+          .to.emit(TheopetraFounderVesting, 'ERC20PaymentReleased')
+          .withArgs(TheopetraERC20Token.address, CAPTABLE.addresses[0], expectedReleased);
+    });
+  });
+
+  describe('scheduled releaseAmount', function() {
+    it('reverts if no payment due to address at deploy time', async function() {
+      // Attempting release at time 0 should fail
+      expect(TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, CAPTABLE.addresses[0], 100)).to.be.revertedWith("TheopetraFounderVesting: account is not due payment");
+    });
+    it('increases balance of address by full shares after full schedule', async function() {
+      const expectedReleased = 100;
+      const initialBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
+      await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
+
+      await TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, CAPTABLE.addresses[0], expectedReleased);
+      const releasedBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
+
+      expect(initialBalance).to.equal(0);
+      expect(releasedBalance).to.equal(expectedReleased);
+    });
+    it('increases balance of address proportionally to the time in the schedule', async function() {
+      const travelTime = UNLOCKSCHEDULE.times[2] + 3600;
+      const expectedReleased = 100;
+      const initialBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
+
+      await moveTimeForward(travelTime);
+
+      await TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, CAPTABLE.addresses[0], expectedReleased);
+      const releasedBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
+
+      expect(initialBalance).to.equal(0);
+      expect(releasedBalance).to.equal(expectedReleased);
+    });
+  });
 });

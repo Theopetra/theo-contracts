@@ -57,7 +57,7 @@ export const CAPTABLE = {
 
 export const UNLOCKSCHEDULE = {
   times: [
-    31_536_000, // 1 year
+    31_536_000, // 1 year in seconds
     34_128_000, // 1 year + 1 month
     36_720_000, // 1 year + 2 months
     39_304_000, // 1 year + 3 months

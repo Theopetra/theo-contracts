@@ -23,10 +23,6 @@ import "../Interfaces/ITreasury.sol";
  * `TheopetraFounderVesting` follows a _pull payment_ model. This means that payments are not automatically forwarded to the
  * accounts but kept in this contract, and the actual transfer is triggered as a separate step by calling the {release}
  * function.
- *
- * NOTE: This contract assumes that ERC20 tokens will behave similarly to native tokens (THEO). Rebasing tokens, and
- * tokens that apply fees during transfers, are likely to not be supported as expected. If in doubt, we encourage you
- * to run tests before sending real value to this contract.
  */
 contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     /* ========== DEPENDENCIES ========== */
@@ -41,10 +37,8 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     uint256 private fdvTarget;
 
     uint256 private totalShares;
-    uint256 private totalReleased;
 
     mapping(address => uint256) private shares;
-    mapping(address => uint256) private released;
     address[] private payees;
 
     mapping(IERC20 => uint256) private erc20TotalReleased;
@@ -161,6 +155,40 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
 
         SafeERC20.safeTransfer(token, account, payment);
         emit ERC20PaymentReleased(token, account, payment);
+    }
+
+    /**
+     * @dev Triggers a transfer to `account` of the amount of `token` tokens specified, according to their
+     * percentage of the total shares and their previous withdrawals. `token` must be the address of an IERC20
+     * contract.
+     */
+    function releaseAmount(IERC20 token, address account, uint256 amount) public override {
+        require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
+        require(amount > 0, "TheopetraFounderVesting: amount cannot be 0");
+
+        uint256 totalReceived = token.balanceOf(address(this)) + getTotalReleased(token);
+        uint256 payment = _pendingPayment(account, totalReceived, getReleased(token, account));
+
+        require(payment != 0, "TheopetraFounderVesting: account is not due payment");
+        require(amount <= payment, "TheopetraFounderVesting: requested amount is more than due payment for account");
+
+        erc20Released[token][account] += amount;
+        erc20TotalReleased[token] += amount;
+
+        SafeERC20.safeTransfer(token, account, amount);
+        emit ERC20PaymentReleased(token, account, amount);
+    }
+
+    /**
+     * @dev Returns the amount of tokens that could be paid to `account` at the current time.
+     */
+    function getReleasable(IERC20 token, address account) external override view returns (uint256) {
+        require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
+
+        uint256 totalReceived = token.balanceOf(address(this)) + getTotalReleased(token);
+        uint256 payment = _pendingPayment(account, totalReceived, getReleased(token, account));
+
+        return payment;
     }
 
     /**

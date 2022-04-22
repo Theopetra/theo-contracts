@@ -13,4 +13,6 @@ interface IFounderVesting {
     function getShares(address account) external view returns (uint256);
     function getReleased(IERC20 token, address account) external view returns (uint256);
     function release(IERC20 token, address account) external;
+    function releaseAmount(IERC20 token, address account, uint256 amount) external;
+    function getReleasable(IERC20 token, address account) external view returns (uint256);
 }
