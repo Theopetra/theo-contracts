@@ -6,11 +6,11 @@ interface IStaking {
         address _to,
         uint256 _amount,
         bool _claim
-    ) external returns (uint256);
+    ) external returns (uint256, uint256 _index);
 
     function claim(address _recipient, bool _rebasing) external returns (uint256);
 
-    function forfeit() external returns (uint256);
+    function forfeit(uint256 _index) external;
 
     function toggleLock() external;
 
@@ -34,4 +34,14 @@ interface IStaking {
     function totalStaked() external view returns (uint256);
 
     function supplyInWarmup() external view returns (uint256);
+
+    function indexesFor(address _user) external view returns (uint256[] memory);
+
+    function claimAll(address _recipient) external returns (uint256);
+
+    function pushClaim(address _to, uint256 _index) external;
+
+    function pullClaim(address _from, uint256 _index) external returns (uint256 newIndex_);
+
+    function pushClaimForBond(address _to, uint256 _index) external returns (uint256 newIndex_);
 }

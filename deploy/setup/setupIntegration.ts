@@ -28,6 +28,11 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
     await Treasury.connect(owner).enable(11, YieldReporter.address, addressZero); // Enable Yield Reporter in Treasury
     await Treasury.connect(owner).enable(8, BondDepository.address, addressZero); // Set Bond Depo as reward manager in Treasury (to allow call to mint from NoteKeeper when adding new note)
 
+    /* ======== Setup to allow Pushing Claim during `TheopetraBondDepository.redeem()` and `WhitelistTheopetraBondDepository.redeem()` ======== */
+    // Set addresses of bond depos in staking, to allow bond depos to push claims to user when they redeem a note
+    await Staking.setBondDepo(BondDepository.address, true);
+    await Staking.setBondDepo(WhitelistBondDepository.address, true);
+
     /* ======== Setup for Whitelist Bond Depository ======== */
     await Treasury.connect(owner).enable(8, WhitelistBondDepository.address, addressZero); // Set Whitelist Bond Depo as reward manager in Treasury (to allow call to mint from NoteKeeper when adding new note)
 
