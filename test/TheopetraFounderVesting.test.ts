@@ -1,9 +1,10 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
-import { setupUsers, waitFor } from './utils';
-import { CAPTABLE, CONTRACTS, INITIALMINT, MOCKS } from '../utils/constants';
+import { setupUsers } from './utils';
+import { CAPTABLE, CONTRACTS, INITIALMINT } from '../utils/constants';
 import { getContracts } from '../utils/helpers';
-import { TheopetraTreasury, TheopetraERC20Token, TheopetraAuthority, TheopetraERC20Mock } from '../typechain-types';
+
+const badAddress = '0x0000000000000000000000000000000000001234';
 
 const setup = deployments.createFixture(async function () {
   await deployments.fixture([CONTRACTS.founderVesting]);
@@ -43,8 +44,17 @@ describe('Theopetra Founder Vesting', function () {
     it('mints tokens to cover the input shares', async function () {
       const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
       const expectedMint = totalShares.mul(INITIALMINT).div(10**(await TheopetraFounderVesting.decimals()));
-      expect(await TheopetraERC20Token.totalSupply() - INITIALMINT).to.equal(expectedMint);
+      expect(await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address)).to.equal(expectedMint);
     });
+    it('credits the value of the initial mint to the contract itself', async function () {
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedMint = totalShares.mul(INITIALMINT).div(10**(await TheopetraFounderVesting.decimals()));
+      expect(await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address)).to.equal(expectedMint);
+    });
+    it('sets total released THEO tokens to 0', async function () {
+      const totalReleased = await TheopetraFounderVesting.getTotalReleased(TheopetraERC20Token.address);
+      expect(totalReleased).to.equal(ethers.constants.Zero);
+    })
   });
 
   describe('decimals', function () {
@@ -69,94 +79,65 @@ describe('Theopetra Founder Vesting', function () {
       expect(acctShares).to.equal(expectedShares);
     });
     it('returns 0 for a unknown account', async function() {
-      const acctShares = await TheopetraFounderVesting.getShares('0x0000000000000000000000000000000000001234');
+      const acctShares = await TheopetraFounderVesting.getShares(badAddress);
       expect(acctShares).to.equal(0);
     });
   });
 
-  // describe('lastYield', function () {
-  //   it('returns 0 when there has been no yields reported', async function () {
-  //     const lastYield = await TheopetraFounderVesting.lastYield();
-  //     expect(lastYield).to.equal(0);
-  //   });
+  describe('getReleased token', function() {
+    it('returns 0 if nothing has been released', async function() {
+      const released = await TheopetraFounderVesting.getReleased(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+      expect(released).to.equal(ethers.constants.Zero);
+    });
+    it('returns quantity of released tokens if tokens has been released', async function() {
+      const totalBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedReleased = totalBalance.mul(CAPTABLE.shares[0]).div(totalShares);
 
-  //   it('returns current yield when only 1 yield has been reported', async function () {
-  //     const amount = 50_000_000_000;
-  //     await waitFor(TheopetraFounderVesting.reportYield(amount));
-  //     const lastYield = await TheopetraFounderVesting.lastYield();
-  //     expect(lastYield).to.equal(amount);
-  //   });
+      await TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+      const released = await TheopetraFounderVesting.getReleased(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+      expect(released).to.equal(expectedReleased);
+    });
+  });
 
-  //   it('returns the previous value when more than 1 yield has been reported', async function () {
-  //     const amount = 150_000_000_000;
-  //     await waitFor(TheopetraFounderVesting.reportYield(50_000_000_000));
-  //     await waitFor(TheopetraFounderVesting.reportYield(amount));
-  //     await waitFor(TheopetraFounderVesting.reportYield(50_000_000_000));
-  //     const lastYield = await TheopetraFounderVesting.lastYield();
-  //     expect(lastYield).to.equal(amount);
-  //   });
-  // });
+  describe('release token', function() {
+    it('reverts if no shares designated to address', async function() {
+      expect(TheopetraFounderVesting.release(TheopetraERC20Token.address, badAddress)).to.be.revertedWith("TheopetraFounderVesting: account has no shares");
+    });
+    it('reverts if no payment due to address', async function() {
+      // clean out initial funds
+      await TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+      // Trying again should fail
+      expect(TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0])).to.be.revertedWith("TheopetraFounderVesting: account is not due payment");
+    });
+    it('increases total released', async function() {
+      const expectedReleased = ethers.BigNumber.from(INITIALMINT).mul(CAPTABLE.shares[0]).div(10**(await TheopetraFounderVesting.decimals()));
+      const initialReleased = await TheopetraFounderVesting.getTotalReleased(TheopetraERC20Token.address);
 
-  // describe('currentYield', function () {
-  //   it('returns 0 when there has been no yields reported', async function () {
-  //     const currentYield = await TheopetraFounderVesting.currentYield();
-  //     expect(currentYield).to.equal(0);
-  //   });
+      await TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+      const totalReleased = await TheopetraFounderVesting.getTotalReleased(TheopetraERC20Token.address);
 
-  //   it('returns the current value when 1 or more yields has been reported', async function () {
-  //     const amount = 150_000_000_000;
-  //     await waitFor(TheopetraFounderVesting.reportYield(50_000_000_000));
-  //     await waitFor(TheopetraFounderVesting.reportYield(50_000_000_000));
-  //     await waitFor(TheopetraFounderVesting.reportYield(amount));
-  //     const currentYield = await TheopetraFounderVesting.currentYield();
-  //     expect(currentYield).to.equal(amount);
-  //   });
-  // });
+      expect(initialReleased).to.equal(0);
+      expect(totalReleased).to.equal(expectedReleased);
+    });
+    it('increases balance of address', async function() {
+      const expectedReleased = ethers.BigNumber.from(INITIALMINT).mul(CAPTABLE.shares[0]).div(10**(await TheopetraFounderVesting.decimals()));
+      const initialBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
 
-  // describe('getYieldById', function () {
-  //   it('should revert when requested ID greater than current ID', async function () {
-  //     await waitFor(TheopetraFounderVesting.reportYield(50_000_000_000));
-  //     await expect(TheopetraFounderVesting.getYieldById(2)).to.be.revertedWith('OUT_OF_BOUNDS');
-  //   });
+      await TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+      const releasedBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
 
-  //   it('should return 0 for ID 0', async function () {
-  //     const yield0 = await TheopetraFounderVesting.getYieldById(0);
-  //     expect(yield0).to.equal(0);
-  //   });
+      expect(initialBalance).to.equal(0);
+      expect(releasedBalance).to.equal(expectedReleased);
+    });
+    it('emits an event', async function() {
+      const expectedReleased = ethers.BigNumber.from(INITIALMINT).mul(CAPTABLE.shares[0]).div(10**(await TheopetraFounderVesting.decimals()));
 
-  //   it('returns the yield value of the requested ID', async function () {
-  //     const amounts = [0, 50_000_000_000, 100_000_000_000, 150_000_000_000];
-
-  //     await waitFor(TheopetraFounderVesting.reportYield(amounts[1]));
-  //     await waitFor(TheopetraFounderVesting.reportYield(amounts[2]));
-  //     await waitFor(TheopetraFounderVesting.reportYield(amounts[3]));
-
-  //     const yield1 = await TheopetraFounderVesting.getYieldById(1);
-  //     const yield2 = await TheopetraFounderVesting.getYieldById(2);
-  //     const yield3 = await TheopetraFounderVesting.getYieldById(3);
-
-  //     expect(yield1).to.equal(amounts[1]);
-  //     expect(yield2).to.equal(amounts[2]);
-  //     expect(yield3).to.equal(amounts[3]);
-  //   });
-  // });
-
-  // describe('reportYield', function () {
-  //   it('should store _amount as the latest yield and update the currentIndex', async function () {
-  //     const amount = 150_000_000_000;
-  //     await waitFor(TheopetraFounderVesting.reportYield(amount));
-
-  //     const currentIndex = await TheopetraFounderVesting.getCurrentIndex();
-  //     const currentYield = await TheopetraFounderVesting.currentYield();
-  //     expect(currentIndex).to.equal(1);
-  //     expect(currentYield).to.equal(amount);
-  //   });
-
-  //   it('should return the currentIndex', async function () {
-  //     const currentIndex = await TheopetraFounderVesting.callStatic.reportYield(50_000_000_000);
-
-  //     expect(Number(currentIndex)).to.equal(1);
-  //   });
+      await expect(TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0]))
+          .to.emit(TheopetraFounderVesting, 'ERC20PaymentReleased')
+          .withArgs(TheopetraERC20Token.address, CAPTABLE.addresses[0], expectedReleased);
+    });
+  });
 
   //   it('should emit a ReportYield event with the new ID and amount', async function () {
   //     const amount = 150_000_000_000;
@@ -167,12 +148,4 @@ describe('Theopetra Founder Vesting', function () {
   //     expect(events[0].args.id).to.equal(1);
   //     expect(events[0].args.yield).to.equal(amount);
   //   });
-
-  //   it('should revert if called by an address other than the policy owner', async function () {
-  //     const { users } = await setup();
-  //     const [, alice] = users;
-
-  //     await expect(alice.TheopetraFounderVesting.reportYield(1)).to.be.revertedWith('UNAUTHORIZED');
-  //   });
-  // });
 });

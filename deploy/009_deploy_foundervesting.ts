@@ -21,7 +21,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     Theo.address,
     FDVTARGET,
     CAPTABLE.addresses,
-    CAPTABLE.shares
+    CAPTABLE.shares,
+    [],
+    [],
   ];
 
   // If on Hardhat network, use the following values for testing
@@ -34,7 +36,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       TheopetraERC20Mock,
       args[3],
       args[4],
-      args[5]
+      args[5],
+      args[6],
+      args[7],
     ];
   }
 

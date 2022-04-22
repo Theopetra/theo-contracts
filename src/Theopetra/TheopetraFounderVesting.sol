@@ -50,6 +50,13 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     mapping(IERC20 => uint256) private erc20TotalReleased;
     mapping(IERC20 => mapping(address => uint256)) private erc20Released;
 
+    uint256 private deployTime = block.timestamp;
+    uint256 private unlockedAmount = 0;
+    uint256[] private unlockTimes;
+    uint256[] private unlockAmounts;
+    uint8 private unlockedIndex = 0;
+
+
     /**
      * @notice return the decimals in the percentage values and
      * thus the number of shares per percentage point (1% = 10_000_000 shares)
@@ -71,7 +78,9 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         address _theo,
         uint256 _fdvTarget,
         address[] memory _payees,
-        uint256[] memory _shares
+        uint256[] memory _shares,
+        uint256[] memory _unlockTimes,
+        uint256[] memory _unlockAmounts
     ) TheopetraAccessControlled(_authority) {
         require(_payees.length == _shares.length, "TheopetraFounderVesting: payees and shares length mismatch");
         require(_payees.length > 0, "TheopetraFounderVesting: no payees");
@@ -79,6 +88,8 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         fdvTarget = _fdvTarget;
         THEO = ITHEO(_theo);
         treasury = ITreasury(_treasury);
+        unlockTimes = _unlockTimes;
+        unlockAmounts = _unlockAmounts;
 
         for (uint256 i = 0; i < _payees.length; i++) {
             _addPayee(_payees[i], _shares[i]);
@@ -97,13 +108,6 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     }
 
     /**
-     * @dev Getter for the total amount of THEO already released.
-     */
-    function getTotalReleased() public view override returns (uint256) {
-        return totalReleased;
-    }
-
-    /**
      * @dev Getter for the total amount of `token` already released. `token` should be the address of an IERC20
      * contract.
      */
@@ -119,13 +123,6 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     }
 
     /**
-     * @dev Getter for the amount of THEO already released to a payee.
-     */
-    function getReleased(address account) public view override returns (uint256) {
-        return released[account];
-    }
-
-    /**
      * @dev Getter for the amount of `token` tokens already released to a payee. `token` should be the address of an
      * IERC20 contract.
      */
@@ -134,22 +131,13 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     }
 
     /**
-     * @dev Triggers a transfer to `account` of the amount of THEO they are owed, according to their percentage of the
-     * total shares and their previous withdrawals.
+     * @dev Getter for unlocked multiplier for time-locked funds. This is the percent currently unlocked as a decimal ratio of 1.
      */
-    function release(address payable account) public virtual override {
-        require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
+    function _getUnlockedMultiplier() private view returns (uint256) {
+        if(unlockedAmount >= 1_000_000_000) {
+            return 1_000_000_000;
+        }
 
-        uint256 totalReceived = address(this).balance + getTotalReleased();
-        uint256 payment = _pendingPayment(account, totalReceived, getReleased(account));
-
-        require(payment != 0, "TheopetraFounderVesting: account is not due payment");
-
-        released[account] += payment;
-        totalReleased += payment;
-
-        _sendValue(account, payment);
-        emit PaymentReleased(account, payment);
     }
 
     /**
@@ -157,7 +145,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
      * percentage of the total shares and their previous withdrawals. `token` must be the address of an IERC20
      * contract.
      */
-    function release(IERC20 token, address account) public virtual override {
+    function release(IERC20 token, address account) public override {
         require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
 
         uint256 totalReceived = token.balanceOf(address(this)) + getTotalReleased(token);
@@ -198,29 +186,6 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         shares[account] = shares_;
         totalShares = totalShares + shares_;
         emit PayeeAdded(account, shares_);
-    }
-
-    /**
-     * @dev Replacement for Solidity's `transfer`: sends `amount` wei to
-     * `recipient`, forwarding all available gas and reverting on errors.
-     *
-     * https://eips.ethereum.org/EIPS/eip-1884[EIP1884] increases the gas cost
-     * of certain opcodes, possibly making contracts go over the 2300 gas limit
-     * imposed by `transfer`, making them unable to receive funds via
-     * `transfer`. {sendValue} removes this limitation.
-     *
-     * https://diligence.consensys.net/posts/2019/09/stop-using-soliditys-transfer-now/[Learn more].
-     *
-     * IMPORTANT: because control is transferred to `recipient`, care must be
-     * taken to not create reentrancy vulnerabilities. Consider using
-     * {ReentrancyGuard} or the
-     * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
-     */
-    function _sendValue(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, "FounderVesting: insufficient balance");
-
-        (bool success, ) = recipient.call{value: amount}("");
-        require(success, "FounderVesting: unable to send, recipient may have reverted");
     }
 
 }
