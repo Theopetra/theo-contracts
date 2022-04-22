@@ -37,6 +37,15 @@ interface IBondDepository {
         uint8 quoteDecimals; // decimals of quote token
     }
 
+    struct DepositInfo {
+        uint256 id;
+        uint256 amount;
+        uint256 maxPrice;
+        address user;
+        address referral;
+        bool autoStake;
+    }
+
     /**
      * @notice deposit market
      * @param _bid uint256
@@ -53,7 +62,8 @@ interface IBondDepository {
         uint256 _amount,
         uint256 _maxPrice,
         address _user,
-        address _referral
+        address _referral,
+        bool _autoStake
     )
         external
         returns (
