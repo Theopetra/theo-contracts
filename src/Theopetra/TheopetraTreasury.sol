@@ -9,7 +9,7 @@ import "../Libraries/SafeCast.sol";
 import "../Interfaces/IERC20.sol";
 import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/ITHEO.sol";
-import "../Interfaces/IsTHEO.sol";
+import "../Interfaces/ITokenDebt.sol";
 import "../Interfaces/IBondCalculator.sol";
 import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IYieldReporter.sol";
@@ -73,7 +73,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     /* ========== STATE VARIABLES ========== */
 
     ITHEO public immutable THEO;
-    IsTHEO public sTHEO;
+    ITokenDebt public sTHEO;
     IYieldReporter private yieldReporter;
     IBondCalculator private theoBondingCalculator;
 
@@ -340,7 +340,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     ) external onlyGovernor {
         require(timelockEnabled == false, "Use queueTimelock");
         if (_status == STATUS.STHEO) {
-            sTHEO = IsTHEO(_address);
+            sTHEO = ITokenDebt(_address);
         } else if (_status == STATUS.YIELDREPORTER) {
             yieldReporter = IYieldReporter(_address);
         } else {
@@ -453,7 +453,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
 
         if (info.managing == STATUS.STHEO) {
             // 9
-            sTHEO = IsTHEO(info.toPermit);
+            sTHEO = ITokenDebt(info.toPermit);
         } else {
             permissions[info.managing][info.toPermit] = true;
 
