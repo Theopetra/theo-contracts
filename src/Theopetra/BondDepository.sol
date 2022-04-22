@@ -165,7 +165,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
          * of the market deposited into, and the Bond Rate Variable (Brv) discount on the bond
          */
         priceInfo.bondRateVariable = uint48(bondRateVariable(_id));
-        index_ = addNote(_user, payout_, uint48(expiry_), uint48(_id), _referral, priceInfo.bondRateVariable);
+        index_ = addNote(_user, payout_, uint48(expiry_), uint48(_id), _referral, priceInfo.bondRateVariable, true);
 
         // transfer payment to treasury
         market.quoteToken.safeTransferFrom(msg.sender, address(treasury), _amount);

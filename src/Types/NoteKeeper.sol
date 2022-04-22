@@ -57,7 +57,8 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         uint48 _expiry,
         uint48 _marketID,
         address _referral,
-        uint48 _discount
+        uint48 _discount,
+        bool _autoStake
     ) internal returns (uint256 index_) {
         // the index of the note is the next in the user's array
         index_ = notes[_user].length;
@@ -70,7 +71,8 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
                 matured: _expiry,
                 redeemed: 0,
                 marketID: _marketID,
-                discount: _discount
+                discount: _discount,
+                autoStake: _autoStake
             })
         );
 
@@ -104,10 +106,11 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
      */
     function redeem(
         address _user,
-        uint256[] memory _indexes,
-        bool _stake
+        uint256[] memory _indexes
     ) public override returns (uint256 payout_) {
         uint48 time = uint48(block.timestamp);
+        uint256 sTheoPayout = 0;
+        uint256 theoPayout = 0;
 
         for (uint256 i = 0; i < _indexes.length; i++) {
             (uint256 pay, , , , bool matured, ) = pendingFor(_user, _indexes[i]);
@@ -115,17 +118,17 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
             if (matured) {
                 notes[_user][_indexes[i]].redeemed = time; // mark as redeemed
                 payout_ += pay;
-
-                uint256 _claimIndex = noteForClaim[_user][_indexes[i]];
-                staking.pushClaimForBond(_user, _claimIndex);
+                if (notes[_user][_indexes[i]].autoStake) {
+                    uint256 _claimIndex = noteForClaim[_user][_indexes[i]];
+                    staking.pushClaimForBond(_user, _claimIndex);
+                    sTheoPayout += pay;
+                } else {
+                    theoPayout += pay;
+                }
             }
         }
-
-        if (_stake) {
-            sTHEO.transfer(_user, payout_); // send payout as sTHEO
-        } else {
-            theo.transfer(_user, payout_); // send payout as THEO
-        }
+        if (theoPayout > 0) theo.transfer(_user, payout_);
+        if (sTheoPayout > 0) sTHEO.transfer(_user, payout_);
     }
 
     /**
@@ -134,8 +137,8 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
      * @param _user        user to redeem all notes for
      * @return             sum of payout sent, in sTHEO
      */
-    function redeemAll(address _user, bool _stake) external override returns (uint256) {
-        return redeem(_user, indexesFor(_user), _stake);
+    function redeemAll(address _user) external override returns (uint256) {
+        return redeem(_user, indexesFor(_user));
     }
 
     /* ========== TRANSFER ========== */

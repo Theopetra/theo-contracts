@@ -17,15 +17,15 @@ interface INoteKeeper {
         uint48 redeemed;
         uint48 marketID;
         uint48 discount;
+        bool autoStake;
     }
 
     function redeem(
         address _user,
-        uint256[] memory _indexes,
-        bool _stake
+        uint256[] memory _indexes
     ) external returns (uint256);
 
-    function redeemAll(address _user, bool _stake) external returns (uint256);
+    function redeemAll(address _user) external returns (uint256);
 
     function pushNote(address to, uint256 index) external;
 
