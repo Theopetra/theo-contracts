@@ -51,10 +51,8 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     mapping(IERC20 => mapping(address => uint256)) private erc20Released;
 
     uint256 private deployTime = block.timestamp;
-    uint256 private unlockedAmount = 0;
     uint256[] private unlockTimes;
     uint256[] private unlockAmounts;
-    uint8 private unlockedIndex = 0;
 
 
     /**
@@ -84,6 +82,8 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     ) TheopetraAccessControlled(_authority) {
         require(_payees.length == _shares.length, "TheopetraFounderVesting: payees and shares length mismatch");
         require(_payees.length > 0, "TheopetraFounderVesting: no payees");
+        require(_unlockTimes.length == _unlockAmounts.length, "TheopetraFounderVesting: unlock times and amounts length mismatch");
+        require(_unlockTimes.length > 0, "TheopetraFounderVesting: no unlock schedule");
 
         fdvTarget = _fdvTarget;
         THEO = ITHEO(_theo);
@@ -133,11 +133,14 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     /**
      * @dev Getter for unlocked multiplier for time-locked funds. This is the percent currently unlocked as a decimal ratio of 1.
      */
-    function _getUnlockedMultiplier() private view returns (uint256) {
-        if(unlockedAmount >= 1_000_000_000) {
-            return 1_000_000_000;
+    function getUnlockedMultiplier() public view returns (uint256) {
+        uint256 timeSinceDeploy = block.timestamp - deployTime;
+        for(uint256 i = unlockTimes.length - 1; i >= 0; i--) {
+            if(timeSinceDeploy >= unlockTimes[i]) {
+                return unlockAmounts[i];
+            }
         }
-
+        return 0;
     }
 
     /**
@@ -169,7 +172,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         uint256 totalReceived,
         uint256 alreadyReleased
     ) private view returns (uint256) {
-        return (totalReceived * shares[account]) / totalShares - alreadyReleased;
+        return (totalReceived * shares[account] * getUnlockedMultiplier()) / (totalShares * 10**decimals()) - alreadyReleased;
     }
 
     /**

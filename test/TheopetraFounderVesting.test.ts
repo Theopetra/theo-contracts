@@ -1,7 +1,7 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
-import { setupUsers } from './utils';
-import { CAPTABLE, CONTRACTS, INITIALMINT } from '../utils/constants';
+import { moveTimeForward, setupUsers } from './utils';
+import { CAPTABLE, CONTRACTS, INITIALMINT, UNLOCKSCHEDULE } from '../utils/constants';
 import { getContracts } from '../utils/helpers';
 
 const badAddress = '0x0000000000000000000000000000000000001234';
@@ -84,7 +84,11 @@ describe('Theopetra Founder Vesting', function () {
     });
   });
 
-  describe('getReleased token', function() {
+  describe('getReleased', function() {
+    beforeEach(async function() {
+      // move forward 1 hour past unlock schedule
+      await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
+    });
     it('returns 0 if nothing has been released', async function() {
       const released = await TheopetraFounderVesting.getReleased(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
       expect(released).to.equal(ethers.constants.Zero);
@@ -100,8 +104,12 @@ describe('Theopetra Founder Vesting', function () {
     });
   });
 
-  describe('release token', function() {
-    it('reverts if no shares designated to address', async function() {
+  describe('release', function() {
+    beforeEach(async function() {
+      // move forward 1 hour past unlock schedule
+      await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
+    });
+   it('reverts if no shares designated to address', async function() {
       expect(TheopetraFounderVesting.release(TheopetraERC20Token.address, badAddress)).to.be.revertedWith("TheopetraFounderVesting: account has no shares");
     });
     it('reverts if no payment due to address', async function() {
