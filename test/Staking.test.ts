@@ -1147,4 +1147,55 @@ describe('Staking', function () {
       expect(bobNewTheoBalance).to.be.greaterThan(bobStartingTheoBalance);
     });
   });
+
+  describe('UI-related', function () {
+    it('returns the number of staking claims for a user', async function () {
+      const [, bob] = users;
+      await createClaim();
+      await createClaim();
+      await createClaim();
+
+      const claimCount = await Staking.getClaimsCount(bob.address);
+      expect(claimCount.toNumber()).to.equal(3);
+    });
+
+    it('returns information for each claim of a user -- including THEO deposit amount, amount of locked staked THEO remaining or in warmup, and lock expiry time', async function () {
+      const [, bob] = users;
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const upperBound = latestBlock.timestamp * 1.0001;
+      const lowerBound = latestBlock.timestamp * 0.9999;
+      await createClaim(); //Claim goes into warmup with warmup expiry period of zero
+      const additionalTime = 60 * 60 * 24 * 10;
+      await moveTimeForward(additionalTime);
+      const secondAmountToStake = amountToStake * 2;
+      await createClaim(secondAmountToStake, true); // Immediate send of sTHEO to user (claim === true)
+
+      const claimCount = (await Staking.getClaimsCount(bob.address)).toNumber();
+
+      const pendingFors: any = [];
+      for (let i = 0; i < claimCount; i++) {
+        const pendingFor = await Staking.pendingFor(bob.address, i);
+        pendingFors.push(pendingFor);
+      }
+
+      const [depositOne, amountInWarmupOne, warmupExpiryOne, stakingExpiryOne, amountRemainingOne] = pendingFors[0];
+
+      expect(depositOne.toNumber()).to.equal(amountToStake);
+      expect(amountInWarmupOne.toNumber()).to.equal(amountToStake);
+      expect(warmupExpiryOne.toNumber()).to.be.greaterThan(lowerBound);
+      expect(warmupExpiryOne.toNumber()).to.be.lessThan(upperBound);
+      expect(stakingExpiryOne.toNumber()).to.be.greaterThan(lowerBound + lockedStakingTerm);
+      expect(stakingExpiryOne.toNumber()).to.be.lessThan(upperBound + lockedStakingTerm);
+      expect(amountRemainingOne.toNumber()).to.equal(0);
+
+      const [depositTwo, amountInWarmupTwo, warmupExpiryTwo, stakingExpiryTwo, amountRemainingTwo] = pendingFors[1];
+
+      expect(depositTwo.toNumber()).to.equal(secondAmountToStake);
+      expect(amountInWarmupTwo.toNumber()).to.equal(0);
+      expect(warmupExpiryTwo.toNumber()).to.equal(0);
+      expect(stakingExpiryTwo.toNumber()).to.be.greaterThan(lowerBound + additionalTime + lockedStakingTerm);
+      expect(stakingExpiryTwo.toNumber()).to.be.lessThan(upperBound + additionalTime + lockedStakingTerm);
+      expect(amountRemainingTwo.toNumber()).to.be.greaterThanOrEqual(secondAmountToStake);
+    });
+  });
 });

@@ -540,4 +540,39 @@ contract TheopetraStaking is TheopetraAccessControlled {
         Claim memory claim = stakingInfo[_user][_index];
         return claim.gonsInWarmup == 0 && claim.gonsRemaining > 0;
     }
+
+
+    function getClaimsCount(address _user) public view returns (uint256) {
+        return stakingInfo[_user].length;
+    }
+
+    /**
+     * @notice                  return information for a single claim
+     * @param _user             the user that the claim belongs to
+     * @param _index            the index of the claim in the user's array
+     * @return deposit_         the deposit in THEO
+     * @return amountInWarmup_  the amount of sTHEO in warmup
+     * @return warmupExpiry_    the time the claim is retrievable from warmup
+     * @return stakingExpiry_   the time the claim is fully redeemable without penalty
+     * @return amountRemaining_ the amount of sTHEO remaining to be redeemed on the claim (zero if still in warmup)
+     */
+    function pendingFor(address _user, uint256 _index)
+        public
+        view
+        returns (
+            uint256 deposit_,
+            uint256 amountInWarmup_,
+            uint256 warmupExpiry_,
+            uint256 stakingExpiry_,
+            uint256 amountRemaining_
+        )
+    {
+        Claim memory claim = stakingInfo[_user][_index];
+
+        deposit_ = claim.deposit;
+        amountInWarmup_ = IStakedTHEOToken(sTHEO).balanceForGons(claim.gonsInWarmup);
+        warmupExpiry_ = claim.warmupExpiry;
+        stakingExpiry_ = claim.stakingExpiry;
+        amountRemaining_ = IStakedTHEOToken(sTHEO).balanceForGons(claim.gonsRemaining);
+    }
 }
