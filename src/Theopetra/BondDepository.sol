@@ -89,7 +89,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
             uint256 index_
         )
     {
-        DepositInfo memory depositInfo = DepositInfo(_id, _amount, _maxPrice, _user, _referral, _autoStake);
+        // prevent "stack too deep"
+        DepositArgs memory depositInfo = DepositArgs(_id, _amount, _maxPrice, _user, _referral, _autoStake);
 
         Market storage market = markets[depositInfo.id];
         Terms memory term = terms[depositInfo.id];

@@ -37,7 +37,7 @@ interface IBondDepository {
         uint8 quoteDecimals; // decimals of quote token
     }
 
-    struct DepositInfo {
+    struct DepositArgs {
         uint256 id;
         uint256 amount;
         uint256 maxPrice;
