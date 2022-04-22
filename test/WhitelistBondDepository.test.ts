@@ -744,14 +744,14 @@ describe('Whitelist Bond depository', function () {
     });
   });
 
-  describe('Redeem', function () {
+  describe.only('Redeem', function () {
     beforeEach(async function () {
       await setupForDeposit();
     });
 
-    it('should allow a note to be redeemed', async function () {
+    it('should allow a note to be redeemed for THEO', async function () {
       const [, , bob] = users;
-
+      const initialBobBalance = await bob.TheopetraERC20Token.balanceOf(bob.address);
       await bob.WhitelistBondDepository.deposit(
         usdcMarketId,
         usdcDepositAmount,
@@ -766,6 +766,8 @@ describe('Whitelist Bond depository', function () {
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       await expect(WhitelistBondDepository.redeemAll(bob.address)).to.not.be.reverted;
+      const finalBobBalance = await bob.TheopetraERC20Token.balanceOf(bob.address);
+      expect(Number(finalBobBalance)).to.be.greaterThan(Number(initialBobBalance));
     });
   });
 
