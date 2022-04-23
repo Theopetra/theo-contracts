@@ -106,7 +106,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         for (uint256 i = 0; i < info.length; i++) {
             uint256 _rate = nextRewardRate(i);
             if (_rate > 0) {
-                ITreasury(treasury).mint(info[i].recipient, nextRewardAt(_rate));
+                ITreasury(treasury).mint(info[i].recipient, nextRewardAt(_rate, info[i].recipient));
             }
             if (info[i].nextEpochTime <= block.timestamp) {
                 if (info[i].locked == false && info[i].start > 20_000_000) {
@@ -138,8 +138,8 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @param _rate uint
         @return uint
      */
-    function nextRewardAt(uint256 _rate) public view override returns (uint256) {
-        return IERC20(THEO).totalSupply().mul(_rate).div(rateDenominator);
+    function nextRewardAt(uint256 _rate, address _recipient) public view override returns (uint256) {
+        return sTHEO(IStaking(_recipient).sTHEO()).circulatingSupply().mul(_rate).div(rateDenominator);
     }
 
     /**
@@ -151,7 +151,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         uint256 reward;
         for (uint256 i = 0; i < info.length; i++) {
             if (info[i].recipient == _recipient) {
-                reward = nextRewardAt(nextRewardRate(i));
+                reward = nextRewardAt(nextRewardRate(i), _recipient);
             }
         }
         return reward;
