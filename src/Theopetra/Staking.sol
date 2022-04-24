@@ -546,7 +546,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
      *
      * @return address     the address of the staking token
      */
-     function basis() public view returns (address) {
+    function basis() public view returns (address) {
         return sTHEO;
-     }
+    }
 }

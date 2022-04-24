@@ -341,7 +341,9 @@ describe.only('Distributor', function () {
         expect(Number(await TheopetraERC20Token.totalSupply())).to.equal(
           Number(initialTheoToMint) + expectedTheoToMint
         );
-        expect(Number(await TheopetraERC20Token.balanceOf(StakingNew.address))).to.equal(Number(expectedTheoToMint) + Number(initialTheoToMint));
+        expect(Number(await TheopetraERC20Token.balanceOf(StakingNew.address))).to.equal(
+          Number(expectedTheoToMint) + Number(initialTheoToMint)
+        );
       });
     });
 
