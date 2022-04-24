@@ -32,7 +32,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe.only('Distributor', function () {
+describe('Distributor', function () {
   const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
   const epochLength = 60 * 60 * 24 * 365; // seconds (for 365 days)
   const expectedStartRateUnlocked = 40_000_000; // 4%, rateDenominator for Distributor is 1_000_000_000
@@ -71,9 +71,9 @@ describe.only('Distributor', function () {
       users,
     } = (await setup()) as any);
     await Distributor.addRecipient(Staking.address, expectedStartRateUnlocked, expectedDrs, expectedDys, isLocked);
-    await Treasury.enable(8, Distributor.address, Distributor.address);
     // Setup to get deltaTokenPrice and deltaTreasuryYield
     if (process.env.NODE_ENV !== TESTWITHMOCKS) {
+      await Treasury.enable(8, Distributor.address, Distributor.address);
       await performanceUpdate(Treasury, YieldReporter, BondingCalculatorMock.address);
       deltaTokenPrice = await Treasury.deltaTokenPrice();
       deltaTreasuryYield = await Treasury.deltaTreasuryYield();
