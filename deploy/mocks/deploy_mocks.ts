@@ -23,8 +23,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     for (const key in MOCKSWITHARGS) {
       let args;
-      if (key === 'treasuryMock' || key === 'stakingMock') {
+      if (key === 'treasuryMock') {
         args = [namedMockAddresses.TheopetraERC20Mock];
+      } else if (key === 'stakingMock') {
+        args = [namedMockAddresses.TheopetraERC20Mock, namedMockAddresses.sTheoMock];
       } else if (key === 'bondingCalculatorMock') {
         const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
         const tokenToUse =
