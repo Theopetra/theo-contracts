@@ -825,10 +825,7 @@ describe('Bond depository', function () {
 
       expect(bobNotesIndexes.length).to.equal(1);
 
-      const latestBlock = await ethers.provider.getBlock('latest');
-      const newTimestampInSeconds = latestBlock.timestamp + vesting * 2;
-      await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
-
+      await moveTimeForward(vesting * 2)
       await BondDepository.redeemAll(bob.address);
       const bobBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
 
