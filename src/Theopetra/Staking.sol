@@ -227,18 +227,20 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
         amount_ = 0;
         uint256 bounty;
-        uint256 indexChange = 0;
+
+        uint256[] memory amountsAsGons = new uint256[](_indexes.length);
+        for (uint256 i = 0; i < _indexes.length; i++) {
+            amountsAsGons[i] = IStakedTHEOToken(sTHEO).gonsForBalance(_amounts[i]);
+        }
+
         if (_trigger) {
-            uint256 initialIndex = index();
             bounty = rebase();
-            uint256 indexPostRebase = index();
-            indexChange = (indexPostRebase.mul(10**18)).div(initialIndex);
         }
 
         for (uint256 i = 0; i < _indexes.length; i++) {
             Claim memory info = stakingInfo[_to][_indexes[i]];
             UnstakeAmounts memory unstakeAmounts;
-            unstakeAmounts._amountSingle = indexChange > 0 ? (_amounts[i].mul(indexChange)).div(10**18) : _amounts[i];
+            unstakeAmounts._amountSingle = IStakedTHEOToken(sTHEO).balanceForGons(amountsAsGons[i]);
 
             if (isUnRedeemed(_to, _indexes[i])) {
                 unstakeAmounts._gonsRemaining = IStakedTHEOToken(sTHEO).gonsForBalance(
