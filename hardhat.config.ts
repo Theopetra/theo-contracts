@@ -152,6 +152,7 @@ const config: HardhatUserConfig = {
 
     contractSizer: {
       strict: true,
+      except: ['.*Mock*'],
     }
 
 };
