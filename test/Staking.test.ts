@@ -28,7 +28,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe.only('Staking', function () {
+describe('Staking', function () {
   const amountToStake = 1_000_000_000_000;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
 
@@ -76,7 +76,7 @@ describe.only('Staking', function () {
     await Treasury.tokenPerformanceUpdate();
 
     // Setup for tracking index
-    await sTheo.setIndex("1000000000000000");
+    await sTheo.setIndex('1000000000000000');
   }
 
   beforeEach(async function () {
@@ -714,9 +714,9 @@ describe.only('Staking', function () {
       // Already in next epoch so rebase will occur
       await createClaim(amountToStake, true);
       await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
-      await createClaim(amountToStake*1000, true);
+      await createClaim(amountToStake * 1000, true);
       await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
-      await createClaim(amountToStake*2, false);
+      await createClaim(amountToStake * 2, false);
 
       const [deposit, , , , gonsRemaining] = await Staking.stakingInfo(bob.address, 0);
       const balanceFromGons = await sTheo.balanceForGons(gonsRemaining);
@@ -730,15 +730,15 @@ describe.only('Staking', function () {
     it('allows a user to unstake with or without rebasing during unstaking', async function () {
       const [, bob] = users;
       await setupForRebase();
-      const rnd = randomIntFromInterval(0,1);
+      const rnd = randomIntFromInterval(0, 1);
       const isRebaseTriggered = [true, false][rnd];
-      console.log("Is Rebase Triggered on Unstaking?", isRebaseTriggered);
+      console.log('Is Rebase Triggered on Unstaking?', isRebaseTriggered);
 
       // STAKE
       // Already in next epoch so rebase will occur
-      await createClaim(amountToStake*1000, true);
+      await createClaim(amountToStake * 1000, true);
       await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
-      await createClaim(amountToStake*1000, true);
+      await createClaim(amountToStake * 1000, true);
 
       const [deposit, , , , gonsRemaining] = await Staking.stakingInfo(bob.address, 0);
       const balanceFromGons = await sTheo.balanceForGons(gonsRemaining);
@@ -752,14 +752,14 @@ describe.only('Staking', function () {
     it('allows a variety of staking and unstaking (with or without rebasing during unstakes), with movements in time', async function () {
       const [, bob] = users;
       await setupForRebase();
-      const rnd = randomIntFromInterval(0,1);
+      const rnd = randomIntFromInterval(0, 1);
       const isRebaseTriggered = [true, false][rnd];
-      console.log("Is Rebase Triggered on Unstaking?", isRebaseTriggered);
+      console.log('Is Rebase Triggered on Unstaking?', isRebaseTriggered);
 
       await createClaim(amountToStake, true);
-      await createClaim(amountToStake*1000, true);
+      await createClaim(amountToStake * 1000, true);
       await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
-      await createClaim(amountToStake*2, false);
+      await createClaim(amountToStake * 2, false);
       const [, , , , gonsRemainingOne] = await Staking.stakingInfo(bob.address, 0);
       const balanceFromGonsOne = await sTheo.balanceForGons(gonsRemainingOne);
       const [, , , , gonsRemainingTwo] = await Staking.stakingInfo(bob.address, 1);
@@ -767,7 +767,7 @@ describe.only('Staking', function () {
       await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
       await bob.Staking.unstake(bob.address, [balanceFromGonsOne.toNumber()], false, [0]);
       await bob.Staking.unstake(bob.address, [balanceFromGonsTwo.toNumber()], true, [1]);
-      await createClaim(amountToStake*3, true);
+      await createClaim(amountToStake * 3, true);
       const [, , , , gonsRemainingFour] = await Staking.stakingInfo(bob.address, 3);
       const balanceFromGonsFour = await sTheo.balanceForGons(gonsRemainingFour);
       await bob.Staking.unstake(bob.address, [balanceFromGonsFour.toNumber()], isRebaseTriggered, [3]);
@@ -1374,40 +1374,41 @@ describe.only('Staking', function () {
       expect(currentRewards.toNumber()).to.equal(0);
     });
 
-    it.skip('gives the correct expected rewards for claims', async function () {
+    it('gives the correct expected rewards for claims', async function () {
       const [, bob] = users;
       await setupForRebase();
 
       // STAKE
       // Already in next epoch so rebase will occur
-      await createClaim(amountToStake*1000, true);
-      // // const preIndexOne = await sTheo.index();
+      await createClaim(amountToStake * 1000, true);
       await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
+      const secondAmountToStake = amountToStake * 1000;
+      await createClaim(secondAmountToStake, true);
 
-      await createClaim(amountToStake*1000, true);
-
-      // const postIndexOne = await sTheo.index();
-
-      // const rewardsForOne = await Staking.rewardsFor(bob.address, 0);
-      // const rewardsForTwo = await Staking.rewardsFor(bob.address, 1);
+      const rewardsForOne = await Staking.rewardsFor(bob.address, 0);
+      const rewardsForTwo = await Staking.rewardsFor(bob.address, 1);
 
       const [deposit, , , , gonsRemaining] = await Staking.stakingInfo(bob.address, 0);
       const balanceFromGons = await sTheo.balanceForGons(gonsRemaining);
 
-      // expect(rewardsForOne).to.equal(balanceFromGons.sub(deposit)); // First claim gains rewards via sTHEO rebasing with profit
-      // expect(rewardsForTwo).to.equal(0); // Second claim has not yet benefitted from rebasing
+      expect(rewardsForOne).to.equal(balanceFromGons.sub(deposit)); // First claim gains rewards via sTHEO rebasing with profit
+      expect(rewardsForTwo).to.equal(0); // Second claim has not yet benefitted from rebasing
 
       // Unstake without further rebasing (trigger is false)
       // Bob incurs slashing penalty as unstaking before staking expiry time
       await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
+      await bob.Staking.unstake(bob.address, [balanceFromGons.toNumber()], false, [0]);
 
-      // const preIndexTwo = await sTheo.index();
-      await bob.Staking.unstake(bob.address, [balanceFromGons.toNumber()], true, [0]);
-      // const postIndexTwo = await sTheo.index();
+      // Get rewards available for second stake
+      const newRewardsForTwo = await Staking.rewardsFor(bob.address, 1);
 
-      // await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
-      // const newRewardsForTwo = await Staking.rewardsFor(bob.address, 1);
-      // console.log('NOW WITH REWARDS🌈', Number(newRewardsForTwo));
+      // Calculate expected rewards available
+      const expectedTotalSlashedTokens = secondAmountToStake * 0.2; // Bob will unstake the second stake immediately (20% penalty on principal)
+      const currentSTHEOCirculatingSupply = await sTheo.circulatingSupply();
+      const expectedSlashedRewards =
+        (secondAmountToStake / currentSTHEOCirculatingSupply.toNumber()) * expectedTotalSlashedTokens;
+
+      expect(newRewardsForTwo).to.equal(expectedSlashedRewards);
     });
   });
 });

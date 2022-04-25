@@ -199,7 +199,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
      *         and gonsRemaining becomes zero.
      *         For unstaking at or beyond 100% of the staking term, a part-redeem can be made: that is, a user may redeem less than 100% of the total amount available to redeem
      *         (as represented by gonsRemaining), during a call to `unstake`
-     *         The penalty is added (after conversion to gons) to `slashedons` and subtracted from the amount to return
+     *         The penalty is added (after conversion to gons) to `slasheGons` and subtracted from the amount to return
      *         gonsRemaining keeps track of the amount of sTheo (as gons) that can be redeemed for a Claim
      *         When unstaking from the locked tranche (stakingTerm > 0) after the stake reaches maturity,
      *         the Stake becomes eligible to claim against bonus pool rewards (tracked in `slashedGons`; see also `getSlashedRewards`)
@@ -277,6 +277,9 @@ contract TheopetraStaking is TheopetraAccessControlled {
         ITHEO(THEO).safeTransfer(_to, amount_);
     }
 
+    /**
+        @dev slashedRewards is calculated as: (StakerTokens/totalStakedTokens) * totalSlashedTokens
+     */
     function getSlashedRewards(uint256 amount) private view returns (uint256) {
         uint256 circulatingSupply = IStakedTHEOToken(sTHEO).circulatingSupply();
         uint256 baseDecimals = 10**9;
