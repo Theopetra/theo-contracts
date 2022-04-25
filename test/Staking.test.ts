@@ -43,7 +43,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe.only('Staking', function () {
+describe('Staking', function () {
   const amountToStake = 1_000_000_000_000;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
   const epochLength = 8 * 60 * 60; // Same value as used in deployment script for Hardhat network deployment
@@ -143,28 +143,9 @@ describe.only('Staking', function () {
   describe('Locked Tranche', function () {
     describe('Deployment', async function () {
 
-
       it('can be deployed', async function () {
         await setup();
       });
-
-      // it.skip('can be deployed for an unlocked tranche', async function () {
-      //   const [owner] = await ethers.getSigners();
-      //   const epochLength = 8 * 60 * 60;
-      //   const firstEpochNumber = '1';
-      //   const latestBlock = await ethers.provider.getBlock('latest');
-      //   const firstEpochTime = latestBlock.timestamp + epochLength;
-
-      //   await new TheopetraStaking__factory(owner).deploy(
-      //     TheopetraERC20Token.address,
-      //     sTheo.address,
-      //     epochLength,
-      //     firstEpochNumber,
-      //     firstEpochTime,
-      //     unlockedStakingTerm,
-      //     TheopetraAuthority.address
-      //   );
-      // });
 
       it('is deployed with the correct constructor arguments', async function () {
         const latestBlock = await ethers.provider.getBlock('latest');
@@ -1856,7 +1837,7 @@ describe.only('Staking', function () {
   describe('Unlocked Tranche', function () {
 
     describe('Deployment', function () {
-      it.only('is deployed with the correct constructor arguments', async function () {
+      it('is deployed with the correct constructor arguments', async function () {
         const latestBlock = await ethers.provider.getBlock('latest');
 
         const expectedFirstEpochTime =
