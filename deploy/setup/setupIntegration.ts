@@ -41,7 +41,6 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
 
     /* ======== Staking and Distributor ======== */
     await Staking.setContract(0, Distributor.address); // set Distributor on Staking
-
   } catch (error) {
     console.log(error);
   }
