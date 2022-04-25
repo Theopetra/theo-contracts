@@ -78,7 +78,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         uint256 _amount,
         uint256 _maxPrice,
         address _user,
-        address _referral
+        address _referral,
+        bool _autoStake
     )
         external
         override
@@ -88,8 +89,11 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
             uint256 index_
         )
     {
-        Market storage market = markets[_id];
-        Terms memory term = terms[_id];
+        // prevent "stack too deep"
+        DepositArgs memory depositInfo = DepositArgs(_id, _amount, _maxPrice, _user, _referral, _autoStake);
+
+        Market storage market = markets[depositInfo.id];
+        Terms memory term = terms[depositInfo.id];
         PriceInfo memory priceInfo;
         uint48 currentTime = uint48(block.timestamp);
 
@@ -98,12 +102,12 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         require(currentTime < term.conclusion, "Depository: market concluded");
 
         // Debt decays over time
-        _decay(_id, currentTime);
+        _decay(depositInfo.id, currentTime);
 
         // Users input a maximum price, which protects them from price changes after
         // entering the mempool. max price is a slippage mitigation measure
-        priceInfo.price = marketPrice(_id);
-        require(priceInfo.price <= _maxPrice, "Depository: more than max price");
+        priceInfo.price = marketPrice(depositInfo.id);
+        require(priceInfo.price <= depositInfo.maxPrice, "Depository: more than max price");
         /**
          * payout for the deposit = amount / price
          *
@@ -114,7 +118,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
          *
          * 1e18 = THEO decimals (9) + price decimals (9)
          */
-        payout_ = ((_amount * 1e18) / priceInfo.price) / (10**metadata[_id].quoteDecimals);
+        payout_ = ((depositInfo.amount * 1e18) / priceInfo.price) / (10**metadata[depositInfo.id].quoteDecimals);
 
         // markets have a max payout amount, capping size because deposits
         // do not experience slippage. max payout is recalculated upon tuning
@@ -129,7 +133,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
          * or the number of quote tokens that the market can buy
          * (if capacity in quote is true)
          */
-        market.capacity -= market.capacityInQuote ? _amount : payout_;
+        market.capacity -= market.capacityInQuote ? depositInfo.amount : payout_;
 
         /**
          * bonds mature with a cliff at a set timestamp
@@ -150,13 +154,13 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
 
         // markets keep track of how many quote tokens have been
         // purchased, and how much THEO has been sold
-        market.purchased += _amount;
+        market.purchased += depositInfo.amount;
         market.sold += payout_;
 
         // increment total debt, which is later compared to maxDebt (this can be a circuit-breaker)
         market.totalDebt += payout_;
 
-        emit Bond(_id, _amount, priceInfo.price);
+        emit Bond(depositInfo.id, depositInfo.amount, priceInfo.price);
 
         /**
          * user data is stored as Notes. these are isolated array entries
@@ -164,20 +168,20 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
          * is redeemable, the time when payout was redeemed, the ID
          * of the market deposited into, and the Bond Rate Variable (Brv) discount on the bond
          */
-        priceInfo.bondRateVariable = uint48(bondRateVariable(_id));
-        index_ = addNote(_user, payout_, uint48(expiry_), uint48(_id), _referral, priceInfo.bondRateVariable);
+        priceInfo.bondRateVariable = uint48(bondRateVariable(depositInfo.id));
+        index_ = addNote(depositInfo.user, payout_, uint48(expiry_), uint48(depositInfo.id), depositInfo.referral, priceInfo.bondRateVariable, depositInfo.autoStake);
 
         // transfer payment to treasury
-        market.quoteToken.safeTransferFrom(msg.sender, address(treasury), _amount);
+        market.quoteToken.safeTransferFrom(msg.sender, address(treasury), depositInfo.amount);
 
         // if max debt is breached, the market is closed
         // this a circuit breaker
         if (term.maxDebt < market.totalDebt) {
             market.capacity = 0;
-            emit CloseMarket(_id);
+            emit CloseMarket(depositInfo.id);
         } else {
             // if market will continue, the control variable is tuned to hit targets on time
-            _tune(_id, currentTime);
+            _tune(depositInfo.id, currentTime);
         }
     }
 

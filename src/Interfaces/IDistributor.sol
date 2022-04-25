@@ -8,7 +8,7 @@ interface IDistributor {
 
     function retrieveBounty() external returns (uint256);
 
-    function nextRewardAt(uint256 _rate) external view returns (uint256);
+    function nextRewardAt(uint256 _rate, address _recipient) external view returns (uint256);
 
     function nextRewardFor(address _recipient) external view returns (uint256);
 
@@ -29,4 +29,6 @@ interface IDistributor {
     function setDiscountRateStaking(uint256 _index, int256 _drs) external;
 
     function setDiscountRateYield(uint256 _index, int256 _dys) external;
+
+    function setStaking(address _addr) external;
 }

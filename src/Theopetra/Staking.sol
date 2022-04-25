@@ -207,9 +207,6 @@ contract TheopetraStaking is TheopetraAccessControlled {
      *         gonsRemaining keeps track of the amount of sTheo (as gons) that can be redeemed for a Claim
      *         note that When unstaking from the locked tranche (stakingTerm > 0) after the stake reaches maturity,
      *         the Stake becomes eligible to claim against bonus pool rewards (tracked in `slashedGons`; see also `getSlashedRewards`)
-     *         note that When a rebase is triggered (`_trigger` == true), an index on sTHEO is used to track rebase growth and
-     *         adjust the amount to unstake for a claim (`unstakeAmounts._amountSingle`). For rebase growth to be tracked with
-     *         sufficient precision, the index on sTHEO must be set (via `sTHEO.setIndex`) to a high value: 1e18
      * @param _to address
      * @param _amounts uint
      * @param _trigger bool
@@ -229,18 +226,20 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
         amount_ = 0;
         uint256 bounty;
-        uint256 indexChange = 0;
+
+        uint256[] memory amountsAsGons = new uint256[](_indexes.length);
+        for (uint256 i = 0; i < _indexes.length; i++) {
+            amountsAsGons[i] = IStakedTHEOToken(sTHEO).gonsForBalance(_amounts[i]);
+        }
+
         if (_trigger) {
-            uint256 initialIndex = index();
             bounty = rebase();
-            uint256 indexPostRebase = index();
-            indexChange = (indexPostRebase.mul(10**18)).div(initialIndex);
         }
 
         for (uint256 i = 0; i < _indexes.length; i++) {
             Claim memory info = stakingInfo[_to][_indexes[i]];
             UnstakeAmounts memory unstakeAmounts;
-            unstakeAmounts._amountSingle = indexChange > 0 ? (_amounts[i].mul(indexChange)).div(10**18) : _amounts[i];
+            unstakeAmounts._amountSingle = IStakedTHEOToken(sTHEO).balanceForGons(amountsAsGons[i]);
 
             if (isUnRedeemed(_to, _indexes[i])) {
                 unstakeAmounts._gonsRemaining = IStakedTHEOToken(sTHEO).gonsForBalance(
@@ -591,5 +590,14 @@ contract TheopetraStaking is TheopetraAccessControlled {
             currentRewards_ = (_amountRemaining.add(getSlashedRewards(_amountRemaining))).sub(claim.deposit);
         }
         return currentRewards_;
+    }
+
+    /**
+     * @notice             return the staking token that the tranche is based on
+     *
+     * @return address     the address of the staking token
+     */
+    function basis() public view returns (address) {
+        return sTHEO;
     }
 }

@@ -8,10 +8,12 @@ contract StakingMock {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable THEO;
+    address public immutable sTHEO;
     uint256 public claimIndexCount;
 
-    constructor(address _theo) {
+    constructor(address _theo, address _sTheo) {
         THEO = IERC20(_theo);
+        sTHEO = _sTheo;
     }
 
     function stake(
@@ -28,5 +30,9 @@ contract StakingMock {
 
     function pushClaimForBond(address _to, uint256 _index) external returns (uint256 newIndex_) {
         return 0;
+    }
+
+    function basis() external returns (address) {
+        return sTHEO;
     }
 }

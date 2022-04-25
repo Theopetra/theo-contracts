@@ -44,4 +44,6 @@ interface IStaking {
     function pullClaim(address _from, uint256 _index) external returns (uint256 newIndex_);
 
     function pushClaimForBond(address _to, uint256 _index) external returns (uint256 newIndex_);
+
+    function basis() external view returns (address);
 }

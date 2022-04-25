@@ -75,9 +75,6 @@ describe.only('Staking Locked Tranche', function () {
     // Move forward in time again to update again, this time current token price becomes last token price
     await moveTimeForward(60 * 60 * 8);
     await Treasury.tokenPerformanceUpdate();
-
-    // Setup for tracking index
-    await sTheo.setIndex('1000000000000000');
   }
 
   beforeEach(async function () {
@@ -113,6 +110,7 @@ describe.only('Staking Locked Tranche', function () {
       // Mint enough to allow transfers when claiming staked THEO
       // only call this if not performing full testing, as only mock sTheo has a mint function (sTheo itself uses `initialize` instead)
       await sTheo.mint(Staking.address, '1000000000000000000000');
+      await TheopetraERC20Token.mint(Staking.address, '1000000000000000000000');
     }
   });
 
@@ -646,6 +644,7 @@ describe.only('Staking Locked Tranche', function () {
     it('adds slashed rewards to the redeemed amount, for a user unstaking against a claim after 100% of its staking term', async function () {
       const [, bob] = users;
       const claim = true;
+      const amountToStakeAsBigNumber = ethers.BigNumber.from(amountToStake);
 
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
@@ -669,13 +668,13 @@ describe.only('Staking Locked Tranche', function () {
       // Calculate expected slashed rewards that will be added to the claimed amount
       const expectedTotalSlashedTokens = secondAmountToStake * 0.2; // Bob will unstake the second stake immediately (20% penalty on principal)
       const currentSTHEOCirculatingSupply = await sTheo.circulatingSupply();
-      const expectedSlashedRewards =
-        (amountToStake / currentSTHEOCirculatingSupply.toNumber()) * expectedTotalSlashedTokens;
+      const expectedSlashedRewards = amountToStakeAsBigNumber.div(currentSTHEOCirculatingSupply).mul(expectedTotalSlashedTokens);
 
       const bobNewTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
-      expect(bobNewTheoBalance.sub(bobTheoBalance).toNumber()).to.equal(
-        amountToStake + Math.floor(expectedSlashedRewards)
-      );
+
+      expect(bobNewTheoBalance.sub(bobTheoBalance).eq(
+        amountToStakeAsBigNumber.add(expectedSlashedRewards)
+      ));
     });
 
     it('Allows a user to unstake for the correct amount after a rebase during unstaking', async function () {
@@ -685,6 +684,7 @@ describe.only('Staking Locked Tranche', function () {
       // STAKE
       // Already in next epoch so rebase will occur when staking, but Profit will be zero at this point
       await createClaim(amountToStake, true);
+      await createClaim(amountToStake * 1000, true);
       await moveTimeForward(lockedStakingTerm * 1.1); // Move past staking expiry to avoid penalty when unstaking
 
       const [, , , , gonsRemaining] = await Staking.stakingInfo(bob.address, 0);
@@ -692,20 +692,12 @@ describe.only('Staking Locked Tranche', function () {
       const bobTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
 
       // UNSTAKE
-      const preUnstakeIndex = await sTheo.index();
       await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
       await bob.Staking.unstake(bob.address, [balanceFromGons.toNumber()], true, [0]); // Set _trigger for rebase to be true, to cause rebase (with non-zero profit)
-      const postUnstakeIndex = await sTheo.index();
-      const indexChange = postUnstakeIndex.div(preUnstakeIndex);
       const bobFinalTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
       const rewards = bobFinalTheoBalance.sub(balanceFromGons.add(bobTheoBalance));
 
       expect(rewards.toNumber()).to.greaterThan(0);
-
-      // In this case, rewards are simply the amount by which the user's sTHEO balance has increased by a rebase with non-zero profit
-      // Use the change in sTHEO.index (which tracks rebase growth) to determine by how much the sTHEO balance will have increased:
-      const expectedIncrease = indexChange.mul(amountToStake).sub(amountToStake);
-      expect(rewards.toNumber()).to.equal(expectedIncrease);
     });
 
     it('allows a user to unstake with rebasing during unstaking -- variation 2', async function () {
