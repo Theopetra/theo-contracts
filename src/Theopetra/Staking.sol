@@ -195,14 +195,17 @@ contract TheopetraStaking is TheopetraAccessControlled {
      * @notice redeem sTHEO for THEO from un-redeemed claims
      * @dev    if `stakingExpiry` has not yet passed, Determine the penalty for removing early.
      *         `percentageComplete` is the percentage of time that the stake has completed (versus the `stakingTerm`), expressed with 4 decimals.
-     *         For unstaking before 100% of staking term, only the principle deposit -- less a penalty -- is returned. In this case, the full claim must be redeemed
+     *         note that For unstaking before 100% of staking term, only the principle deposit -- less a penalty -- is returned. In this case, the full claim must be redeemed
      *         and gonsRemaining becomes zero.
-     *         For unstaking at or beyond 100% of the staking term, a part-redeem can be made: that is, a user may redeem less than 100% of the total amount available to redeem
+     *         note that For unstaking at or beyond 100% of the staking term, a part-redeem can be made: that is, a user may redeem less than 100% of the total amount available to redeem
      *         (as represented by gonsRemaining), during a call to `unstake`
-     *         The penalty is added (after conversion to gons) to `slasheGons` and subtracted from the amount to return
+     *         note that The penalty is added (after conversion to gons) to `slasheGons` and subtracted from the amount to return
      *         gonsRemaining keeps track of the amount of sTheo (as gons) that can be redeemed for a Claim
-     *         When unstaking from the locked tranche (stakingTerm > 0) after the stake reaches maturity,
+     *         note that When unstaking from the locked tranche (stakingTerm > 0) after the stake reaches maturity,
      *         the Stake becomes eligible to claim against bonus pool rewards (tracked in `slashedGons`; see also `getSlashedRewards`)
+     *         note that When a rebase is triggered (`_trigger` == true), an index on sTHEO is used to track rebase growth and
+     *         adjust the amount to unstake for a claim (`unstakeAmounts._amountSingle`). For rebase growth to be tracked with
+     *         sufficient precision, the index on sTHEO must be set (via `sTHEO.setIndex`) to a high value: 1e18
      * @param _to address
      * @param _amounts uint
      * @param _trigger bool
@@ -224,9 +227,9 @@ contract TheopetraStaking is TheopetraAccessControlled {
         uint256 bounty;
         uint256 indexChange = 0;
         if (_trigger) {
-            uint256 initialIndex = index(); // Index must be set on sTHEO
+            uint256 initialIndex = index();
             bounty = rebase();
-            uint256 indexPostRebase = index(); // Index must be set on sTHEO
+            uint256 indexPostRebase = index();
             indexChange = (indexPostRebase.mul(10**18)).div(initialIndex);
         }
 
