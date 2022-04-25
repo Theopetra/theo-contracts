@@ -74,9 +74,6 @@ describe('Staking', function () {
     // Move forward in time again to update again, this time current token price becomes last token price
     await moveTimeForward(60 * 60 * 8);
     await Treasury.tokenPerformanceUpdate();
-
-    // Setup for tracking index
-    await sTheo.setIndex('1000000000000000');
   }
 
   beforeEach(async function () {
@@ -693,11 +690,8 @@ describe('Staking', function () {
       const bobTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
 
       // UNSTAKE
-      const preUnstakeIndex = await sTheo.index();
       await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
       await bob.Staking.unstake(bob.address, [balanceFromGons.toNumber()], true, [0]); // Set _trigger for rebase to be true, to cause rebase (with non-zero profit)
-      const postUnstakeIndex = await sTheo.index();
-      const indexChange = postUnstakeIndex.div(preUnstakeIndex);
       const bobFinalTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
       const rewards = bobFinalTheoBalance.sub(balanceFromGons.add(bobTheoBalance));
 

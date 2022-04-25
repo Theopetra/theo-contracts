@@ -205,9 +205,6 @@ contract TheopetraStaking is TheopetraAccessControlled {
      *         gonsRemaining keeps track of the amount of sTheo (as gons) that can be redeemed for a Claim
      *         note that When unstaking from the locked tranche (stakingTerm > 0) after the stake reaches maturity,
      *         the Stake becomes eligible to claim against bonus pool rewards (tracked in `slashedGons`; see also `getSlashedRewards`)
-     *         note that When a rebase is triggered (`_trigger` == true), an index on sTHEO is used to track rebase growth and
-     *         adjust the amount to unstake for a claim (`unstakeAmounts._amountSingle`). For rebase growth to be tracked with
-     *         sufficient precision, the index on sTHEO must be set (via `sTHEO.setIndex`) to a high value: 1e18
      * @param _to address
      * @param _amounts uint
      * @param _trigger bool
