@@ -55,6 +55,11 @@ contract TheopetraStaking is TheopetraAccessControlled {
         uint256 gonsRemaining;
     }
 
+    struct UnstakeAmounts {
+        uint256 _amountSingle;
+        uint256 _gonsRemaining;
+    }
+
     constructor(
         address _THEO,
         address _sTHEO,
@@ -190,13 +195,13 @@ contract TheopetraStaking is TheopetraAccessControlled {
      * @notice redeem sTHEO for THEO from un-redeemed claims
      * @dev    if `stakingExpiry` has not yet passed, Determine the penalty for removing early.
      *         `percentageComplete` is the percentage of time that the stake has completed (versus the `stakingTerm`), expressed with 4 decimals.
-     *         For unstaking before 100% of staking term, only the principle deposit -- less a penalty -- is returned. In this case, the full claim must be redeemed
+     *         note that For unstaking before 100% of staking term, only the principle deposit -- less a penalty -- is returned. In this case, the full claim must be redeemed
      *         and gonsRemaining becomes zero.
-     *         For unstaking at or beyond 100% of the staking term, a part-redeem can be made: that is, a user may redeem less than 100% of the total amount available to redeem
+     *         note that For unstaking at or beyond 100% of the staking term, a part-redeem can be made: that is, a user may redeem less than 100% of the total amount available to redeem
      *         (as represented by gonsRemaining), during a call to `unstake`
-     *         The penalty is added (after conversion to gons) to `slashedons` and subtracted from the amount to return
+     *         note that The penalty is added (after conversion to gons) to `slasheGons` and subtracted from the amount to return
      *         gonsRemaining keeps track of the amount of sTheo (as gons) that can be redeemed for a Claim
-     *         When unstaking from the locked tranche (stakingTerm > 0) after the stake reaches maturity,
+     *         note that When unstaking from the locked tranche (stakingTerm > 0) after the stake reaches maturity,
      *         the Stake becomes eligible to claim against bonus pool rewards (tracked in `slashedGons`; see also `getSlashedRewards`)
      * @param _to address
      * @param _amounts uint
@@ -217,35 +222,51 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
         amount_ = 0;
         uint256 bounty;
+
+        uint256[] memory amountsAsGons = new uint256[](_indexes.length);
+        for (uint256 i = 0; i < _indexes.length; i++) {
+            amountsAsGons[i] = IStakedTHEOToken(sTHEO).gonsForBalance(_amounts[i]);
+        }
+
         if (_trigger) {
             bounty = rebase();
         }
 
         for (uint256 i = 0; i < _indexes.length; i++) {
             Claim memory info = stakingInfo[_to][_indexes[i]];
+            UnstakeAmounts memory unstakeAmounts;
+            unstakeAmounts._amountSingle = IStakedTHEOToken(sTHEO).balanceForGons(amountsAsGons[i]);
 
             if (isUnRedeemed(_to, _indexes[i])) {
-                stakingInfo[_to][_indexes[i]].gonsRemaining = info.gonsRemaining.sub(
-                    IStakedTHEOToken(sTHEO).gonsForBalance(_amounts[i])
+                unstakeAmounts._gonsRemaining = IStakedTHEOToken(sTHEO).gonsForBalance(
+                    IStakedTHEOToken(sTHEO).balanceForGons(info.gonsRemaining)
                 );
-                IStakedTHEOToken(sTHEO).safeTransferFrom(msg.sender, address(this), _amounts[i]);
+
+                stakingInfo[_to][_indexes[i]].gonsRemaining = (unstakeAmounts._gonsRemaining).sub(
+                    IStakedTHEOToken(sTHEO).gonsForBalance(unstakeAmounts._amountSingle)
+                );
+
+                IStakedTHEOToken(sTHEO).safeTransferFrom(msg.sender, address(this), unstakeAmounts._amountSingle);
 
                 if (block.timestamp >= info.stakingExpiry) {
                     uint256 slashedRewards = 0;
                     if (stakingTerm > 0) {
-                        slashedRewards = getSlashedRewards(_amounts[i]);
+                        slashedRewards = getSlashedRewards(unstakeAmounts._amountSingle);
                     }
 
-                    amount_ = amount_.add(bounty).add(_amounts[i]).add(slashedRewards);
+                    amount_ = amount_.add(bounty).add(unstakeAmounts._amountSingle).add(slashedRewards);
                 } else if (block.timestamp < info.stakingExpiry) {
                     require(
                         stakingInfo[_to][_indexes[i]].gonsRemaining == 0,
                         "Amount does not match available remaining to redeem"
                     );
-                    uint256 percentageComplete = 1000000.sub(
-                        ((info.stakingExpiry.sub(block.timestamp)).mul(1000000)).div(stakingTerm)
+
+                    uint256 penalty = getPenalty(
+                        stakingInfo[_to][_indexes[i]].deposit,
+                        (1000000.sub(((info.stakingExpiry.sub(block.timestamp)).mul(1000000)).div(stakingTerm))).div(
+                            10000
+                        )
                     );
-                    uint256 penalty = getPenalty(stakingInfo[_to][_indexes[i]].deposit, percentageComplete.div(10000));
 
                     slashedGons = slashedGons.add(IStakedTHEOToken(sTHEO).gonsForBalance(penalty));
 
@@ -258,7 +279,10 @@ contract TheopetraStaking is TheopetraAccessControlled {
         ITHEO(THEO).safeTransfer(_to, amount_);
     }
 
-    function getSlashedRewards(uint256 amount) private returns (uint256) {
+    /**
+        @dev slashedRewards is calculated as: (StakerTokens/totalStakedTokens) * totalSlashedTokens
+     */
+    function getSlashedRewards(uint256 amount) private view returns (uint256) {
         uint256 circulatingSupply = IStakedTHEOToken(sTHEO).circulatingSupply();
         uint256 baseDecimals = 10**9;
 
@@ -539,6 +563,29 @@ contract TheopetraStaking is TheopetraAccessControlled {
     function isUnRedeemed(address _user, uint256 _index) public view returns (bool) {
         Claim memory claim = stakingInfo[_user][_index];
         return claim.gonsInWarmup == 0 && claim.gonsRemaining > 0;
+    }
+
+    function getClaimsCount(address _user) public view returns (uint256) {
+        return stakingInfo[_user].length;
+    }
+
+    /**
+     * @notice                  return the current expected rewards for a claim
+     * @param _user             the user that the claim belongs to
+     * @param _index            the index of the claim in the user's array
+     * @return currentRewards_  the current total rewards expected for a claim (valid only for claims out of warmup),
+                                calculated as: (sTHEO remaining + slashedRewards) - deposit amount
+                                note that currentRewards_ does not include any potential bounty or additional sTheo balance that
+                                may be applied if rebasing when unstaking
+     */
+    function rewardsFor(address _user, uint256 _index) public view returns (uint256 currentRewards_) {
+        Claim memory claim = stakingInfo[_user][_index];
+        uint256 _amountRemaining = IStakedTHEOToken(sTHEO).balanceForGons(claim.gonsRemaining);
+        currentRewards_ = 0;
+        if (isUnRedeemed(_user, _index)) {
+            currentRewards_ = (_amountRemaining.add(getSlashedRewards(_amountRemaining))).sub(claim.deposit);
+        }
+        return currentRewards_;
     }
 
     /**
