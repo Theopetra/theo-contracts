@@ -2,10 +2,15 @@ import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 import { BigNumber } from 'ethers';
 
-import { setupUsers, moveTimeForward, randomIntFromInterval } from './utils';
+import { setupUsers, moveTimeForward, randomIntFromInterval, waitFor, decodeLogs } from './utils';
 import { getContracts } from '../utils/helpers';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
-import { TheopetraAuthority, TheopetraStaking, TheopetraStaking__factory } from '../typechain-types';
+import {
+  StakingDistributor,
+  TheopetraAuthority,
+  TheopetraStaking,
+  TheopetraStaking__factory,
+} from '../typechain-types';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture();
@@ -23,15 +28,18 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe('Staking', function () {
+describe.only('Staking', function () {
   const amountToStake = 1_000_000_000_000;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
 
   let Staking: TheopetraStaking;
+  let Distributor: StakingDistributor;
   let sTheo: any;
   let TheopetraAuthority: TheopetraAuthority;
   let TheopetraERC20Token: any;
   let Treasury: any;
+  let YieldReporter: any;
+  let BondingCalculatorMock: any;
   let users: any;
   let owner: any;
   let addressZero: any;
@@ -44,8 +52,47 @@ describe('Staking', function () {
     await bob.Staking.stake(bob.address, amount, claim);
   }
 
+  async function setupForRebase() {
+    const expectedStartRateLocked = 120_000_000; // 12%, rateDenominator for Distributor is 1_000_000_000;
+    const expectedDrs = 10_000_000; // 1%
+    const expectedDys = 20_000_000; // 2%
+    const isLocked = false;
+
+    // Setup for Distributor
+    await Distributor.addRecipient(Staking.address, expectedStartRateLocked, expectedDrs, expectedDys, isLocked);
+    // Report a couple of yields using the Yield Reporter (for use when calculating deltaTreasuryYield)
+    const lastYield = 50_000_000_000;
+    const currentYield = 150_000_000_000;
+    await waitFor(YieldReporter.reportYield(lastYield));
+    await waitFor(YieldReporter.reportYield(currentYield));
+    // set the address of the mock bonding calculator
+    await Treasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+    // Move forward 8 hours to allow tokenPerformanceUpdate to update contract state
+    // current token price will subsequently be updated, last token price will still be zero
+    await moveTimeForward(60 * 60 * 8);
+    await Treasury.tokenPerformanceUpdate();
+    // Move forward in time again to update again, this time current token price becomes last token price
+    await moveTimeForward(60 * 60 * 8);
+    await Treasury.tokenPerformanceUpdate();
+
+    // Setup for tracking index
+    await sTheo.setIndex("1000000000000000");
+  }
+
   beforeEach(async function () {
-    ({ Staking, sTheo, TheopetraAuthority, TheopetraERC20Token, Treasury, users, owner, addressZero } = await setup());
+    ({
+      Staking,
+      Distributor,
+      sTheo,
+      TheopetraAuthority,
+      TheopetraERC20Token,
+      Treasury,
+      YieldReporter,
+      BondingCalculatorMock,
+      users,
+      owner,
+      addressZero,
+    } = await setup());
 
     const [, bob, carol] = users;
     // Setup to mint initial amount of THEO
@@ -628,6 +675,103 @@ describe('Staking', function () {
         amountToStake + Math.floor(expectedSlashedRewards)
       );
     });
+
+    it('Allows a user to unstake for the correct amount after a rebase during unstaking', async function () {
+      const [, bob] = users;
+      await setupForRebase();
+
+      // STAKE
+      // Already in next epoch so rebase will occur when staking, but Profit will be zero at this point
+      await createClaim(amountToStake, true);
+      await moveTimeForward(lockedStakingTerm * 1.1); // Move past staking expiry to avoid penalty when unstaking
+
+      const [, , , , gonsRemaining] = await Staking.stakingInfo(bob.address, 0);
+      const balanceFromGons = await sTheo.balanceForGons(gonsRemaining);
+      const bobTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
+
+      // UNSTAKE
+      const preUnstakeIndex = await sTheo.index();
+      await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
+      await bob.Staking.unstake(bob.address, [balanceFromGons.toNumber()], true, [0]); // Set _trigger for rebase to be true, to cause rebase (with non-zero profit)
+      const postUnstakeIndex = await sTheo.index();
+      const indexChange = postUnstakeIndex.div(preUnstakeIndex);
+      const bobFinalTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
+      const rewards = bobFinalTheoBalance.sub(balanceFromGons.add(bobTheoBalance));
+
+      expect(rewards.toNumber()).to.greaterThan(0);
+
+      // In this case, rewards are simply the amount by which the user's sTHEO balance has increased by a rebase with non-zero profit
+      // Use the change in sTHEO.index (which tracks rebase growth) to determine by how much the sTHEO balance will have increased:
+      const expectedIncrease = indexChange.mul(amountToStake).sub(amountToStake);
+      expect(rewards.toNumber()).to.equal(expectedIncrease);
+    });
+
+    it('allows a user to unstake with rebasing during unstaking -- variation 2', async function () {
+      const [, bob] = users;
+      await setupForRebase();
+
+      // STAKE
+      // Already in next epoch so rebase will occur
+      await createClaim(amountToStake, true);
+      await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
+      await createClaim(amountToStake*1000, true);
+      await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
+      await createClaim(amountToStake*2, false);
+
+      const [deposit, , , , gonsRemaining] = await Staking.stakingInfo(bob.address, 0);
+      const balanceFromGons = await sTheo.balanceForGons(gonsRemaining);
+
+      // Unstake without further rebasing (trigger is false)
+      // Bob incurs slashing penalty as unstaking before staking expiry time
+      await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
+      await bob.Staking.unstake(bob.address, [balanceFromGons.toNumber()], true, [0]);
+    });
+
+    it('allows a user to unstake with or without rebasing during unstaking', async function () {
+      const [, bob] = users;
+      await setupForRebase();
+      const rnd = randomIntFromInterval(0,1);
+      const isRebaseTriggered = [true, false][rnd];
+      console.log("Is Rebase Triggered on Unstaking?", isRebaseTriggered);
+
+      // STAKE
+      // Already in next epoch so rebase will occur
+      await createClaim(amountToStake*1000, true);
+      await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
+      await createClaim(amountToStake*1000, true);
+
+      const [deposit, , , , gonsRemaining] = await Staking.stakingInfo(bob.address, 0);
+      const balanceFromGons = await sTheo.balanceForGons(gonsRemaining);
+
+      // Unstake without further rebasing (trigger is false)
+      // Bob incurs slashing penalty as unstaking before staking expiry time
+      await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
+      await bob.Staking.unstake(bob.address, [balanceFromGons.toNumber()], isRebaseTriggered, [0]);
+    });
+
+    it('allows a variety of staking and unstaking (with or without rebasing during unstakes), with movements in time', async function () {
+      const [, bob] = users;
+      await setupForRebase();
+      const rnd = randomIntFromInterval(0,1);
+      const isRebaseTriggered = [true, false][rnd];
+      console.log("Is Rebase Triggered on Unstaking?", isRebaseTriggered);
+
+      await createClaim(amountToStake, true);
+      await createClaim(amountToStake*1000, true);
+      await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
+      await createClaim(amountToStake*2, false);
+      const [, , , , gonsRemainingOne] = await Staking.stakingInfo(bob.address, 0);
+      const balanceFromGonsOne = await sTheo.balanceForGons(gonsRemainingOne);
+      const [, , , , gonsRemainingTwo] = await Staking.stakingInfo(bob.address, 1);
+      const balanceFromGonsTwo = await sTheo.balanceForGons(gonsRemainingTwo);
+      await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
+      await bob.Staking.unstake(bob.address, [balanceFromGonsOne.toNumber()], false, [0]);
+      await bob.Staking.unstake(bob.address, [balanceFromGonsTwo.toNumber()], true, [1]);
+      await createClaim(amountToStake*3, true);
+      const [, , , , gonsRemainingFour] = await Staking.stakingInfo(bob.address, 3);
+      const balanceFromGonsFour = await sTheo.balanceForGons(gonsRemainingFour);
+      await bob.Staking.unstake(bob.address, [balanceFromGonsFour.toNumber()], isRebaseTriggered, [3]);
+    });
   });
 
   describe('claim', function () {
@@ -1172,13 +1316,15 @@ describe('Staking', function () {
 
       const claimCount = (await Staking.getClaimsCount(bob.address)).toNumber();
 
-      const pendingFors: any = [];
+      const claims: any = [];
       for (let i = 0; i < claimCount; i++) {
-        const pendingFor = await Staking.pendingFor(bob.address, i);
-        pendingFors.push(pendingFor);
+        const claim = await Staking.stakingInfo(bob.address, i);
+        claims.push(claim);
       }
 
-      const [depositOne, amountInWarmupOne, warmupExpiryOne, stakingExpiryOne, amountRemainingOne] = pendingFors[0];
+      const [depositOne, gonsInWarmupOne, warmupExpiryOne, stakingExpiryOne, gonsRemainingOne] = claims[0];
+      const amountInWarmupOne = await sTheo.balanceForGons(gonsInWarmupOne);
+      const amountRemainingOne = await sTheo.balanceForGons(gonsRemainingOne);
 
       expect(depositOne.toNumber()).to.equal(amountToStake);
       expect(amountInWarmupOne.toNumber()).to.equal(amountToStake);
@@ -1188,7 +1334,9 @@ describe('Staking', function () {
       expect(stakingExpiryOne.toNumber()).to.be.lessThan(upperBound + lockedStakingTerm);
       expect(amountRemainingOne.toNumber()).to.equal(0);
 
-      const [depositTwo, amountInWarmupTwo, warmupExpiryTwo, stakingExpiryTwo, amountRemainingTwo] = pendingFors[1];
+      const [depositTwo, gonsInWarmupTwo, warmupExpiryTwo, stakingExpiryTwo, gonsRemainingTwo] = claims[1];
+      const amountInWarmupTwo = await sTheo.balanceForGons(gonsInWarmupTwo);
+      const amountRemainingTwo = await sTheo.balanceForGons(gonsRemainingTwo);
 
       expect(depositTwo.toNumber()).to.equal(secondAmountToStake);
       expect(amountInWarmupTwo.toNumber()).to.equal(0);
@@ -1196,6 +1344,70 @@ describe('Staking', function () {
       expect(stakingExpiryTwo.toNumber()).to.be.greaterThan(lowerBound + additionalTime + lockedStakingTerm);
       expect(stakingExpiryTwo.toNumber()).to.be.lessThan(upperBound + additionalTime + lockedStakingTerm);
       expect(amountRemainingTwo.toNumber()).to.be.greaterThanOrEqual(secondAmountToStake);
+    });
+
+    it('emits an event containing how much THEO has been transfered to the user when they unstake', async function () {
+      const [, bob] = users;
+      const claim = true;
+
+      await createClaim(amountToStake, claim);
+      await moveTimeForward(lockedStakingTerm * 1.5); // Move time beyond staking expiry
+
+      await bob.sTheo.approve(Staking.address, amountToStake);
+      const { events } = await waitFor(bob.Staking.unstake(bob.address, [amountToStake], false, [0]));
+      const decoded = decodeLogs(events, [TheopetraERC20Token]);
+
+      const [from, to, amount] = decoded[0].args;
+      expect(decoded[0].name).to.equal('Transfer');
+      expect(from).to.equal(Staking.address);
+      expect(to).to.equal(bob.address);
+      expect(amount.toNumber()).to.equal(amountToStake);
+    });
+
+    it('gives the current expected rewards for a claim', async function () {
+      const [, bob] = users;
+      await createClaim(amountToStake, true);
+      const currentRewards = await Staking.rewardsFor(bob.address, 0);
+
+      // Expect zero difference between deposit and amount of sTHEO available for claim, as no rebase has occured.
+      // And zero slashedRewards added
+      expect(currentRewards.toNumber()).to.equal(0);
+    });
+
+    it.skip('gives the correct expected rewards for claims', async function () {
+      const [, bob] = users;
+      await setupForRebase();
+
+      // STAKE
+      // Already in next epoch so rebase will occur
+      await createClaim(amountToStake*1000, true);
+      // // const preIndexOne = await sTheo.index();
+      await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
+
+      await createClaim(amountToStake*1000, true);
+
+      // const postIndexOne = await sTheo.index();
+
+      // const rewardsForOne = await Staking.rewardsFor(bob.address, 0);
+      // const rewardsForTwo = await Staking.rewardsFor(bob.address, 1);
+
+      const [deposit, , , , gonsRemaining] = await Staking.stakingInfo(bob.address, 0);
+      const balanceFromGons = await sTheo.balanceForGons(gonsRemaining);
+
+      // expect(rewardsForOne).to.equal(balanceFromGons.sub(deposit)); // First claim gains rewards via sTHEO rebasing with profit
+      // expect(rewardsForTwo).to.equal(0); // Second claim has not yet benefitted from rebasing
+
+      // Unstake without further rebasing (trigger is false)
+      // Bob incurs slashing penalty as unstaking before staking expiry time
+      await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
+
+      // const preIndexTwo = await sTheo.index();
+      await bob.Staking.unstake(bob.address, [balanceFromGons.toNumber()], true, [0]);
+      // const postIndexTwo = await sTheo.index();
+
+      // await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
+      // const newRewardsForTwo = await Staking.rewardsFor(bob.address, 1);
+      // console.log('NOW WITH REWARDS🌈', Number(newRewardsForTwo));
     });
   });
 });
