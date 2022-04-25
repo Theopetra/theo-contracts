@@ -28,11 +28,12 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe('Staking', function () {
+describe.only('Staking Locked Tranche', function () {
   const amountToStake = 1_000_000_000_000;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
 
   let Staking: TheopetraStaking;
+  let StakingUnlocked: TheopetraStaking;
   let Distributor: StakingDistributor;
   let sTheo: any;
   let TheopetraAuthority: TheopetraAuthority;
@@ -43,7 +44,7 @@ describe('Staking', function () {
   let users: any;
   let owner: any;
   let addressZero: any;
-  const unlockedStakingTerm = 0;
+  // const unlockedStakingTerm = 0;
   const lockedStakingTerm = 31536000;
 
   async function createClaim(amount: number = amountToStake, claim = false) {
@@ -81,9 +82,10 @@ describe('Staking', function () {
 
   beforeEach(async function () {
     ({
-      Staking,
+      Staking: StakingUnlocked,
+      StakingLocked: Staking, // Using alias to simplify updates to tests
       Distributor,
-      sTheo,
+      pTheo: sTheo, // Using alias to simplify updates to tests
       TheopetraAuthority,
       TheopetraERC20Token,
       Treasury,
@@ -122,23 +124,23 @@ describe('Staking', function () {
       await setup();
     });
 
-    it('can be deployed for an unlocked tranche', async function () {
-      const [owner] = await ethers.getSigners();
-      const epochLength = 8 * 60 * 60;
-      const firstEpochNumber = '1';
-      const latestBlock = await ethers.provider.getBlock('latest');
-      const firstEpochTime = latestBlock.timestamp + epochLength;
+    // it.skip('can be deployed for an unlocked tranche', async function () {
+    //   const [owner] = await ethers.getSigners();
+    //   const epochLength = 8 * 60 * 60;
+    //   const firstEpochNumber = '1';
+    //   const latestBlock = await ethers.provider.getBlock('latest');
+    //   const firstEpochTime = latestBlock.timestamp + epochLength;
 
-      await new TheopetraStaking__factory(owner).deploy(
-        TheopetraERC20Token.address,
-        sTheo.address,
-        epochLength,
-        firstEpochNumber,
-        firstEpochTime,
-        unlockedStakingTerm,
-        TheopetraAuthority.address
-      );
-    });
+    //   await new TheopetraStaking__factory(owner).deploy(
+    //     TheopetraERC20Token.address,
+    //     sTheo.address,
+    //     epochLength,
+    //     firstEpochNumber,
+    //     firstEpochTime,
+    //     unlockedStakingTerm,
+    //     TheopetraAuthority.address
+    //   );
+    // });
 
     it('is deployed with the correct constructor arguments', async function () {
       const latestBlock = await ethers.provider.getBlock('latest');
@@ -233,11 +235,11 @@ describe('Staking', function () {
   });
 
   describe('stake', async function () {
-    it('adds a Claim for the staked `_amount` to the staked collection when `_claim` is false and `warmupPeriod` is zero', async function () {
+    it.only('adds a Claim for the staked `_amount` to the staked collection when `_claim` is false and `warmupPeriod` is zero', async function () {
       const [, bob] = users;
       const claim = false;
       const expectedGonsInWarmup = await sTheo.gonsForBalance(amountToStake);
-
+      console.log("BOBBALNACE🌈", Number(await TheopetraERC20Token.balanceOf(bob.address)));
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
       const stakingInfo = await Staking.stakingInfo(bob.address, 0);

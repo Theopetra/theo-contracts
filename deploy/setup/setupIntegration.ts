@@ -18,11 +18,14 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
       BondDepository,
       WhitelistBondDepository,
       Distributor,
+      pTheo,
+      StakingLocked
     } = await getContracts();
 
     /* ======== Setup for `Treasury.mint` (when `TheopetraBondDepository.deposit` is called) ======== */
     await TheopetraAuthority.pushVault(Treasury.address, true); // Push vault role to Treasury, to allow it to call THEO.mint
     await sTheo.connect(owner).initialize(Staking.address, Treasury.address); // Initialize sTHEO
+    await pTheo.connect(owner).initialize(StakingLocked.address); // Initialize pTHEO
 
     /* ======== Setup for `Treasury.mint` (when `mint` is called on Treasury from StakingDistributor) ======== */
     await Treasury.connect(owner).enable(8, Distributor.address, addressZero); // Set Distributor as reward manager in Treasury (to allow call to mint from Distributor when Rebasing)
