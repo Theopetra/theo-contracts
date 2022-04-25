@@ -106,10 +106,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
      * @param _indexes     the note indexes to redeem
      * @return payout_     sum of payout sent, in sTHEO
      */
-    function redeem(
-        address _user,
-        uint256[] memory _indexes
-    ) public override returns (uint256 payout_) {
+    function redeem(address _user, uint256[] memory _indexes) public override returns (uint256 payout_) {
         uint48 time = uint48(block.timestamp);
         uint256 sTheoPayout = 0;
         uint256 theoPayout = 0;

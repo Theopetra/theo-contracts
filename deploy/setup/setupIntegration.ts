@@ -19,7 +19,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
       WhitelistBondDepository,
       Distributor,
       pTheo,
-      StakingLocked
+      StakingLocked,
     } = await getContracts();
 
     /* ======== Setup for `Treasury.mint` (when `TheopetraBondDepository.deposit` is called) ======== */
@@ -42,8 +42,9 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
     /* ======== Setup for Whitelist Bond Depository ======== */
     await Treasury.connect(owner).enable(8, WhitelistBondDepository.address, addressZero); // Set Whitelist Bond Depo as reward manager in Treasury (to allow call to mint from NoteKeeper when adding new note)
 
-    /* ======== Staking and Distributor ======== */
-    await Staking.setContract(0, Distributor.address); // set Distributor on Staking
+    /* ======== Set Distributor on Staking (unlocked) and StakingLocked contracts ======== */
+    await Staking.setContract(0, Distributor.address);
+    await StakingLocked.setContract(0, Distributor.address);
   } catch (error) {
     console.log(error);
   }

@@ -97,9 +97,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         bool _claim
     ) external returns (uint256, uint256 _index) {
         rebase();
-        console.log("GETSHERE>>>>>>>>", _amount);
         IERC20(THEO).safeTransferFrom(msg.sender, address(this), _amount);
-        console.log("NOT HERE!!!!!!!");
 
         if (!isExternalLocked[_recipient]) {
             require(_recipient == msg.sender, "External deposits for account are locked");

@@ -426,7 +426,14 @@ describe('Bond depository', function () {
       await bob.BondDepository.deposit(1, largeDepositAmount, initialPrice, bob.address, carol.address, autoStake);
 
       const anotherLargeDepositAmount = '35000000000000'; // 35m USDC
-      await bob.BondDepository.deposit(1, anotherLargeDepositAmount, initialPrice, bob.address, carol.address, autoStake);
+      await bob.BondDepository.deposit(
+        1,
+        anotherLargeDepositAmount,
+        initialPrice,
+        bob.address,
+        carol.address,
+        autoStake
+      );
       const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
 
       expect(bobNotesIndexes.length).to.equal(2);
@@ -530,8 +537,9 @@ describe('Bond depository', function () {
       expect(Number(payout_)).to.be.greaterThan(0); // Bob's first deposit was successful and Bob therefore has a payout due
 
       // No further deposit is allowed, as market capacity is now at zero
-      await expect(waitFor(bob.BondDepository.deposit(1, largeDepositAmount, initialPrice, bob.address, carol.address, autoStake)))
-        .to.be.reverted;
+      await expect(
+        waitFor(bob.BondDepository.deposit(1, largeDepositAmount, initialPrice, bob.address, carol.address, autoStake))
+      ).to.be.reverted;
     });
 
     it('should mint the payout in THEO', async function () {
@@ -825,7 +833,7 @@ describe('Bond depository', function () {
 
       expect(bobNotesIndexes.length).to.equal(1);
 
-      await moveTimeForward(vesting * 2)
+      await moveTimeForward(vesting * 2);
       await BondDepository.redeemAll(bob.address);
       const bobBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
 

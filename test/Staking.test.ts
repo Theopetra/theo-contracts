@@ -18,6 +18,21 @@ const setup = deployments.createFixture(async () => {
 
   const contracts = { ...(await getContracts(CONTRACTS.staking)) };
 
+  // Rename contracts to simplify updates to existing tests.
+  // Updates as follows (new for old):
+  // `StakingUnlocked` for unlocked tranche,
+  // `Staking` for locked tranche
+  // `sTheoUnlocked` for `sTheo`
+  // `sTheo` for `pTheo`
+  contracts['StakingUnlocked'] = contracts['Staking'];
+  delete contracts['Staking'];
+  contracts['Staking'] = contracts['StakingLocked'];
+  delete contracts['StakingLocked'];
+  contracts['sTheoUnlocked'] = contracts['sTheo'];
+  delete contracts['sTheo'];
+  contracts['sTheo'] = contracts['pTheo'];
+  delete contracts['pTheo'];
+
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
   return {
@@ -28,7 +43,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe.only('Staking Locked Tranche', function () {
+describe('Staking Locked Tranche', function () {
   const amountToStake = 1_000_000_000_000;
   const LARGE_APPROVAL = '100000000000000000000000000000000';
 
@@ -79,10 +94,10 @@ describe.only('Staking Locked Tranche', function () {
 
   beforeEach(async function () {
     ({
-      Staking: StakingUnlocked,
-      StakingLocked: Staking, // Using alias to simplify updates to tests
+      StakingUnlocked, // Unlocked Tranche (renamed from `Staking` during setup)
+      Staking, // Locked Tranche (renamed from `StakingLocked` during setup)
       Distributor,
-      pTheo: sTheo, // Using alias to simplify updates to tests
+      sTheo, // pTheo (renamed during setup to simplify testing updates)
       TheopetraAuthority,
       TheopetraERC20Token,
       Treasury,
@@ -94,13 +109,17 @@ describe.only('Staking Locked Tranche', function () {
     } = await setup());
 
     const [, bob, carol] = users;
-    // Setup to mint initial amount of THEO
     const [, treasurySigner] = await ethers.getSigners();
     if (process.env.NODE_ENV !== TESTWITHMOCKS) {
+      // Setup to mint initial amount of THEO
       await TheopetraAuthority.pushVault(treasurySigner.address, true); // Use a valid signer for Vault
       await TheopetraERC20Token.connect(treasurySigner).mint(bob.address, '10000000000000000'); // 1e16 Set to be same as return value in Treasury Mock for baseSupply
       await TheopetraAuthority.pushVault(Treasury.address, true); // Restore Treasury contract as Vault
+
+      // Additional setup for Distributor
+      await Distributor.setStaking(Staking.address);
     } else {
+      // Setup to mint initial amount of THEO when using mocks
       await TheopetraERC20Token.mint(bob.address, '10000000000000000');
     }
     await bob.TheopetraERC20Token.approve(Staking.address, LARGE_APPROVAL);
@@ -233,11 +252,10 @@ describe.only('Staking Locked Tranche', function () {
   });
 
   describe('stake', async function () {
-    it.only('adds a Claim for the staked `_amount` to the staked collection when `_claim` is false and `warmupPeriod` is zero', async function () {
+    it('adds a Claim for the staked `_amount` to the staked collection when `_claim` is false and `warmupPeriod` is zero', async function () {
       const [, bob] = users;
       const claim = false;
       const expectedGonsInWarmup = await sTheo.gonsForBalance(amountToStake);
-      console.log("BOBBALNACE🌈", Number(await TheopetraERC20Token.balanceOf(bob.address)));
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
       const stakingInfo = await Staking.stakingInfo(bob.address, 0);
@@ -668,13 +686,13 @@ describe.only('Staking Locked Tranche', function () {
       // Calculate expected slashed rewards that will be added to the claimed amount
       const expectedTotalSlashedTokens = secondAmountToStake * 0.2; // Bob will unstake the second stake immediately (20% penalty on principal)
       const currentSTHEOCirculatingSupply = await sTheo.circulatingSupply();
-      const expectedSlashedRewards = amountToStakeAsBigNumber.div(currentSTHEOCirculatingSupply).mul(expectedTotalSlashedTokens);
+      const expectedSlashedRewards = amountToStakeAsBigNumber
+        .div(currentSTHEOCirculatingSupply)
+        .mul(expectedTotalSlashedTokens);
 
       const bobNewTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
 
-      expect(bobNewTheoBalance.sub(bobTheoBalance).eq(
-        amountToStakeAsBigNumber.add(expectedSlashedRewards)
-      ));
+      expect(bobNewTheoBalance.sub(bobTheoBalance).eq(amountToStakeAsBigNumber.add(expectedSlashedRewards)));
     });
 
     it('Allows a user to unstake for the correct amount after a rebase during unstaking', async function () {
