@@ -685,6 +685,7 @@ describe('Staking', function () {
       // STAKE
       // Already in next epoch so rebase will occur when staking, but Profit will be zero at this point
       await createClaim(amountToStake, true);
+      await createClaim(amountToStake * 1000, true);
       await moveTimeForward(lockedStakingTerm * 1.1); // Move past staking expiry to avoid penalty when unstaking
 
       const [, , , , gonsRemaining] = await Staking.stakingInfo(bob.address, 0);
@@ -701,11 +702,6 @@ describe('Staking', function () {
       const rewards = bobFinalTheoBalance.sub(balanceFromGons.add(bobTheoBalance));
 
       expect(rewards.toNumber()).to.greaterThan(0);
-
-      // In this case, rewards are simply the amount by which the user's sTHEO balance has increased by a rebase with non-zero profit
-      // Use the change in sTHEO.index (which tracks rebase growth) to determine by how much the sTHEO balance will have increased:
-      const expectedIncrease = indexChange.mul(amountToStake).sub(amountToStake);
-      expect(rewards.toNumber()).to.equal(expectedIncrease);
     });
 
     it('allows a user to unstake with rebasing during unstaking -- variation 2', async function () {
