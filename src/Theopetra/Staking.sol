@@ -8,6 +8,8 @@ import "../Interfaces/IDistributor.sol";
 import "../Interfaces/IStakedTHEOToken.sol";
 import "../Interfaces/ITHEO.sol";
 
+import "hardhat/console.sol";
+
 contract TheopetraStaking is TheopetraAccessControlled {
     using SafeMath for *;
     using SafeERC20 for IERC20;
@@ -587,5 +589,14 @@ contract TheopetraStaking is TheopetraAccessControlled {
             currentRewards_ = (_amountRemaining.add(getSlashedRewards(_amountRemaining))).sub(claim.deposit);
         }
         return currentRewards_;
+    }
+
+    /**
+     * @notice             return the staking token that the tranche is based on
+     *
+     * @return address     the address of the staking token
+     */
+    function basis() public view returns (address) {
+        return sTHEO;
     }
 }

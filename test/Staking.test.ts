@@ -111,6 +111,7 @@ describe('Staking', function () {
       // Mint enough to allow transfers when claiming staked THEO
       // only call this if not performing full testing, as only mock sTheo has a mint function (sTheo itself uses `initialize` instead)
       await sTheo.mint(Staking.address, '1000000000000000000000');
+      await TheopetraERC20Token.mint(Staking.address, '1000000000000000000000');
     }
   });
 
@@ -644,6 +645,7 @@ describe('Staking', function () {
     it('adds slashed rewards to the redeemed amount, for a user unstaking against a claim after 100% of its staking term', async function () {
       const [, bob] = users;
       const claim = true;
+      const amountToStakeAsBigNumber = ethers.BigNumber.from(amountToStake);
 
       await bob.Staking.stake(bob.address, amountToStake, claim);
 
@@ -667,13 +669,13 @@ describe('Staking', function () {
       // Calculate expected slashed rewards that will be added to the claimed amount
       const expectedTotalSlashedTokens = secondAmountToStake * 0.2; // Bob will unstake the second stake immediately (20% penalty on principal)
       const currentSTHEOCirculatingSupply = await sTheo.circulatingSupply();
-      const expectedSlashedRewards =
-        (amountToStake / currentSTHEOCirculatingSupply.toNumber()) * expectedTotalSlashedTokens;
+      const expectedSlashedRewards = amountToStakeAsBigNumber.div(currentSTHEOCirculatingSupply).mul(expectedTotalSlashedTokens);
 
       const bobNewTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
-      expect(bobNewTheoBalance.sub(bobTheoBalance).toNumber()).to.equal(
-        amountToStake + Math.floor(expectedSlashedRewards)
-      );
+
+      expect(bobNewTheoBalance.sub(bobTheoBalance).eq(
+        amountToStakeAsBigNumber.add(expectedSlashedRewards)
+      ));
     });
 
     it('Allows a user to unstake for the correct amount after a rebase during unstaking', async function () {

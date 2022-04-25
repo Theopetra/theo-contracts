@@ -14,6 +14,9 @@ import "../Interfaces/ITreasury.sol";
 import "../Interfaces/IERC20.sol";
 import "../Interfaces/IDistributor.sol";
 
+import "../Interfaces/IStaking.sol";
+import "../Interfaces/IStakedTHEOToken.sol";
+
 contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     /* ========== DEPENDENCIES ========== */
 
@@ -26,7 +29,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
 
     IERC20 private immutable THEO;
     ITreasury private immutable treasury;
-    address private immutable staking;
+    mapping(address => bool) private staking;
 
     uint48 public immutable epochLength;
 
@@ -85,8 +88,14 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         require(_theo != address(0), "Zero address: THEO");
         THEO = IERC20(_theo);
         require(_staking != address(0), "Zero address: Staking");
-        staking = _staking;
+        staking[_staking] = true;
         epochLength = _epochLength;
+    }
+
+    /* ====== Modifiers ====== */
+    modifier onlyStaking() {
+        require(staking[msg.sender], "Only staking");
+        _;
     }
 
     /* ====== PUBLIC FUNCTIONS ====== */
@@ -100,13 +109,11 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
                 Locked tranches wind-down by 1.5% per epoch (that is, per year) to a minimum of 6% (60_000_000 -- see also `rateDenominator`)
                 Unlocked tranches wind-down by 0.5% per epoch (that is, per year) to a minimum of 2% (20_000_000)
      */
-    function distribute() external override returns (bool) {
-        require(msg.sender == staking, "Only staking");
-
+    function distribute() external override onlyStaking returns (bool) {
         for (uint256 i = 0; i < info.length; i++) {
             uint256 _rate = nextRewardRate(i);
             if (_rate > 0) {
-                ITreasury(treasury).mint(info[i].recipient, nextRewardAt(_rate));
+                ITreasury(treasury).mint(info[i].recipient, nextRewardAt(_rate, info[i].recipient));
             }
             if (info[i].nextEpochTime <= block.timestamp) {
                 if (info[i].locked == false && info[i].start > 20_000_000) {
@@ -122,10 +129,11 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     /**
         @dev If the distributor bounty is > 0, mint it for the staking contract.
      */
-    function retrieveBounty() external override returns (uint256) {
-        require(msg.sender == staking, "Only staking");
+    function retrieveBounty() external override onlyStaking returns (uint256) {
+        // onlyStaking compares msg.sender to the `staking` mapping, so this is safe
+        // msg.sender at this point can only be a staking contract
         if (bounty > 0) {
-            treasury.mint(address(staking), bounty);
+            treasury.mint(address(msg.sender), bounty);
         }
 
         return bounty;
@@ -138,8 +146,8 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @param _rate uint
         @return uint
      */
-    function nextRewardAt(uint256 _rate) public view override returns (uint256) {
-        return IERC20(THEO).totalSupply().mul(_rate).div(rateDenominator);
+    function nextRewardAt(uint256 _rate, address _recipient) public view override returns (uint256) {
+        return IStakedTHEOToken(IStaking(_recipient).basis()).circulatingSupply().mul(_rate).div(rateDenominator);
     }
 
     /**
@@ -151,7 +159,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         uint256 reward;
         for (uint256 i = 0; i < info.length; i++) {
             if (info[i].recipient == _recipient) {
-                reward = nextRewardAt(nextRewardRate(i));
+                reward = nextRewardAt(nextRewardRate(i), _recipient);
             }
         }
         return reward;
@@ -221,6 +229,16 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
                 nextEpochTime: uint48((block.timestamp).add(uint256(epochLength)))
             })
         );
+    }
+
+    /**
+        @notice set the address as a staking contract
+        @dev setting the address as a staking contract will allow the staking contract to call the `distribute` function
+             the contract must also be set up as a recipient to receive the rewards
+        @param _addr address
+     */
+    function setStaking(address _addr) public override onlyGovernor {
+        staking[_addr] = true;
     }
 
     /**

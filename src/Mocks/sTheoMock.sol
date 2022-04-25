@@ -21,6 +21,6 @@ contract sTheoMock is ERC20 {
     function circulatingSupply() public view returns (uint256) {
         // 5e12 set to result in a sufficiently low slashing reward when unstaking so as
         // not to exceed available THEO balance in bond depo when testing with mocks
-        return 5000000000000;
+        return 1000000;
     }
 }
