@@ -540,4 +540,13 @@ contract TheopetraStaking is TheopetraAccessControlled {
         Claim memory claim = stakingInfo[_user][_index];
         return claim.gonsInWarmup == 0 && claim.gonsRemaining > 0;
     }
+
+    /**
+     * @notice             return the staking token that the tranche is based on
+     *
+     * @return address     the address of the staking token
+     */
+    function basis() public view returns (address) {
+        return sTHEO;
+    }
 }
