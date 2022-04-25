@@ -572,7 +572,7 @@ describe('Whitelist Bond depository', function () {
       expect(Number(newTotalTheoSupply) - Number(initialTotalTheoSupply)).to.equal(payout_);
     });
 
-    it('stakes the payout', async function () {
+    it('does not the payout', async function () {
       const [, , bob] = users;
 
       const initialStakingTheoBalance = await TheopetraERC20Token.balanceOf(Staking.address);
@@ -580,10 +580,11 @@ describe('Whitelist Bond depository', function () {
       await bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
 
       const newStakingTHEOBalance = await TheopetraERC20Token.balanceOf(Staking.address);
-      expect(Number(initialStakingTheoBalance)).to.be.lessThan(Number(newStakingTHEOBalance));
+      expect(Number(initialStakingTheoBalance)).to.be.equal(Number(newStakingTHEOBalance));
 
       const [payout_] = await WhitelistBondDepository.pendingFor(bob.address, 0);
-      expect(Number(newStakingTHEOBalance) - Number(initialStakingTheoBalance)).to.equal(payout_);
+      const expectedPayout = Math.floor(Number(depositAmount) / expectedPricePerWETH);
+      expect(expectedPayout).to.equal(payout_);
     });
 
     it('will revert if the attempted deposit amount is larger than the market capacity', async function () {
@@ -749,9 +750,9 @@ describe('Whitelist Bond depository', function () {
       await setupForDeposit();
     });
 
-    it('should allow a note to be redeemed', async function () {
+    it('should allow a note to be redeemed for THEO', async function () {
       const [, , bob] = users;
-
+      const initialBobBalance = await bob.TheopetraERC20Token.balanceOf(bob.address);
       await bob.WhitelistBondDepository.deposit(
         usdcMarketId,
         usdcDepositAmount,
@@ -766,6 +767,8 @@ describe('Whitelist Bond depository', function () {
       await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 
       await expect(WhitelistBondDepository.redeemAll(bob.address)).to.not.be.reverted;
+      const finalBobBalance = await bob.TheopetraERC20Token.balanceOf(bob.address);
+      expect(Number(finalBobBalance)).to.be.greaterThan(Number(initialBobBalance));
     });
   });
 

@@ -159,7 +159,8 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
             uint48(depositInfo.expiry_),
             uint48(_id),
             _referral,
-            0
+            0,
+            false
         );
 
         // transfer payment to treasury
