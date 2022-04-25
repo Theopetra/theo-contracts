@@ -277,6 +277,62 @@ contract TheopetraStaking is TheopetraAccessControlled {
         ITHEO(THEO).safeTransfer(_to, amount_);
     }
 
+    function getSlashedRewards(uint256 amount) private returns (uint256) {
+        uint256 circulatingSupply = IStakedTHEOToken(sTHEO).circulatingSupply();
+        uint256 baseDecimals = 10**9;
+
+        return
+            circulatingSupply > 0
+                ? ((amount.add(circulatingSupply)).mul(baseDecimals).div(circulatingSupply).sub(baseDecimals))
+                    .mul(IStakedTHEOToken(sTHEO).balanceForGons(slashedGons))
+                    .div(baseDecimals)
+                : 0;
+    }
+
+    mapping(uint256 => uint256) penaltyBands;
+
+    function definePenalties() private {
+        definePenalty(1, 20);
+        definePenalty(2, 19);
+        definePenalty(3, 18);
+        definePenalty(4, 17);
+        definePenalty(5, 16);
+        definePenalty(6, 15);
+        definePenalty(7, 14);
+        definePenalty(8, 13);
+        definePenalty(9, 12);
+        definePenalty(10, 11);
+        definePenalty(11, 10);
+        definePenalty(12, 9);
+        definePenalty(13, 8);
+        definePenalty(14, 7);
+        definePenalty(15, 6);
+        definePenalty(16, 5);
+        definePenalty(17, 4);
+        definePenalty(18, 3);
+        definePenalty(19, 2);
+        definePenalty(20, 1);
+    }
+
+    function definePenalty(uint256 _percentBandMax, uint256 _penalty) private {
+        penaltyBands[_percentBandMax] = _penalty;
+    }
+
+    function ceil(uint256 a, uint256 m) private view returns (uint256) {
+        return a == 0 ? m : ((a.add(m).sub(1)).div(m)).mul(m);
+    }
+
+    function getPenalty(uint256 _amount, uint256 stakingTimePercentComplete) public view returns (uint256) {
+        if (stakingTimePercentComplete == 100) {
+            return 0;
+        }
+
+        uint256 penaltyBand = ceil(stakingTimePercentComplete, 5).div(5);
+        uint256 penaltyPercent = penaltyBands[penaltyBand];
+
+        return _amount.mul(penaltyPercent).div(100);
+    }
+
     /**
         @dev slashedRewards is calculated as: (StakerTokens/totalStakedTokens) * totalSlashedTokens
      */

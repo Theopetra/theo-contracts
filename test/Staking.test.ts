@@ -879,6 +879,45 @@ describe('Staking', function () {
 
     it('errors and does not transfer any sTHEO when there is no claim', async function () {
       const [, bob] = users;
+      await createClaim();
+      const bobInitialStakingInfo = await Staking.stakingInfo(bob.address, 0);
+
+      const amountInGons = await sTheo.gonsForBalance(amountToStake);
+      expect(bobInitialStakingInfo.gonsInWarmup.toString()).to.equal(amountInGons.toString());
+
+      await bob.Staking.claim(bob.address, [0]); // Can claim straight away (no movement forward in time needed)
+      const bobNewStakingInfo = await Staking.stakingInfo(bob.address, 0);
+      expect(bobNewStakingInfo.gonsInWarmup.toNumber()).to.equal(0);
+      expect(bobNewStakingInfo.gonsRemaining.toString()).to.equal(bobInitialStakingInfo.gonsInWarmup.toString());
+    });
+
+    it('only sets gonsRemaining once per Claim: it prevents re-retrieval of already retrieved claims', async function () {
+      const [, bob] = users;
+      await createClaim();
+      const bobInitialStakingInfo = await Staking.stakingInfo(bob.address, 0);
+
+      // First claim
+      await bob.Staking.claim(bob.address, [0]); // Can claim straight away (no movement forward in time needed)
+
+      const bobSecondStakingInfo = await Staking.stakingInfo(bob.address, 0);
+      expect(bobSecondStakingInfo.gonsRemaining.toString()).to.equal(bobInitialStakingInfo.gonsInWarmup.toString());
+
+      // Second claim on the same index as the first
+      await bob.Staking.claim(bob.address, [0]);
+      const bobFinalStakingInfo = await Staking.stakingInfo(bob.address, 0);
+      expect(bobFinalStakingInfo.gonsRemaining.toString()).to.equal(bobSecondStakingInfo.gonsRemaining.toString());
+    });
+
+    it('errors and does not transfer any sTHEO when there is no claim', async function () {
+      const [, bob] = users;
+
+      expect(await sTheo.balanceOf(bob.address)).to.equal(0);
+
+      try {
+        await bob.Staking.claim(bob.address, [0]);
+      } catch (error: any) {
+        expect(error.message).to.include('VM Exception while processing transaction: invalid opcode');
+      }
 
       expect(await sTheo.balanceOf(bob.address)).to.equal(0);
 
@@ -1409,6 +1448,383 @@ describe('Staking', function () {
         (secondAmountToStake / currentSTHEOCirculatingSupply.toNumber()) * expectedTotalSlashedTokens;
 
       expect(newRewardsForTwo).to.equal(expectedSlashedRewards);
+    });
+  });
+
+  describe('claimAll', function () {
+    it('allows a recipient to claim all of their claims that are out of warmup', async function () {
+      const [, bob] = users;
+      await Staking.setWarmup(60 * 60 * 24 * 7); // Set warmup to be 7 days
+
+      await createClaim();
+      const secondStakeAmount = 10_000_000_000_000;
+      await createClaim(secondStakeAmount);
+      await moveTimeForward(60 * 60 * 24 * 7 + 60); // Move time past warmup period
+
+      const thirdStakeAmount = 7_000_000_000_000;
+      await createClaim(thirdStakeAmount);
+      // Third stake is still in warmup; Only first and second stakes can be claimed
+
+      await bob.Staking.claimAll(bob.address);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake + secondStakeAmount);
+    });
+  });
+
+  describe('isUnRetrieved', function () {
+    it('will return true for a claim that is in warmup', async function () {
+      const [, bob] = users;
+      await Staking.setWarmup(60 * 60 * 24 * 5); // Set warmup to be 5 days
+      await createClaim();
+
+      expect(await Staking.isUnRetrieved(bob.address, 0)).to.equal(true);
+    });
+
+    it('will return true for a claim that is out of warmup but that has not yet been claimed', async function () {
+      const [, bob] = users;
+      await createClaim(); // zero warmup
+
+      expect(await Staking.isUnRetrieved(bob.address, 0)).to.equal(true);
+    });
+
+    it('will return false for a claim that has been claimed', async function () {
+      const [, bob] = users;
+      await createClaim(); // zero warmup
+
+      await bob.Staking.claim(bob.address, [0]);
+      expect(await Staking.isUnRetrieved(bob.address, 0)).to.equal(false);
+    });
+  });
+
+  describe('isUnRedeemed', function () {
+    it('will return false for a claim that is in warmup', async function () {
+      const [, bob] = users;
+      await Staking.setWarmup(60 * 60 * 24 * 5); // Set warmup to be 5 days
+      await createClaim();
+
+      expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(false);
+    });
+
+    it('will return true for a claim that has sTHEO remaining to be redeemed (after being claimed from warmup)', async function () {
+      const [, bob] = users;
+      await createClaim(); // zero warmup period
+
+      await bob.Staking.claim(bob.address, [0]);
+      expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(true);
+    });
+
+    it('will return false for a claim has had all sTHEO redeemed (unstaked)', async function () {
+      const [, bob] = users;
+      await createClaim(); // zero warmup period
+
+      await bob.Staking.claim(bob.address, [0]);
+
+      await bob.sTheo.approve(Staking.address, amountToStake);
+      await bob.Staking.unstake(bob.address, [amountToStake], false, [0]);
+      expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(false);
+    });
+
+    it('will return true until all of the available sTHEO has been redeemed (unstaked)', async function () {
+      const [, bob] = users;
+      await createClaim(); // zero warmup period
+
+      await bob.Staking.claim(bob.address, [0]);
+
+      await moveTimeForward(lockedStakingTerm * 1.05); // move passed 100% of staking term to allow partial redeems
+
+      await bob.sTheo.approve(Staking.address, amountToStake);
+      await bob.Staking.unstake(bob.address, [amountToStake - amountToStake / 2], false, [0]);
+      expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(true);
+      await bob.Staking.unstake(bob.address, [amountToStake - amountToStake / 2], false, [0]);
+      expect(await Staking.isUnRedeemed(bob.address, 0)).to.equal(false);
+    });
+  });
+
+  describe('indexesFor', function () {
+    it('returns the indexes of un-retrieved claims (that is, claims that have sTHEO that can be retrieved from warmup)', async function () {
+      const [, bob] = users;
+      await createClaim();
+      await createClaim();
+      await createClaim();
+
+      await bob.Staking.claim(bob.address, [1]);
+      const response = await Staking.indexesFor(bob.address, true); //
+      const returnedIndexes = response.map((element: any) => element.toNumber());
+      const expectedIndexes = [0, 2];
+      expect(returnedIndexes).to.deep.equal(expectedIndexes);
+    });
+  });
+
+  describe('isExternalLocked', function () {
+    it('prevents staking from an external account by default', async function () {
+      const [, bob, carol] = users;
+      const claim = true;
+
+      // Bob cannot, by default, stake for carol
+      await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.be.revertedWith(
+        'External deposits for account are locked'
+      );
+    });
+
+    it('allows self-stakes (while preventing external stakes by default)', async function () {
+      const [, bob, carol] = users;
+      const claim = true;
+
+      // Bob can self-stake
+      await expect(bob.Staking.stake(bob.address, amountToStake, claim)).to.not.be.reverted;
+
+      // Bob cannot, by default, stake for carol
+      await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.be.revertedWith(
+        'External deposits for account are locked'
+      );
+    });
+
+    it('allows an external stake, with immediate claim, when recipient toggles their `isExternalLocked` lock', async function () {
+      const [, bob, carol] = users;
+      const claim = true;
+
+      await carol.Staking.toggleLock();
+
+      await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.not.be.reverted;
+    });
+
+    it('allows an external stake, with non-immediate claim, when recipient toggles their `isExternalLocked` lock', async function () {
+      const [, bob, carol] = users;
+      const claim = false;
+
+      await carol.Staking.toggleLock();
+
+      await expect(bob.Staking.stake(carol.address, amountToStake, claim)).to.not.be.reverted;
+
+      expect(await Staking.supplyInWarmup()).to.equal(amountToStake);
+
+      const stakingInfo = await Staking.stakingInfo(carol.address, 0);
+      expect(stakingInfo.deposit).to.equal(amountToStake);
+    });
+
+    it('prevents an external claim by default', async function () {
+      const [, bob, carol] = users;
+      await createClaim(); // Create a claim for Bob
+
+      await expect(carol.Staking.claim(bob.address, [0])).to.be.revertedWith('External claims for account are locked');
+    });
+
+    it('allows an external claim to be made for sTHEO, if the receipient has toggled their lock', async function () {
+      const [, bob, carol] = users;
+      await createClaim(); // Create a claim for Bob
+
+      await bob.Staking.toggleLock();
+      await moveTimeForward(60 * 60 * 9); // Move time forward into the next epoch to allow claim amount to be sent
+
+      await expect(carol.Staking.claim(bob.address, [0])).to.not.be.reverted;
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
+    });
+
+    it('allows an internal claim after the recipient has toggled the lock', async function () {
+      const [, bob] = users;
+      await createClaim(); // Create a claim for Bob
+
+      await bob.Staking.toggleLock();
+      await moveTimeForward(60 * 60 * 9); // Move time forward into the next epoch to allow claim amount to be sent
+
+      await bob.Staking.claim(bob.address, [0]);
+      expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
+    });
+
+    it('prevents an external unstake by default', async function () {
+      const [, bob, carol] = users;
+
+      await createClaim();
+
+      await expect(carol.Staking.unstake(bob.address, [amountToStake], false, [0])).to.be.revertedWith(
+        'External unstaking for account is locked'
+      );
+    });
+
+    it('allows an external unstake if the recipient has toggled the lock', async function () {
+      const [, bob, carol] = users;
+
+      await createClaim(amountToStake, true);
+      await bob.Staking.toggleLock();
+      await bob.sTheo.transfer(carol.address, amountToStake);
+
+      await carol.sTheo.approve(Staking.address, amountToStake);
+
+      await expect(carol.Staking.unstake(bob.address, [amountToStake], false, [0])).to.not.be.reverted;
+    });
+  });
+
+  describe('getPenalty', function () {
+    it('gets the right penalty', async () => {
+      // 800 * .2 = 160
+      expect(await Staking.getPenalty(800, 4)).to.equal(BigNumber.from(160));
+      expect(await Staking.getPenalty(800, 5)).to.equal(BigNumber.from(160));
+
+      // 800 * .19 = 152
+      expect(await Staking.getPenalty(800, 8)).to.equal(BigNumber.from(152));
+      expect(await Staking.getPenalty(800, 10)).to.equal(BigNumber.from(152));
+
+      // 800 * .18 = 144
+      expect(await Staking.getPenalty(800, 12)).to.equal(BigNumber.from(144));
+      expect(await Staking.getPenalty(800, 15)).to.equal(BigNumber.from(144));
+
+      // 800 * .17 = 136
+      expect(await Staking.getPenalty(800, 16)).to.equal(BigNumber.from(136));
+      expect(await Staking.getPenalty(800, 20)).to.equal(BigNumber.from(136));
+
+      // 800 * .16 = 128
+      expect(await Staking.getPenalty(800, 21)).to.equal(BigNumber.from(128));
+      expect(await Staking.getPenalty(800, 25)).to.equal(BigNumber.from(128));
+
+      // 800 * .15 = 120
+      expect(await Staking.getPenalty(800, 26)).to.equal(BigNumber.from(120));
+      expect(await Staking.getPenalty(800, 30)).to.equal(BigNumber.from(120));
+
+      // 800 * .14 = 112
+      expect(await Staking.getPenalty(800, 31)).to.equal(BigNumber.from(112));
+      expect(await Staking.getPenalty(800, 35)).to.equal(BigNumber.from(112));
+
+      // 800 * .13 = 104
+      expect(await Staking.getPenalty(800, 36)).to.equal(BigNumber.from(104));
+      expect(await Staking.getPenalty(800, 40)).to.equal(BigNumber.from(104));
+
+      // 800 * .12 = 96
+      expect(await Staking.getPenalty(800, 41)).to.equal(BigNumber.from(96));
+      expect(await Staking.getPenalty(800, 45)).to.equal(BigNumber.from(96));
+      // 800 * .11 = 88
+      expect(await Staking.getPenalty(800, 49)).to.equal(BigNumber.from(88));
+      expect(await Staking.getPenalty(800, 50)).to.equal(BigNumber.from(88));
+
+      //800 * .10 = 80
+      expect(await Staking.getPenalty(800, 52)).to.equal(BigNumber.from(80));
+      expect(await Staking.getPenalty(800, 55)).to.equal(BigNumber.from(80));
+
+      //800 * .9 = 72
+      expect(await Staking.getPenalty(800, 56)).to.equal(BigNumber.from(72));
+      expect(await Staking.getPenalty(800, 60)).to.equal(BigNumber.from(72));
+
+      //800 * .8 = 64
+      expect(await Staking.getPenalty(800, 61)).to.equal(BigNumber.from(64));
+      expect(await Staking.getPenalty(800, 65)).to.equal(BigNumber.from(64));
+
+      //800 * .7 = 56
+      expect(await Staking.getPenalty(800, 69)).to.equal(BigNumber.from(56));
+      expect(await Staking.getPenalty(800, 70)).to.equal(BigNumber.from(56));
+
+      // Expect calculation for 800 * .6 = 48
+      expect(await Staking.getPenalty(800, 71)).to.equal(BigNumber.from(48));
+      expect(await Staking.getPenalty(800, 75)).to.equal(BigNumber.from(48));
+
+      // Expect calculation for 800 * .5 = 40
+      expect(await Staking.getPenalty(800, 76)).to.equal(BigNumber.from(40));
+      expect(await Staking.getPenalty(800, 80)).to.equal(BigNumber.from(40));
+
+      // Expect calculation for 800 * .4 = 32
+      expect(await Staking.getPenalty(800, 81)).to.equal(BigNumber.from(32));
+      expect(await Staking.getPenalty(800, 85)).to.equal(BigNumber.from(32));
+
+      // Expect calculation for 800 * .3 = 24
+      expect(await Staking.getPenalty(800, 86)).to.equal(BigNumber.from(24));
+      expect(await Staking.getPenalty(800, 90)).to.equal(BigNumber.from(24));
+
+      // Expect calculation for 800 * .2 = 16
+      expect(await Staking.getPenalty(800, 91)).to.equal(BigNumber.from(16));
+      expect(await Staking.getPenalty(800, 95)).to.equal(BigNumber.from(16));
+
+      // Expect calculation for 800 * .1 = 8
+      expect(await Staking.getPenalty(800, 96)).to.equal(BigNumber.from(8));
+      expect(await Staking.getPenalty(800, 98)).to.equal(BigNumber.from(8));
+
+      // It should never get here if it's 100% but we want to ensure its 0
+      // expect(await Staking.getPenalty(800,)).to.equal(BigNumber.from(0));
+    });
+  });
+
+  describe('transfer claim', function () {
+    it('allows a user to transfer a claim to a new user', async function () {
+      const [, bob, carol] = users;
+      await createClaim();
+      await expect(Staking.stakingInfo(bob.address, 0)).to.not.be.reverted;
+      await expect(Staking.stakingInfo(carol.address, 0)).to.be.reverted;
+
+      await bob.Staking.pushClaim(carol.address, 0);
+      await carol.Staking.pullClaim(bob.address, 0);
+
+      const carolStakingInfo = await Staking.stakingInfo(carol.address, 0);
+      const bobStakingInfo = await Staking.stakingInfo(bob.address, 0);
+
+      expect(carolStakingInfo.deposit.toNumber()).to.equal(amountToStake);
+      expect(bobStakingInfo.deposit.toNumber()).to.equal(0);
+      expect(bobStakingInfo.stakingExpiry.toNumber()).to.equal(0);
+    });
+
+    it('allows a user to unstake against a claim after it has been transfered to them', async function () {
+      const [, bob, carol] = users;
+      await createClaim(amountToStake, true); // Immediate claim (no warmup)
+      await bob.Staking.pushClaim(carol.address, 0);
+      await carol.Staking.pullClaim(bob.address, 0);
+      expect(Number(await TheopetraERC20Token.balanceOf(carol.address))).to.equal(0);
+
+      // Transfer sTHEO from bob to carol
+      expect(Number(await sTheo.balanceOf(bob.address))).to.be.greaterThan(0);
+      const bobSTheoBalance = await sTheo.balanceOf(bob.address);
+      await bob.sTheo.transfer(carol.address, bobSTheoBalance);
+      expect(Number(await sTheo.balanceOf(carol.address))).to.equal(bobSTheoBalance);
+
+      await moveTimeForward(lockedStakingTerm * 2); // Move past locked staking term to avoid penalty
+
+      await carol.sTheo.approve(Staking.address, amountToStake);
+      await carol.Staking.unstake(carol.address, [amountToStake], false, [0]);
+      expect(Number(await sTheo.balanceOf(carol.address))).to.equal(0);
+      expect(Number(await TheopetraERC20Token.balanceOf(carol.address))).to.be.greaterThan(0);
+    });
+
+    it('reverts if a user tries to pull a claim from the transfers mapping that was not previously pushed to them', async function () {
+      const [, bob, carol, alice] = users;
+      await createClaim(amountToStake, true); // Immediate claim (no warmup)
+      await bob.Staking.pushClaim(carol.address, 0);
+      await expect(alice.Staking.pullClaim(bob.address, 0)).to.be.revertedWith('Staking: claim not found');
+    });
+
+    it('reverts if a user tries to pull claim claim that has previously been redeemed', async function () {
+      const [, bob, carol] = users;
+      await createClaim(amountToStake, true); // Immediate claim (no warmup)
+      await bob.Staking.pushClaim(carol.address, 0);
+
+      // Before carol pulls claim, bob redeems
+      await moveTimeForward(lockedStakingTerm * 2); // Move past locked staking term to avoid penalty
+      await bob.sTheo.approve(Staking.address, amountToStake);
+      await bob.Staking.unstake(bob.address, [amountToStake], false, [0]);
+
+      await expect(carol.Staking.pullClaim(bob.address, 0)).to.be.revertedWith('Staking: claim redeemed');
+    });
+  });
+
+  describe('forfeit', function () {
+    it('allows a user to forfeit', async function () {
+      const [, bob] = users;
+      const claim = false;
+      const secondAmountToStake = 300_000_000_000;
+      const thirdAmountToStake = 500_000_000_000;
+      const mistakeAmount = 700_000_000_000;
+      await createClaim(amountToStake, claim);
+      await createClaim(secondAmountToStake, claim);
+      await createClaim(thirdAmountToStake, claim);
+      await createClaim(mistakeAmount, false);
+
+      const bobStartingTheoBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
+
+      const mistakenClaimInfo = await Staking.stakingInfo(bob.address, 3);
+      expect(Number(mistakenClaimInfo.gonsInWarmup)).to.be.greaterThan(0);
+
+      await bob.Staking.forfeit(3);
+      const mistakenClaimInfoUpdated = await Staking.stakingInfo(bob.address, 3);
+      const firstClaimInfo = await Staking.stakingInfo(bob.address, 0);
+
+      expect(Number(mistakenClaimInfoUpdated.gonsInWarmup)).to.equal(0);
+      expect(Number(firstClaimInfo.gonsInWarmup)).to.be.greaterThan(0);
+
+      const bobNewTheoBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
+      expect(bobNewTheoBalance).to.be.greaterThan(bobStartingTheoBalance);
     });
   });
 });
