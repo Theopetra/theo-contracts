@@ -6,6 +6,8 @@ import '@nomiclabs/hardhat-ethers';
 import 'hardhat-gas-reporter';
 import '@typechain/hardhat';
 import 'solidity-coverage';
+import 'hardhat-contract-sizer';
+
 
 import { node_url, accounts } from './utils/network';
 dotenv.config();
@@ -147,6 +149,11 @@ const config: HardhatUserConfig = {
         },
       }
     : undefined,
+
+    contractSizer: {
+      strict: true,
+    }
+
 };
 
 export default config;
