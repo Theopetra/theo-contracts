@@ -8,8 +8,6 @@ import "../Interfaces/IDistributor.sol";
 import "../Interfaces/IStakedTHEOToken.sol";
 import "../Interfaces/ITHEO.sol";
 
-import "hardhat/console.sol";
-
 contract TheopetraStaking is TheopetraAccessControlled {
     using SafeMath for *;
     using SafeERC20 for IERC20;
