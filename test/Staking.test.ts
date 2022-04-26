@@ -1331,6 +1331,29 @@ describe('Staking', function () {
       });
     });
 
+    describe('staking info', function () {
+      it('can derive amount staked, staking date, expiry, current value', async function () {
+        const [, bob] = users;
+        const claim = true;
+
+        expect(await sTheo.balanceOf(bob.address)).to.equal(0);
+
+        const stakingTerm = 31536000; // Using seconds in a year, as currently used in deploy script
+        const txn = await bob.Staking.stake(bob.address, amountToStake, claim);
+        const blockTimestamp = (await ethers.provider.getBlock(txn.blockNumber)).timestamp;
+        expect(await sTheo.balanceOf(bob.address)).to.equal(amountToStake);
+        const stakingInfo = await bob.Staking.stakingInfo(bob.address, 0);
+        const amountToStakeInGons = await sTheo.gonsForBalance(amountToStake);
+
+        // returns correct expiry time
+        expect(stakingInfo.stakingExpiry.toNumber()).to.equal(blockTimestamp + stakingTerm);
+        // staking expiry minus staking term should return the time staking started, can be used to show on UI
+        expect(stakingInfo.stakingExpiry.toNumber() - stakingTerm).to.equal(blockTimestamp);
+        // returns correct amount staked, can also be converted to current sTHEO value using `balanceForGons`
+        expect(stakingInfo.gonsRemaining).to.equal(amountToStakeInGons);
+      });
+    });
+
     describe('UI-related', function () {
       it('returns the number of staking claims for a user', async function () {
         const [, bob] = users;
