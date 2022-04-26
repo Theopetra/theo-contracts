@@ -1565,6 +1565,30 @@ describe('Staking', function () {
         );
       });
 
+      it('allows a variety of staking and unstaking (with or without rebasing during unstakes), with movements in time', async function () {
+        const [, bob] = users;
+        await setupForRebase();
+        const rnd = randomIntFromInterval(0, 1);
+        const isRebaseTriggered = [true, false][rnd];
+        console.log('Is Rebase triggered when unstaking against final Claim?', isRebaseTriggered);
+
+        await createClaim(amountToStake, true, false);
+        await createClaim(amountToStake * 1000, true, false);
+        await moveTimeForward(9 * 60 * 60); // move into next epoch to ensure a rebase
+        await createClaim(amountToStake * 2, false, false);
+        const [, , , , gonsRemainingOne] = await StakingUnlocked.stakingInfo(bob.address, 0);
+        const balanceFromGonsOne = await sTheoUnlocked.balanceForGons(gonsRemainingOne);
+        const [, , , , gonsRemainingTwo] = await StakingUnlocked.stakingInfo(bob.address, 1);
+        const balanceFromGonsTwo = await sTheoUnlocked.balanceForGons(gonsRemainingTwo);
+        await bob.sTheoUnlocked.approve(StakingUnlocked.address, LARGE_APPROVAL);
+        await bob.StakingUnlocked.unstake(bob.address, [balanceFromGonsOne.toNumber()], false, [0]);
+        await bob.StakingUnlocked.unstake(bob.address, [balanceFromGonsTwo.toNumber()], true, [1]);
+        await createClaim(amountToStake * 3, true, false);
+        const [, , , , gonsRemainingFour] = await StakingUnlocked.stakingInfo(bob.address, 3);
+        const balanceFromGonsFour = await sTheoUnlocked.balanceForGons(gonsRemainingFour);
+        await bob.StakingUnlocked.unstake(bob.address, [balanceFromGonsFour.toNumber()], isRebaseTriggered, [3]);
+      });
+
       it('Allows a user to unstake for the correct amount after a rebase during unstaking', async function () {
         const [, bob] = users;
         await sTheoUnlocked.setIndex(10);
