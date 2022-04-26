@@ -70,15 +70,15 @@ contract TheopetraStaking is TheopetraAccessControlled {
         uint256 _stakingTerm,
         address _authority
     ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {
-        uint256[] memory a = new uint256[](20);
-        uint256[] memory b = new uint256[](20);
+        uint256[] memory bands = new uint256[](20);
+        uint256[] memory penalties = new uint256[](20);
 
         for (uint256 i = 1; i < 21; i++) {
-            a[i-1] = i;
-            b[i-1] = 21 - i;
+            bands[i-1] = i;
+            penalties[i-1] = 21 - i;
         }
 
-        _definePenalties(a, b);
+        _definePenalties(bands, penalties);
 
 
         require(_THEO != address(0), "Invalid address");
@@ -305,15 +305,15 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 : 0;
     }
 
-    function _definePenalties(uint256[] memory a, uint256[] memory b) private {
-        require(a.length == b.length, "Arrays must be the same length");
-        for (uint256 i = 0; i < a.length; i++) {
-            _definePenalty(a[i], b[i]);
+    function _definePenalties(uint256[] memory bands, uint256[] memory penalties) private {
+        require(bands.length == penalties.length, "Arrays must be the same length");
+        for (uint256 i = 0; i < bands.length; i++) {
+            _definePenalty(bands[i], penalties[i]);
         }
     }
 
-    function definePenalties(uint256[] memory a, uint256[] memory b) public onlyPolicy {
-        _definePenalties(a, b);
+    function definePenalties(uint256[] memory bands, uint256[] memory penalties) public onlyPolicy {
+        _definePenalties(bands, penalties);
     }
 
     function _definePenalty(uint256 _percentBandMax, uint256 _penalty) private {
