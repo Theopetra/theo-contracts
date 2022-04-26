@@ -14,10 +14,10 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
     const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
     const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
-    const sTheopetraERC20 = await deployments.get(CONTRACTS.sTheo);
+    const pTheopetraERC20 = await deployments.get(CONTRACTS.pTheo);
 
     // staking term is seconds in a year
-    const stakingTerm = 0;
+    const stakingTerm = 31536000;
 
     let epochLength;
     let firstEpochNumber;
@@ -37,7 +37,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
     args = [
       TheopetraERC20Token.address,
-      sTheopetraERC20.address,
+      pTheopetraERC20.address,
       epochLength,
       firstEpochNumber,
       firstEpochTime,
@@ -67,9 +67,10 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       ];
     }
 
-    await deploy(CONTRACTS.staking, {
+    await deploy(CONTRACTS.stakingLocked, {
       from: deployer,
       log: true,
+      contract: 'TheopetraStaking', // Name of artifact
       args,
     });
   } catch (error) {
@@ -77,9 +78,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   }
 };
 
+const baseDependencies = [CONTRACTS.authority, CONTRACTS.theoToken, CONTRACTS.pTheo];
 export default func;
-func.tags = [CONTRACTS.staking];
-func.dependencies =
-  hre?.network?.config?.chainId === 1337
-    ? [CONTRACTS.authority, 'Mocks']
-    : [CONTRACTS.authority, CONTRACTS.theoToken, CONTRACTS.sTheo];
+func.tags = [CONTRACTS.stakingLocked];
+func.dependencies = hre?.network?.config?.chainId === 1337 ? [...baseDependencies, 'Mocks'] : baseDependencies;

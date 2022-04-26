@@ -55,5 +55,9 @@ export async function getContracts(currentContract?: string): Promise<any> {
     AggregatorMockETH: <AggregatorMockETH>await ethers.getContract(MOCKS.aggregatorMockETH),
     AggregatorMockUSDC: <AggregatorMockUSDC>await ethers.getContract(MOCKS.aggregatorMockUSDC),
     pTheo: <PTheopetra>await ethers.getContract(CONTRACTS.pTheo),
+    StakingLocked:
+      isWithMocks && currentContract !== CONTRACTS.staking
+        ? <StakingMock>await ethers.getContract(MOCKSWITHARGS.stakingMock)
+        : <TheopetraStaking>await ethers.getContract(CONTRACTS.stakingLocked),
   };
 }
