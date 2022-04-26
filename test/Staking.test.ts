@@ -9,7 +9,6 @@ import {
   StakingDistributor,
   TheopetraAuthority,
   TheopetraStaking,
-  TheopetraStaking__factory,
 } from '../typechain-types';
 
 const setup = deployments.createFixture(async () => {
@@ -655,6 +654,7 @@ describe('Staking', function () {
           bobStartingTheoBalance - expectedPenalty
         );
       });
+
       it('adds slashed rewards to the redeemed amount, for a user unstaking against a claim after 100% of its staking term', async function () {
         const [, bob] = users;
         const claim = true;
@@ -1252,6 +1252,30 @@ describe('Staking', function () {
 
         // It should never get here if it's 100% but we want to ensure its 0
         // expect(await Staking.getPenalty(800,)).to.equal(BigNumber.from(0));
+      });
+    });
+
+    describe.only('definePenalties', function () {
+      it('policy can redefine penalty bands', async function() {
+        const bands = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+        const penalties = [20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+        await expect (Staking.definePenalties(bands, penalties)).to.not.be.reverted;
+      });
+      it('modifies the penalty bands', async function() {
+        expect(await Staking.getPenalty(800, 4)).to.equal(BigNumber.from(160));
+        expect(await Staking.getPenalty(800, 5)).to.equal(BigNumber.from(160));
+        const bands = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+        const penalties = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        await expect (Staking.definePenalties(bands, penalties)).to.not.be.reverted;
+
+        expect(await Staking.getPenalty(800, 4)).to.equal(BigNumber.from(0));
+      });
+      it('reverts when called by non-policy address', async function() {
+        const bands = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+        const penalties = [20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+        const [, bob] = users;
+
+        await expect (bob.Staking.definePenalties(bands, penalties)).to.be.reverted;
       });
     });
 
