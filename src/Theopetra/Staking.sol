@@ -36,6 +36,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
     mapping(address => Claim[]) public stakingInfo;
     mapping(address => bool) private isExternalLocked;
     mapping(address => mapping(uint256 => address)) private claimTransfers; // change claim ownership
+    mapping(uint256 => uint256) penaltyBands;
     mapping(address => bool) private bondDepos;
 
     /* ====== STRUCTS ====== */
@@ -69,7 +70,17 @@ contract TheopetraStaking is TheopetraAccessControlled {
         uint256 _stakingTerm,
         address _authority
     ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {
-        definePenalties();
+        uint256[] memory a = new uint256[](20);
+        uint256[] memory b = new uint256[](20);
+
+        for (uint256 i = 1; i < 21; i++) {
+            a[i-1] = i;
+            b[i-1] = 21 - i;
+        }
+
+        _definePenalties(a, b);
+
+
         require(_THEO != address(0), "Invalid address");
         THEO = _THEO;
         require(_sTHEO != address(0), "Invalid address");
@@ -294,32 +305,18 @@ contract TheopetraStaking is TheopetraAccessControlled {
                 : 0;
     }
 
-    mapping(uint256 => uint256) penaltyBands;
-
-    function definePenalties() private {
-        definePenalty(1, 20);
-        definePenalty(2, 19);
-        definePenalty(3, 18);
-        definePenalty(4, 17);
-        definePenalty(5, 16);
-        definePenalty(6, 15);
-        definePenalty(7, 14);
-        definePenalty(8, 13);
-        definePenalty(9, 12);
-        definePenalty(10, 11);
-        definePenalty(11, 10);
-        definePenalty(12, 9);
-        definePenalty(13, 8);
-        definePenalty(14, 7);
-        definePenalty(15, 6);
-        definePenalty(16, 5);
-        definePenalty(17, 4);
-        definePenalty(18, 3);
-        definePenalty(19, 2);
-        definePenalty(20, 1);
+    function _definePenalties(uint256[] memory a, uint256[] memory b) private {
+        require(a.length == b.length, "Arrays must be the same length");
+        for (uint256 i = 0; i < a.length; i++) {
+            _definePenalty(a[i], b[i]);
+        }
     }
 
-    function definePenalty(uint256 _percentBandMax, uint256 _penalty) private {
+    function definePenalties(uint256[] memory a, uint256[] memory b) public onlyPolicy {
+        _definePenalties(a, b);
+    }
+
+    function _definePenalty(uint256 _percentBandMax, uint256 _penalty) private {
         penaltyBands[_percentBandMax] = _penalty;
     }
 
