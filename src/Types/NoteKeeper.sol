@@ -232,4 +232,8 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         matured_ = note.redeemed == 0 && note.matured <= block.timestamp && note.payout != 0;
         discount_ = note.discount;
     }
+
+    function getNotesCount(address _user) public view returns (uint256) {
+        return notes[_user].length;
+    }
 }

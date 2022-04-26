@@ -1313,5 +1313,15 @@ describe('Bond depository', function () {
         expect(discount).to.equal(expectedBrv);
       }
     });
+
+    it('returns the number of notes for a user', async function () {
+      const [, , bob, carol] = users;
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address, autoStake);
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address, autoStake);
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, carol.address, autoStake);
+      const notesCount = await BondDepository.getNotesCount(bob.address);
+
+      expect(notesCount).to.equal(3);
+    })
   });
 });
