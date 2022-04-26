@@ -11,6 +11,7 @@ import "../Interfaces/IFounderVesting.sol";
 import "../Interfaces/ITHEO.sol";
 import "../Interfaces/ITreasury.sol";
 
+import "hardhat/console.sol";
 /**
  * @title TheopetraFounderVesting
  * @dev This contract allows to split THEO payments among a group of accounts. The sender does not need to be aware
@@ -129,12 +130,31 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
      */
     function getUnlockedMultiplier() public view returns (uint256) {
         uint256 timeSinceDeploy = block.timestamp - deployTime;
-        for(uint256 i = unlockTimes.length - 1; i >= 0; i--) {
-            if(timeSinceDeploy >= unlockTimes[i]) {
-                return unlockAmounts[i];
+        for(uint256 i = unlockTimes.length; i > 0; i--) {
+            if(timeSinceDeploy >= unlockTimes[i-1]) {
+                return unlockAmounts[i-1];
             }
         }
         return 0;
+    }
+
+    function rebalance(IERC20 token) public {
+        require(THEO.totalSupply() > 0, "TheopetraFounderVesting: THEO supply is zero");
+        uint256 totalSupply = THEO.totalSupply();
+        uint256 contractBalance = token.balanceOf(address(this));
+
+        // uint256 totalShares = 0;
+        // for (uint256 i = 0; i < payees.length; i++) {
+        //     totalShares += shares[payees[i]];
+        // }
+        // uint256 totalSharesToMint = totalSupply.mul(totalShares).div(10**decimals());
+        // uint256 totalSharesToBurn = treasury.balanceOf(address(this)).mul(totalShares).div(10**decimals());
+        // uint256 totalSharesToBurnDiff = totalSharesToMint.sub(totalSharesToBurn);
+        // if (totalSharesToBurnDiff > 0) {
+        //     treasury.burn(address(this), totalSharesToBurnDiff);
+        // } else if (totalSharesToBurnDiff < 0) {
+        //     treasury.mint(address(this), totalSharesToBurnDiff.mul(-1));
+        // }
     }
 
     /**
