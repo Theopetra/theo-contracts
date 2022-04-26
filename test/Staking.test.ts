@@ -81,7 +81,13 @@ describe('Staking', function () {
 
     // Setup for Distributor
     await Distributor.addRecipient(Staking.address, expectedStartRateLocked, expectedDrs, expectedDys, isLocked);
-    await Distributor.addRecipient(StakingUnlocked.address, expectedStartRateLocked, expectedDrs, expectedDys, isLocked);
+    await Distributor.addRecipient(
+      StakingUnlocked.address,
+      expectedStartRateLocked,
+      expectedDrs,
+      expectedDys,
+      isLocked
+    );
     // Report a couple of yields using the Yield Reporter (for use when calculating deltaTreasuryYield)
     const lastYield = 50_000_000_000;
     const currentYield = 150_000_000_000;
@@ -138,12 +144,10 @@ describe('Staking', function () {
     }
   });
 
-
   /* ======== Start Locked Staking Tranche Tests ======== */
 
   describe('Locked Tranche', function () {
     describe('Deployment', async function () {
-
       it('can be deployed', async function () {
         await setup();
       });
@@ -502,7 +506,7 @@ describe('Staking', function () {
         expect(secondClaimUpdatedInfo.gonsRemaining).to.equal(secondExpectedGonsRemaining);
       });
 
-      it('allows a staker to redeem their sTHEO for the correct amount of THEO -- that is, their principal deposit minus penalty -- when 25% of their total staking expiry time has passed (75% remaining)', async function () {
+      it('allows a staker to redeem their pTHEO for the correct amount of THEO -- that is, their principal deposit minus penalty -- when 25% of their total staking expiry time has passed (75% remaining)', async function () {
         const [, bob, carol] = users;
         const claim = true;
 
@@ -526,7 +530,7 @@ describe('Staking', function () {
         );
       });
 
-      it('allows a staker to redeem their sTHEO for the correct amount of THEO -- deposit minus penalty -- at any time before the staking expiry', async function () {
+      it('allows a staker to redeem their pTHEO for the correct amount of THEO -- deposit minus penalty -- at any time before the staking expiry', async function () {
         const [, bob] = users;
         const claim = true;
 
@@ -561,7 +565,7 @@ describe('Staking', function () {
         );
       });
 
-      it('allows a staker to redeem their sTHEO for THEO with 1% penalty if greater than 99% but less than 100% of the staking term has passed', async function () {
+      it('allows a staker to redeem their pTHEO for THEO with 1% penalty if greater than 99% but less than 100% of the staking term has passed', async function () {
         const [, bob] = users;
         const claim = true;
 
@@ -587,7 +591,7 @@ describe('Staking', function () {
         );
       });
 
-      it('allows a staker to redeem their sTHEO for THEO with zero penalty if exactly 100% of the staking term has passed', async function () {
+      it('allows a staker to redeem their pTHEO for THEO with zero penalty if exactly 100% of the staking term has passed', async function () {
         const [, bob] = users;
         const claim = true;
 
@@ -620,7 +624,7 @@ describe('Staking', function () {
         );
       });
 
-      it('allows a staker to redeem their sTHEO for THEO with zero penalty if greater than 100% of the staking term has passed', async function () {
+      it('allows a staker to redeem their pTHEO for THEO with zero penalty if greater than 100% of the staking term has passed', async function () {
         const [, bob] = users;
         const claim = true;
 
@@ -684,7 +688,7 @@ describe('Staking', function () {
         expect(bobNewTheoBalance.sub(bobTheoBalance).eq(amountToStakeAsBigNumber.add(expectedSlashedRewards)));
       });
 
-      it('Allows a user to unstake for the correct amount after a rebase during unstaking', async function () {
+      it('allows a user to unstake for the correct amount after a rebase during unstaking', async function () {
         const [, bob] = users;
         await setupForRebase();
 
@@ -705,6 +709,9 @@ describe('Staking', function () {
         const rewards = bobFinalTheoBalance.sub(balanceFromGons.add(bobTheoBalance));
 
         expect(rewards.toNumber()).to.greaterThan(0);
+        // Rewards should be the difference between pTheo balance before and after rebase
+        const newPTheoValueFromBalance = await sTheo.balanceForGons(gonsRemaining);
+        expect(rewards).to.equal(newPTheoValueFromBalance.sub(balanceFromGons));
       });
 
       it('allows a user to unstake with rebasing during unstaking -- variation 2', async function () {
@@ -1508,7 +1515,7 @@ describe('Staking', function () {
         expect(firstClaimUpdatedInfo.gonsRemaining).to.equal(expectedGonsRemaining);
         // Can convert gonsRemaing to sTheo amount:
         const redeemableAmountRemaining = await sTheoUnlocked.balanceForGons(firstClaimUpdatedInfo.gonsRemaining);
-         // No rebasing with profit has occured in this test, so expect remaining amount to equal that previously defined above
+        // No rebasing with profit has occured in this test, so expect remaining amount to equal that previously defined above
         expect(redeemableAmountRemaining.toNumber()).to.equal(expectedAmountRemaining);
       });
 
@@ -1589,7 +1596,7 @@ describe('Staking', function () {
         await bob.StakingUnlocked.unstake(bob.address, [balanceFromGonsFour.toNumber()], isRebaseTriggered, [3]);
       });
 
-      it('Allows a user to unstake for the correct amount after a rebase during unstaking', async function () {
+      it('allows a user to unstake for the correct amount after a rebase during unstaking', async function () {
         const [, bob] = users;
         await sTheoUnlocked.setIndex(10);
         await setupForRebase();
