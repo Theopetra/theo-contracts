@@ -277,7 +277,7 @@ describe('Staking', function () {
         expect(await Staking.supplyInWarmup()).to.equal(amountToStake); // sTheo.gonsForBalance(amount) returns amount
       });
 
-      it('allows the staker to claim sTHEO immediately if `_claim` is true and warmup is zero', async function () {
+      it('allows the staker to claim pTHEO immediately if `_claim` is true and warmup is zero', async function () {
         const [, bob] = users;
         const claim = true;
 
