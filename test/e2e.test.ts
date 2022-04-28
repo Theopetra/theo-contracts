@@ -474,7 +474,6 @@ describe('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and recei
 
     const expectedPayouts = await Promise.all(
       usersToTest.map(async (user: any) => {
-        // Deposits from 1e8 - 1e11 USDC (6 decimals)
         const userDepositAmount = 2000000000; // 2e9
 
         const [expectedPayout] = await user.BondDepository.callStatic.deposit(
@@ -534,6 +533,48 @@ describe('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and recei
       await usersToTest[i].Staking.unstake(usersToTest[i].address, [balanceFromGons], false, [0]);
       const finalTheoBalance = await TheopetraERC20Token.balanceOf(usersToTest[i].address);
       expect(finalTheoBalance.sub(preUnstakeTheoBalance)).to.equal(sTheoBalancePostRebase);
+    }
+  });
+
+  it('allows ten users to bond and (after redeeming the bonding note for THEO) enter locked staking, then to unstake pTHEO for THEO with rebase rewards', async function () {
+    const [owner] = await ethers.getSigners();
+    const usersToTest = users.slice(1, 11);
+    // Set autostake to false to redeem for THEO rather than sTHEO
+    const autoStake = false;
+    await setupForRebaseUnlocked();
+
+    // Deploy a new mock bonding calculator that will return a Quote-Token per THEO value of around 1;
+    // This is to allow for testing with a wider range of user deposit amounts
+    const NewBondingCalculatorMock = await new BondingCalculatorMock__factory(owner).deploy(
+      TheopetraERC20Token.address,
+      UsdcTokenMock.address,
+      true
+    );
+    // Set the address of the bonding calculator
+    await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
+
+    // Deposit requires a maxPrice. For this, the current value (with 9 decimals) of THEO per USDC can be determined
+    const usdcPerTheo = (await BondDepository.marketPrice(0)).toNumber();
+
+    const userDepositAmount = 50000000000; // 5e10
+    const initialTheoBalances = await Promise.all(
+      usersToTest.map(async (user: any) => {
+        const initialTheoBalance = await TheopetraERC20Token.balanceOf(user.address);
+        // Bond: users make deposit in the market
+        await user.BondDepository.deposit(bid, userDepositAmount, usdcPerTheo, user.address, user.address, autoStake);
+        return initialTheoBalance.toNumber();
+      })
+    );
+
+    // Move past the end of the vesting period to allow note to be redeemed
+    const additionalTimeProportion = randomIntFromInterval(100, 500) / 100;
+    await moveTimeForward(vesting * additionalTimeProportion);
+
+    for (let i = 0; i < usersToTest.length; i++) {
+      await BondDepository.redeemAll(usersToTest[i].address);
+      const postBondRedeemTheoBalance = await TheopetraERC20Token.balanceOf(usersToTest[i].address);
+
+      expect(postBondRedeemTheoBalance.toNumber()).to.be.greaterThan(initialTheoBalances[i]);
     }
   });
 });
