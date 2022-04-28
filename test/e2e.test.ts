@@ -77,9 +77,6 @@ describe('a single user: whitelist bonding with USDC and redeeming for THEO', fu
     // Deposit / mint quote tokens and approve transfer for WhitelistBondDepository, to allow deposits
     await UsdcTokenMock.mint(bob.address, 100_000_000_000); // 100_000 USDC (6 decimals for USDC)
 
-    // TONOTE
-    // await bob.UsdcTokenMock.approve(WhitelistBondDepository.address, LARGE_APPROVAL);
-
     // Setup to mint initial amount of THEO
     const [, treasurySigner] = await ethers.getSigners();
     await TheopetraAuthority.pushVault(treasurySigner.address, true); //
@@ -456,7 +453,7 @@ describe('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and recei
     expect(rewardsEarned).to.equal(currentExpectedRewards);
   });
 
-  it.only('allows ten users to bond, redeem for sTHEO and unstake for THEO, with rebase rewards', async function () {
+  it('allows ten users to bond, redeem for sTHEO and unstake for THEO, with rebase rewards', async function () {
     const [owner] = await ethers.getSigners();
     const usersToTest = users.slice(1, 11);
     const autoStake = true;
