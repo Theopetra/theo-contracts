@@ -173,6 +173,9 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
   const expectedStartRateLocked = 120_000_000; // 12%, rateDenominator for Distributor is 1_000_000_000;
   const expectedDrsLocked = 30_000_000; // 3%
   const expectedDysLocked = 40_000_000; // 4%
+  const expectedStartRateUnlocked = 40_000_000; // 4%, rateDenominator for Distributor is 1_000_000_000;
+  const expectedDrsUnlocked = 10_000_000; // 1%
+  const expectedDysUnlocked = 20_000_000; // 2%
 
   let block: any;
   let BondDepository: TheopetraBondDepository;
@@ -252,12 +255,9 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
   });
 
   async function setupForRebaseUnlocked() {
-    const expectedStartRateUnlocked = 40_000_000; // 4%, rateDenominator for Distributor is 1_000_000_000;
-    const expectedDrs = 10_000_000; // 1%
-    const expectedDys = 20_000_000; // 2%
     const isLocked = false;
     // Setup for Distributor
-    await Distributor.addRecipient(Staking.address, expectedStartRateUnlocked, expectedDrs, expectedDys, isLocked);
+    await Distributor.addRecipient(Staking.address, expectedStartRateUnlocked, expectedDrsUnlocked, expectedDysUnlocked, isLocked);
   }
 
   async function setupForRebaseLocked() {
@@ -316,9 +316,18 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
 
     // Trigger rebases to get a non-zero profit when rebasing in sTHEO
     // and a resulting change in the user's sTHEO balance;
+    const sTheoCirculating = await sTheo.circulatingSupply();
     await Staking.rebase();
     await moveTimeForward(60 * 60 * 8); // This movement in time is not necessary, but done to keep the test closer to a real-world implementation
     await Staking.rebase();
+
+    const newSTheoCirculating = await sTheo.circulatingSupply();
+
+      // Calculate proportional change in pTheo circulating supply. Rate denominator is 1e9
+      const sTheoCirculatingChange = Math.ceil((newSTheoCirculating.toNumber() / sTheoCirculating.toNumber() - 1) * 10**9);
+      const calculatedExpectedRate = expectedRate(expectedStartRateUnlocked, expectedDrsUnlocked, expectedDysUnlocked);
+      // Proportional change in circulating sTheo should equal the expected reward rate
+      expect(sTheoCirculatingChange).to.equal(calculatedExpectedRate)
 
     // Determine the expected reward
     const currentExpectedRewards = await Staking.rewardsFor(bob.address, 0);
@@ -344,7 +353,7 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
     expect(rewardsEarned).to.equal(currentExpectedRewards);
   });
 
-  it.only('allows a single user to bond and (after redeeming the bonding note for THEO) enter locked staking, then to unstake pTHEO for THEO with rebase rewards', async function () {
+  it('allows a single user to bond and (after redeeming the bonding note for THEO) enter locked staking, then to unstake pTHEO for THEO with rebase rewards', async function () {
     const [, , bob] = users;
 
     // Set autostake to false to redeem for THEO rather than sTHEO
