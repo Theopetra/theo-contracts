@@ -43,7 +43,7 @@ describe('pTheopetra', function () {
 
   describe('initialize', function () {
     it('initializes with the locked tranche staking contract', async function () {
-      const { pTheo, StakingLocked, addressZero } = await setup();
+      const { pTheo, StakingLocked, addressZero, Treasury } = await setup();
 
       // pTHEO has already been initialized during setup for tests without mocks
       if (process.env.NODE_ENV === TESTWITHMOCKS) {

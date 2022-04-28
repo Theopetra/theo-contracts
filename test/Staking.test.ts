@@ -93,8 +93,7 @@ describe('Staking', function () {
     const currentYield = 150_000_000_000;
     await waitFor(YieldReporter.reportYield(lastYield));
     await waitFor(YieldReporter.reportYield(currentYield));
-    // set the address of the mock bonding calculator
-    await Treasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+
     // Move forward 8 hours to allow tokenPerformanceUpdate to update contract state
     // current token price will subsequently be updated, last token price will still be zero
     await moveTimeForward(60 * 60 * 8);
@@ -145,6 +144,9 @@ describe('Staking', function () {
       await sTheo.mint(Staking.address, '1000000000000000000000');
       await TheopetraERC20Token.mint(Staking.address, '1000000000000000000000');
     }
+
+    // set the address of the mock bonding calculator
+    await Treasury.setTheoBondingCalculator(BondingCalculatorMock.address);
   });
 
   /* ======== Start Locked Staking Tranche Tests ======== */
@@ -191,6 +193,7 @@ describe('Staking', function () {
               firstEpochTime,
               lockedStakingTerm,
               TheopetraAuthority.address,
+              Treasury.address,
             ],
           })
         ).to.be.revertedWith('Invalid address');
@@ -211,6 +214,7 @@ describe('Staking', function () {
               firstEpochTime,
               lockedStakingTerm,
               TheopetraAuthority.address,
+              Treasury.address,
             ],
           })
         ).to.be.revertedWith('Invalid address');

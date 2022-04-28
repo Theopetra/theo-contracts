@@ -15,6 +15,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
     const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
     const sTheopetraERC20 = await deployments.get(CONTRACTS.sTheo);
+    const Treasury = await deployments.get(CONTRACTS.treasury);
 
     // staking term is seconds in a year
     const stakingTerm = 0;
@@ -43,6 +44,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       firstEpochTime,
       stakingTerm,
       TheopetraAuthority.address,
+      Treasury.address
     ];
 
     if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
@@ -64,6 +66,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         firstEpochTime,
         stakingTerm,
         TheopetraAuthority.address,
+        Treasury.address
       ];
     }
 
