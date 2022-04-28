@@ -170,6 +170,9 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
   const discountRateBond = 10_000_000; // 1% in decimal form (i.e. 0.01 with 9 decimals)
   const discountRateYield = 20_000_000; // 2% in decimal form (i.e. 0.02 with 9 decimals)
   const lockedStakingTerm = 31536000;
+  const expectedStartRateLocked = 120_000_000; // 12%, rateDenominator for Distributor is 1_000_000_000;
+  const expectedDrsLocked = 30_000_000; // 3%
+  const expectedDysLocked = 40_000_000; // 4%
 
   let block: any;
   let BondDepository: TheopetraBondDepository;
@@ -186,6 +189,8 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
   let users: any;
   let YieldReporter: TheopetraYieldReporter;
   let Distributor: StakingDistributor;
+  let deltaTokenPrice: number;
+  let deltaTreasuryYield: number;
 
   beforeEach(async function () {
     ({
@@ -236,6 +241,8 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
 
     // Setup for successful calls to `marketPrice` (during `deposit`) when test use wired-up contracts
     await performanceUpdate(Treasury, YieldReporter, BondingCalculatorMock.address);
+    deltaTokenPrice = (await Treasury.deltaTokenPrice()).toNumber();
+    deltaTreasuryYield = (await Treasury.deltaTreasuryYield()).toNumber();
 
     // Set the address of the bonding calculator
     await Treasury.setTheoBondingCalculator(BondingCalculatorMock.address);
@@ -244,23 +251,6 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
     await bob.TheopetraERC20Token.approve(StakingLocked.address, LARGE_APPROVAL);
   });
 
-  async function reportYields() {
-    // Report a couple of yields using the Yield Reporter (for use when calculating deltaTreasuryYield)
-    const lastYield = 50_000_000_000;
-    const currentYield = 150_000_000_000;
-    await waitFor(YieldReporter.reportYield(lastYield));
-    await waitFor(YieldReporter.reportYield(currentYield));
-    // set the address of the mock bonding calculator
-    await Treasury.setTheoBondingCalculator(BondingCalculatorMock.address);
-    // Move forward 8 hours to allow tokenPerformanceUpdate to update contract state
-    // current token price will subsequently be updated, last token price will still be zero
-    await moveTimeForward(60 * 60 * 8);
-    await Treasury.tokenPerformanceUpdate();
-    // Move forward in time again to update again, this time current token price becomes last token price
-    await moveTimeForward(60 * 60 * 8);
-    await Treasury.tokenPerformanceUpdate();
-  }
-
   async function setupForRebaseUnlocked() {
     const expectedStartRateUnlocked = 40_000_000; // 4%, rateDenominator for Distributor is 1_000_000_000;
     const expectedDrs = 10_000_000; // 1%
@@ -268,25 +258,25 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
     const isLocked = false;
     // Setup for Distributor
     await Distributor.addRecipient(Staking.address, expectedStartRateUnlocked, expectedDrs, expectedDys, isLocked);
-
-    await reportYields();
   }
 
   async function setupForRebaseLocked() {
-    const expectedStartRateUnlocked = 120_000_000; // 12%, rateDenominator for Distributor is 1_000_000_000;
-    const expectedDrs = 30_000_000; // 3%
-    const expectedDys = 40_000_000; // 4%
     const isLocked = true;
     // Setup for Distributor
     await Distributor.addRecipient(
       StakingLocked.address,
-      expectedStartRateUnlocked,
-      expectedDrs,
-      expectedDys,
+      expectedStartRateLocked,
+      expectedDrsLocked,
+      expectedDysLocked,
       isLocked
     );
+  }
 
-    await reportYields();
+  function expectedRate(expectedStartRate: number, expectedDrs: number, expectedDys: number): number {
+    const expectedAPY =
+      expectedStartRate + (expectedDrs * deltaTokenPrice) / 10 ** 9 + (expectedDys * deltaTreasuryYield) / 10 ** 9;
+
+    return Math.floor((1095 * Math.exp(Math.log(expectedAPY / 10 ** 9 + 1) / 1095) - 1095) * 10 ** 9);
   }
 
   it('allows a single user to bond, redeem for sTHEO and unstake for THEO, with rebase rewards', async function () {
@@ -391,12 +381,35 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
     // (zero slashing penalty will be applied when unstaking)
     const timePerInterval = 60 * 60 * 24 * 7;
     const intervalsInStakingPeriod = Math.ceil(lockedStakingTerm / timePerInterval);
-    for (let i = 0; i < intervalsInStakingPeriod; i++) {
+    const distributorInfo = await Distributor.info(0);
+    const initialNextEpoch = distributorInfo.nextEpochTime;
+    for (let i = 0; i < intervalsInStakingPeriod ; i++) {
+      const pTheoCirculating = await pTheo.circulatingSupply();
       await StakingLocked.rebase();
-      await moveTimeForward(timePerInterval); // This movement in time is not necessary, but done to keep the test closer to a real-world implementation
+      const newPTheoCirculating = await pTheo.circulatingSupply();
+
+      // Calculate proportional change in pTheo circulating supply. Rate denominator is 1e9
+      const pTheoCirculatingChange = Math.ceil((newPTheoCirculating.div(pTheoCirculating).sub(1)).toNumber() * 10**9)
+
+      // Because of a few additional previous movements in time prior to intervalsInStakingPeriod being calculated,
+      // the time can move into the Distributor's next epoch, at which point the starting rate for calculating APY is
+      // wound down by 1.5%
+      const newDistributorInfo = await Distributor.info(0);
+      const currentNextEpoch = newDistributorInfo.nextEpochTime;
+      const currentStartRate = currentNextEpoch === initialNextEpoch ? expectedStartRateLocked : expectedStartRateLocked - 15_000_000;
+      const calculatedExpectedRate = expectedRate(currentStartRate, expectedDrsLocked, expectedDysLocked);
+      const expectedRateUpperBound = calculatedExpectedRate + 1; // Allow for a small range of expected rates
+      const expectedRateLowerBound = calculatedExpectedRate - 1;
+
+      // Proportional change in circulating pTheo (above zero) should equal the expected rate of reward
+      if (pTheoCirculatingChange > 0) {
+        expect(pTheoCirculatingChange).to.be.lessThanOrEqual(expectedRateUpperBound);
+        expect(pTheoCirculatingChange).to.be.greaterThanOrEqual(expectedRateLowerBound);
+      }
+
+      await moveTimeForward(timePerInterval);
     }
 
-    const nextExpectedRewards = await Distributor.nextRewardFor(StakingLocked.address);
     await StakingLocked.rebase();
     // Determine the expected reward
     const currentExpectedRewards = await StakingLocked.rewardsFor(bob.address, 0);

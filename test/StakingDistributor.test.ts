@@ -430,7 +430,7 @@ describe('Distributor', function () {
 
   describe('nextRewardRate', function () {
     describe('unlocked pool', function () {
-      it('returns the correct reward rate for an unlocked pool', async function () {
+      it.only('returns the correct reward rate for an unlocked pool', async function () {
         const actualRate = await Distributor.nextRewardRate(0);
 
         expect(actualRate).to.equal(expectedRate(expectedStartRateUnlocked, expectedDrs, expectedDys));
