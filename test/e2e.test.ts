@@ -19,6 +19,7 @@ import {
   SignerHelper__factory,
   StakingDistributor,
   PTheopetra,
+  BondingCalculatorMock__factory,
 } from '../typechain-types';
 
 const setup = deployments.createFixture(async function () {
@@ -150,10 +151,10 @@ describe('a single user: whitelist bonding with USDC and redeeming for THEO', fu
   });
 });
 
-describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and receiving rebase rewards', function () {
+describe('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and receiving rebase rewards', function () {
   const bid = 0;
   const buffer = 2e5;
-  const capacity = '10000000000000000'; // 1e16
+  const capacity = '10000000000000000000000'; // 1e22
   const capacityInQuote = false;
   const depositAmount = '100000000'; // 1e8, equivalent to 100 USDC (6 decimals for USDC)
   const depositInterval = 60 * 60 * 24 * 30;
@@ -229,8 +230,10 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
     ]);
 
     // Mint quote tokens and approve transfer for the Bond Depository, to allow deposits
-    await UsdcTokenMock.mint(bob.address, initialMint);
-    await bob.UsdcTokenMock.approve(BondDepository.address, LARGE_APPROVAL);
+    users.forEach(async (user: any) => {
+      await UsdcTokenMock.mint(user.address, initialMint);
+      await user.UsdcTokenMock.approve(BondDepository.address, LARGE_APPROVAL);
+    });
 
     await BondDepository.create(
       UsdcTokenMock.address,
@@ -257,7 +260,13 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
   async function setupForRebaseUnlocked() {
     const isLocked = false;
     // Setup for Distributor
-    await Distributor.addRecipient(Staking.address, expectedStartRateUnlocked, expectedDrsUnlocked, expectedDysUnlocked, isLocked);
+    await Distributor.addRecipient(
+      Staking.address,
+      expectedStartRateUnlocked,
+      expectedDrsUnlocked,
+      expectedDysUnlocked,
+      isLocked
+    );
   }
 
   async function setupForRebaseLocked() {
@@ -323,11 +332,13 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
 
     const newSTheoCirculating = await sTheo.circulatingSupply();
 
-      // Calculate proportional change in pTheo circulating supply. Rate denominator is 1e9
-      const sTheoCirculatingChange = Math.ceil((newSTheoCirculating.toNumber() / sTheoCirculating.toNumber() - 1) * 10**9);
-      const calculatedExpectedRate = expectedRate(expectedStartRateUnlocked, expectedDrsUnlocked, expectedDysUnlocked);
-      // Proportional change in circulating sTheo should equal the expected reward rate
-      expect(sTheoCirculatingChange).to.equal(calculatedExpectedRate)
+    // Calculate proportional change in pTheo circulating supply. Rate denominator is 1e9
+    const sTheoCirculatingChange = Math.ceil(
+      (newSTheoCirculating.toNumber() / sTheoCirculating.toNumber() - 1) * 10 ** 9
+    );
+    const calculatedExpectedRate = expectedRate(expectedStartRateUnlocked, expectedDrsUnlocked, expectedDysUnlocked);
+    // Proportional change in circulating sTheo should equal the expected reward rate
+    expect(sTheoCirculatingChange).to.equal(calculatedExpectedRate);
 
     // Determine the expected reward
     const currentExpectedRewards = await Staking.rewardsFor(bob.address, 0);
@@ -392,20 +403,21 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
     const intervalsInStakingPeriod = Math.ceil(lockedStakingTerm / timePerInterval);
     const distributorInfo = await Distributor.info(0);
     const initialNextEpoch = distributorInfo.nextEpochTime;
-    for (let i = 0; i < intervalsInStakingPeriod ; i++) {
+    for (let i = 0; i < intervalsInStakingPeriod; i++) {
       const pTheoCirculating = await pTheo.circulatingSupply();
       await StakingLocked.rebase();
       const newPTheoCirculating = await pTheo.circulatingSupply();
 
       // Calculate proportional change in pTheo circulating supply. Rate denominator is 1e9
-      const pTheoCirculatingChange = Math.ceil((newPTheoCirculating.div(pTheoCirculating).sub(1)).toNumber() * 10**9)
+      const pTheoCirculatingChange = Math.ceil(newPTheoCirculating.div(pTheoCirculating).sub(1).toNumber() * 10 ** 9);
 
       // Because of a few additional previous movements in time prior to intervalsInStakingPeriod being calculated,
       // the time can move into the Distributor's next epoch, at which point the starting rate for calculating APY is
       // wound down by 1.5%
       const newDistributorInfo = await Distributor.info(0);
       const currentNextEpoch = newDistributorInfo.nextEpochTime;
-      const currentStartRate = currentNextEpoch === initialNextEpoch ? expectedStartRateLocked : expectedStartRateLocked - 15_000_000;
+      const currentStartRate =
+        currentNextEpoch === initialNextEpoch ? expectedStartRateLocked : expectedStartRateLocked - 15_000_000;
       const calculatedExpectedRate = expectedRate(currentStartRate, expectedDrsLocked, expectedDysLocked);
       const expectedRateUpperBound = calculatedExpectedRate + 1; // Allow for a small range of expected rates
       const expectedRateLowerBound = calculatedExpectedRate - 1;
@@ -442,5 +454,55 @@ describe.only('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
     // Calculate rewards
     const rewardsEarned = pTheoBalancePostRebase.sub(pTheoBalancePreRebase);
     expect(rewardsEarned).to.equal(currentExpectedRewards);
+  });
+
+  it('allows multiple users to bond, redeem for sTHEO and unstake for THEO, with rebase rewards', async function () {
+    const [owner] = await ethers.getSigners();
+    const usersToTest = users.slice(1, 11);
+    const autoStake = true;
+    await setupForRebaseUnlocked();
+
+    // Deploy a new mock bonding calculator that will return a Quote-Token per THEO value of around 1;
+    // This is to allow for testing with a wider range of user deposit amounts
+    const NewBondingCalculatorMock = await new BondingCalculatorMock__factory(owner).deploy(
+      TheopetraERC20Token.address,
+      UsdcTokenMock.address,
+      true
+    );
+    // Set the address of the bonding calculator
+    await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
+
+    // Deposit requires a maxPrice. For this, the current value (with 9 decimals) of THEO per USDC can be determined
+    const usdcPerTheo = (await BondDepository.marketPrice(0)).toNumber();
+
+    // let expectedPayouts: any = [];
+    const expectedPayouts = await Promise.all(
+      usersToTest.map(async (user: any) => {
+        // Deposits from 1e8 - 1e11 USDC (6 decimals)
+        const userDepositAmount = randomIntFromInterval(100000000, 100000000000);
+        const [expectedPayout] = await user.BondDepository.callStatic.deposit(
+          bid,
+          userDepositAmount,
+          usdcPerTheo,
+          user.address,
+          user.address,
+          autoStake
+        );
+
+        // Bond: users make deposit in the market
+        await user.BondDepository.deposit(bid, userDepositAmount, usdcPerTheo, user.address, user.address, autoStake);
+        return expectedPayout.toNumber();
+      })
+    );
+
+    // Move past the end of the vesting period to allow note to be redeemed
+    const additionalTimeProportion = randomIntFromInterval(100, 500) / 100;
+    await moveTimeForward(vesting * additionalTimeProportion);
+
+    for (let i = 0; i < usersToTest.length; i++) {
+      await BondDepository.redeemAll(usersToTest[i].address);
+      const sTheoBalancePreRebase = await sTheo.balanceOf(usersToTest[i].address);
+      expect(sTheoBalancePreRebase).to.equal(expectedPayouts[i]);
+    }
   });
 });
