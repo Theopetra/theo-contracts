@@ -456,7 +456,7 @@ describe('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and recei
     expect(rewardsEarned).to.equal(currentExpectedRewards);
   });
 
-  it('allows multiple users to bond, redeem for sTHEO and unstake for THEO, with rebase rewards', async function () {
+  it.only('allows ten users to bond, redeem for sTHEO and unstake for THEO, with rebase rewards', async function () {
     const [owner] = await ethers.getSigners();
     const usersToTest = users.slice(1, 11);
     const autoStake = true;
@@ -475,11 +475,11 @@ describe('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and recei
     // Deposit requires a maxPrice. For this, the current value (with 9 decimals) of THEO per USDC can be determined
     const usdcPerTheo = (await BondDepository.marketPrice(0)).toNumber();
 
-    // let expectedPayouts: any = [];
     const expectedPayouts = await Promise.all(
       usersToTest.map(async (user: any) => {
         // Deposits from 1e8 - 1e11 USDC (6 decimals)
-        const userDepositAmount = randomIntFromInterval(100000000, 100000000000);
+        const userDepositAmount = 2000000000; // 2e9
+
         const [expectedPayout] = await user.BondDepository.callStatic.deposit(
           bid,
           userDepositAmount,
@@ -503,6 +503,40 @@ describe('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and recei
       await BondDepository.redeemAll(usersToTest[i].address);
       const sTheoBalancePreRebase = await sTheo.balanceOf(usersToTest[i].address);
       expect(sTheoBalancePreRebase).to.equal(expectedPayouts[i]);
+    }
+
+    // Trigger rebases to get a non-zero profit when rebasing in sTHEO
+    // and a resulting change in the user's sTHEO balance;
+    const sTheoCirculating = await sTheo.circulatingSupply();
+    await Staking.rebase();
+    const newSTheoCirculating = await sTheo.circulatingSupply();
+
+    // Calculate proportional change in pTheo circulating supply. Rate denominator is 1e9
+    const sTheoCirculatingChange = Math.ceil(
+      (newSTheoCirculating.toNumber() / sTheoCirculating.toNumber() - 1) * 10 ** 9
+    );
+
+    const calculatedExpectedRate = expectedRate(expectedStartRateUnlocked, expectedDrsUnlocked, expectedDysUnlocked);
+
+    // With 10 users staking, each with the same staking amount, in comparison to a single user:
+    // absolute sTheo circulating-supply will be a factor of ten higher,
+    // the rebase amount (profit * total-supply / circulating-supply) will therefore be a factor of ten lower
+    // As a result, the rate of change (rate of increase) of total supply, and of circulating sTheo, will be a factor of ten lower
+    expect(sTheoCirculatingChange).to.equal(Math.ceil(calculatedExpectedRate / 10));
+
+    // Unstake sTHEO (redeem for THEO)
+    for (let i = 0; i < usersToTest.length; i++) {
+      // Get the balance of sTHEO available to redeem (which should in this case be equal to the user's entire sTHEO balance)
+      const [, , , , gonsRemaining] = await Staking.stakingInfo(usersToTest[i].address, 0);
+      const balanceFromGons = await sTheo.balanceForGons(gonsRemaining);
+      const sTheoBalancePostRebase = await sTheo.balanceOf(usersToTest[i].address);
+      expect(balanceFromGons).to.equal(sTheoBalancePostRebase);
+
+      const preUnstakeTheoBalance = await TheopetraERC20Token.balanceOf(usersToTest[i].address);
+      await usersToTest[i].sTheo.approve(Staking.address, balanceFromGons);
+      await usersToTest[i].Staking.unstake(usersToTest[i].address, [balanceFromGons], false, [0]);
+      const finalTheoBalance = await TheopetraERC20Token.balanceOf(usersToTest[i].address);
+      expect(finalTheoBalance.sub(preUnstakeTheoBalance)).to.equal(sTheoBalancePostRebase);
     }
   });
 });
