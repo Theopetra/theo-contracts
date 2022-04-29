@@ -100,12 +100,7 @@ describe('E2E: a single user: whitelist bonding with USDC and redeeming for THEO
     const signerHelperFactory = new SignerHelper__factory(governorWallet);
     const SignerHelper = await signerHelperFactory.deploy();
     // Create a hash in the same way as created by Signed contract
-    const bobHash = await SignerHelper.createHash(
-      '',
-      bob.address,
-      WhitelistBondDepository.address,
-      'supersecret'
-    );
+    const bobHash = await SignerHelper.createHash('', bob.address, WhitelistBondDepository.address, 'supersecret');
 
     // Set the secret on the Signed contract
     await WhitelistBondDepository.setSecret('supersecret');

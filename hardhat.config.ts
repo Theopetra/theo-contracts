@@ -8,7 +8,6 @@ import '@typechain/hardhat';
 import 'solidity-coverage';
 import 'hardhat-contract-sizer';
 
-
 import { node_url, accounts } from './utils/network';
 dotenv.config();
 
@@ -150,11 +149,10 @@ const config: HardhatUserConfig = {
       }
     : undefined,
 
-    contractSizer: {
-      strict: true,
-      except: ['.*Mock*'],
-    }
-
+  contractSizer: {
+    strict: true,
+    except: ['.*Mock*'],
+  },
 };
 
 export default config;

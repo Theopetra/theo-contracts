@@ -1330,6 +1330,6 @@ describe('Bond depository', function () {
       const notesCount = await BondDepository.getNotesCount(bob.address);
 
       expect(notesCount).to.equal(3);
-    })
+    });
   });
 });

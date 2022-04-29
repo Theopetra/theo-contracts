@@ -15,7 +15,11 @@ contract BondingCalculatorMock {
     address public immutable quoteToken;
     bool public immutable isUsdc;
 
-    constructor(address _theo, address _quoteToken, bool _isUsdc) {
+    constructor(
+        address _theo,
+        address _quoteToken,
+        bool _isUsdc
+    ) {
         theo = _theo;
         quoteToken = _quoteToken;
         isUsdc = _isUsdc;
