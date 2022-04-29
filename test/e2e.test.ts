@@ -335,7 +335,7 @@ describe('E2E: bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
 
     const newSTheoCirculating = await sTheo.circulatingSupply();
 
-    // Calculate proportional change in pTheo circulating supply. Rate denominator is 1e9
+    // Calculate proportional change in sTheo circulating supply. Rate denominator is 1e9
     const sTheoCirculatingChange = Math.ceil(
       (newSTheoCirculating.toNumber() / sTheoCirculating.toNumber() - 1) * 10 ** 9
     );
@@ -412,7 +412,6 @@ describe('E2E: bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
       const newPTheoCirculating = await pTheo.circulatingSupply();
 
       // Calculate proportional change in pTheo circulating supply. Rate denominator is 1e9
-      // const pTheoCirculatingChange = Math.ceil(newPTheoCirculating.div(pTheoCirculating).sub(1).toNumber() * 10 ** 9);
       const pTheoCirculatingChange = newPTheoCirculating
         .mul(10 ** 9)
         .div(pTheoCirculating)
