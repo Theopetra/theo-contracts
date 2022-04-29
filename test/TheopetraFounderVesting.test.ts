@@ -27,12 +27,14 @@ describe('Theopetra Founder Vesting', function () {
   let TheopetraERC20Token: any;
 
   let owner: any;
+  let users: any;
 
   beforeEach(async function () {
     ({
       FounderVesting: TheopetraFounderVesting,
       Treasury: TheopetraTreasury,
       TheopetraERC20Token,
+      users,
       owner,
     } = await setup());
   });
@@ -41,14 +43,9 @@ describe('Theopetra Founder Vesting', function () {
     it('can be deployed', async function () {
       expect(TheopetraFounderVesting).to.not.be.undefined;
     });
-    it('mints tokens to cover the input shares', async function () {
+    it('mints tokens to the vesting contract to cover the input shares', async function () {
       const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
-      const expectedMint = totalShares.mul(INITIALMINT).div(10**(await TheopetraFounderVesting.decimals()));
-      expect(await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address)).to.equal(expectedMint);
-    });
-    it('credits the value of the initial mint to the contract itself', async function () {
-      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
-      const expectedMint = totalShares.mul(INITIALMINT).div(10**(await TheopetraFounderVesting.decimals()));
+      const expectedMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
       expect(await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address)).to.equal(expectedMint);
     });
     it('sets total released THEO tokens to 0', async function () {
@@ -119,17 +116,22 @@ describe('Theopetra Founder Vesting', function () {
       await expect(TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0])).to.be.revertedWith("TheopetraFounderVesting: account is not due payment");
     });
     it('increases total released', async function() {
-      const expectedReleased = ethers.BigNumber.from(INITIALMINT).mul(CAPTABLE.shares[0]).div(10**(await TheopetraFounderVesting.decimals()));
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
+      const expectedReleased = ethers.BigNumber.from(expectedMint).mul(CAPTABLE.shares[0]).div(totalShares);
       const initialReleased = await TheopetraFounderVesting.getTotalReleased(TheopetraERC20Token.address);
 
       await TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+
       const totalReleased = await TheopetraFounderVesting.getTotalReleased(TheopetraERC20Token.address);
 
       expect(initialReleased).to.equal(0);
       expect(totalReleased).to.equal(expectedReleased);
     });
     it('increases balance of address', async function() {
-      const expectedReleased = ethers.BigNumber.from(INITIALMINT).mul(CAPTABLE.shares[0]).div(10**(await TheopetraFounderVesting.decimals()));
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
+      const expectedReleased = ethers.BigNumber.from(expectedMint).mul(CAPTABLE.shares[0]).div(totalShares);
       const initialBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
 
       await TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
@@ -139,7 +141,9 @@ describe('Theopetra Founder Vesting', function () {
       expect(releasedBalance).to.equal(expectedReleased);
     });
     it('emits an event', async function() {
-      const expectedReleased = ethers.BigNumber.from(INITIALMINT).mul(CAPTABLE.shares[0]).div(10**(await TheopetraFounderVesting.decimals()));
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
+      const expectedReleased = ethers.BigNumber.from(expectedMint).mul(CAPTABLE.shares[0]).div(totalShares);
 
       await expect(TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0]))
           .to.emit(TheopetraFounderVesting, 'ERC20PaymentReleased')
@@ -153,7 +157,9 @@ describe('Theopetra Founder Vesting', function () {
       await expect(TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0])).to.be.revertedWith("TheopetraFounderVesting: account is not due payment");
     });
     it('increases balance of address by full shares after full schedule', async function() {
-      const expectedReleased = ethers.BigNumber.from(INITIALMINT).mul(CAPTABLE.shares[0]).div(10**(await TheopetraFounderVesting.decimals()));
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
+      const expectedReleased = ethers.BigNumber.from(expectedMint).mul(CAPTABLE.shares[0]).div(totalShares);
       const initialBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
 
@@ -165,10 +171,11 @@ describe('Theopetra Founder Vesting', function () {
     });
     it('increases balance of address proportionally to the time in the schedule', async function() {
       const travelTime = UNLOCKSCHEDULE.times[2] + 3600;
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
       const unlockedMultiplier = UNLOCKSCHEDULE.amounts[2];
-      const expectedReleased = ethers.BigNumber.from(INITIALMINT)
-          .mul(CAPTABLE.shares[0]).mul(unlockedMultiplier)
-          .div(10**(await TheopetraFounderVesting.decimals())).div(10**(await TheopetraFounderVesting.decimals()));
+      let expectedReleased = ethers.BigNumber.from(expectedMint).mul(CAPTABLE.shares[0]).div(totalShares);
+      expectedReleased = expectedReleased.mul(unlockedMultiplier).div(10**(await TheopetraFounderVesting.decimals()));
       const initialBalance = await TheopetraERC20Token.balanceOf(CAPTABLE.addresses[0]);
 
       await moveTimeForward(travelTime);
@@ -287,35 +294,62 @@ describe('Theopetra Founder Vesting', function () {
 
   describe('scheduled getReleasable', function() {
     it('returns balance of address with full shares after full schedule', async function() {
-      const expectedReleasable = ethers.BigNumber.from(INITIALMINT).mul(CAPTABLE.shares[0]).div(10**(await TheopetraFounderVesting.decimals()));
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
+      const expectedReleasable = ethers.BigNumber.from(expectedMint).mul(CAPTABLE.shares[0]).div(totalShares);
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
 
-      const releasedBalance = await TheopetraFounderVesting.getReleasable(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+      const releasableBalance = await TheopetraFounderVesting.getReleasable(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
 
-      expect(releasedBalance).to.equal(expectedReleasable);
+      expect(releasableBalance).to.equal(expectedReleasable);
     });
     it('returns balance of address proportionally to the time in the schedule', async function() {
       const travelTime = UNLOCKSCHEDULE.times[2] + 3600;
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
+      let expectedReleasable = ethers.BigNumber.from(expectedMint).mul(CAPTABLE.shares[0]).div(totalShares);
       const unlockedMultiplier = UNLOCKSCHEDULE.amounts[2];
-      const expectedReleasable = ethers.BigNumber.from(INITIALMINT)
-          .mul(CAPTABLE.shares[0]).mul(unlockedMultiplier)
-          .div(10**(await TheopetraFounderVesting.decimals())).div(10**(await TheopetraFounderVesting.decimals()));
+      expectedReleasable = expectedReleasable.mul(unlockedMultiplier).div(10**(await TheopetraFounderVesting.decimals()));
 
       await moveTimeForward(travelTime);
 
-      const releasedBalance = await TheopetraFounderVesting.getReleasable(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
-
-      expect(releasedBalance).to.equal(expectedReleasable);
+      const releasableBalance = await TheopetraFounderVesting.getReleasable(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+      expect(releasableBalance).to.equal(expectedReleasable);
     });
   });
 
   describe('rebalance', function() {
-    it('reverts if THEO supply is 0', async function() {
-      await TheopetraERC20Token.burn(owner, await TheopetraERC20Token.balanceOf(owner));
-      await TheopetraERC20Token.burn(TheopetraFounderVesting.address, await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address));
-      expect(await TheopetraERC20Token.totalSupply()).to.equal(0);
+    it('mints tokens to rebalance the founder shares to the expected ownership percentage', async function() {
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedInitialMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
+      const expectedRebalanceMint = totalShares.mul(INITIALMINT+1_000_000).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
+      const initialBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
 
-      await expect(TheopetraFounderVesting.rebalance(TheopetraERC20Token.address)).to.be.revertedWith("TheopetraFounderVesting: THEO supply is zero");
+      await TheopetraERC20Token.mint(owner, 1_000_000);
+      await TheopetraFounderVesting.rebalance();
+
+      const postBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
+      expect(postBalance - initialBalance).to.equal(expectedRebalanceMint.sub(expectedInitialMint));
+    });
+    it('burns tokens to rebalance the founder shares to the expected ownership percentage', async function() {
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedInitialMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
+      const expectedRebalanceMint = totalShares.mul(INITIALMINT-1_000_000).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
+      const initialBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
+
+      await TheopetraERC20Token.burnFrom(owner, 1_000_000);
+      await TheopetraFounderVesting.rebalance();
+
+      const postBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
+      expect(postBalance - initialBalance).to.equal(expectedRebalanceMint.sub(expectedInitialMint));
+    });
+    it('does not burn or mint tokens if the supply remains the same', async function() {
+      const initialBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
+
+      await TheopetraFounderVesting.rebalance();
+
+      const postBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
+      expect(postBalance - initialBalance).to.equal(0);
     });
   });
 });

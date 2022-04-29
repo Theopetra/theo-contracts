@@ -6,6 +6,7 @@ import "../Types/TheopetraAccessControlled.sol";
 
 import "../Libraries/SafeMath.sol";
 import "../Libraries/SafeERC20.sol";
+import "../Libraries/SignedSafeMath.sol";
 
 import "../Interfaces/IFounderVesting.sol";
 import "../Interfaces/ITHEO.sol";
@@ -29,6 +30,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     /* ========== DEPENDENCIES ========== */
 
     using SafeMath for uint256;
+    using SignedSafeMath for int256;
     using SafeERC20 for IERC20;
 
     /* ========== STATE VARIABLES ========== */
@@ -91,7 +93,8 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         }
 
         // mint tokens for the initial shares
-        uint256 tokensToMint = THEO.totalSupply().mul(totalShares).div(10**decimals());
+        uint256 tokensToMint = totalShares.mul(THEO.totalSupply())
+            .div(10**decimals() - totalShares);
         treasury.mint(address(this), tokensToMint);
     }
 
@@ -138,23 +141,19 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         return 0;
     }
 
-    function rebalance(IERC20 token) public {
-        require(THEO.totalSupply() > 0, "TheopetraFounderVesting: THEO supply is zero");
+    function rebalance() public {
         uint256 totalSupply = THEO.totalSupply();
-        uint256 contractBalance = token.balanceOf(address(this));
+        uint256 contractBalance = THEO.balanceOf(address(this));
+        uint256 totalReleased = erc20TotalReleased[THEO];
 
-        // uint256 totalShares = 0;
-        // for (uint256 i = 0; i < payees.length; i++) {
-        //     totalShares += shares[payees[i]];
-        // }
-        // uint256 totalSharesToMint = totalSupply.mul(totalShares).div(10**decimals());
-        // uint256 totalSharesToBurn = treasury.balanceOf(address(this)).mul(totalShares).div(10**decimals());
-        // uint256 totalSharesToBurnDiff = totalSharesToMint.sub(totalSharesToBurn);
-        // if (totalSharesToBurnDiff > 0) {
-        //     treasury.burn(address(this), totalSharesToBurnDiff);
-        // } else if (totalSharesToBurnDiff < 0) {
-        //     treasury.mint(address(this), totalSharesToBurnDiff.mul(-1));
-        // }
+        uint256 founderAmount = totalShares.mul(totalSupply - contractBalance)
+            .div(10**decimals() - totalShares);
+
+        if (founderAmount > (contractBalance + totalReleased)) {
+            treasury.mint(address(this), founderAmount - (contractBalance + totalReleased));
+        } else if (founderAmount < (contractBalance + totalReleased)) {
+            THEO.burnFrom(address(this), contractBalance + totalReleased - founderAmount);
+        }
     }
 
     /**
@@ -220,6 +219,12 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         uint256 totalReceived,
         uint256 alreadyReleased
     ) private view returns (uint256) {
+        // console.log(totalReceived);
+        // console.log(shares[account]);
+        // console.log(getUnlockedMultiplier());
+        // console.log(totalShares);
+        // console.log(alreadyReleased);
+        // console.log((totalReceived * shares[account] * getUnlockedMultiplier()) / (totalShares * 10**decimals()) - alreadyReleased);
         return (totalReceived * shares[account] * getUnlockedMultiplier()) / (totalShares * 10**decimals()) - alreadyReleased;
     }
 

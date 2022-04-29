@@ -10,7 +10,12 @@ contract TheopetraERC20Mock is ERC20 {
         _mint(to, value);
     }
 
-    function burn(address from, uint256 amount) public virtual {
+    function burnFrom(address from, uint256 amount) public virtual {
         _burn(from, amount);
     }
+
+    function burn(uint256 amount) public {
+        _burn(msg.sender, amount);
+    }
+
 }
