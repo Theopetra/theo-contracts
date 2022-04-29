@@ -361,7 +361,7 @@ describe('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and recei
     expect(rewardsEarned).to.equal(currentExpectedRewards);
   });
 
-  it('allows a single user to bond and (after redeeming the bonding note for THEO) enter locked staking, then to unstake pTHEO for THEO with rebase rewards', async function () {
+  it.only('allows a single user to bond and (after redeeming the bonding note for THEO) enter locked staking, then to unstake pTHEO for THEO with rebase rewards', async function () {
     const [, , bob] = users;
 
     // Set autostake to false to redeem for THEO rather than sTHEO
@@ -390,9 +390,8 @@ describe('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and recei
     const claim = true;
     await bob.StakingLocked.stake(bob.address, postBondRedeemTheoBalance, claim);
 
-    expect(await pTheo.balanceOf(bob.address)).to.equal(postBondRedeemTheoBalance);
-
     const pTheoBalancePreRebase = await pTheo.balanceOf(bob.address);
+    expect(pTheoBalancePreRebase).to.equal(postBondRedeemTheoBalance);
 
     // Move time forward with regular rebasing, past the staking expiry time
     // (zero slashing penalty will be applied when unstaking)
@@ -400,27 +399,32 @@ describe('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and recei
     const intervalsInStakingPeriod = Math.ceil(lockedStakingTerm / timePerInterval);
     const distributorInfo = await Distributor.info(0);
     const initialNextEpoch = distributorInfo.nextEpochTime;
+    let itterationsIntoNextEpoch = 0;
     for (let i = 0; i < intervalsInStakingPeriod; i++) {
       const pTheoCirculating = await pTheo.circulatingSupply();
       await StakingLocked.rebase();
       const newPTheoCirculating = await pTheo.circulatingSupply();
 
       // Calculate proportional change in pTheo circulating supply. Rate denominator is 1e9
-      const pTheoCirculatingChange = Math.ceil(newPTheoCirculating.div(pTheoCirculating).sub(1).toNumber() * 10 ** 9);
-
+      // const pTheoCirculatingChange = Math.ceil(newPTheoCirculating.div(pTheoCirculating).sub(1).toNumber() * 10 ** 9);
+      const pTheoCirculatingChange = ((newPTheoCirculating.mul(10**9).div(pTheoCirculating)).sub(10**9)).toNumber();
       // Because of a few additional previous movements in time prior to intervalsInStakingPeriod being calculated,
       // the time can move into the Distributor's next epoch, at which point the starting rate for calculating APY is
-      // wound down by 1.5%
+      // wound down by 1.5% (the first occurence of rebasing in the new epoch still uses the previous rate - see `distribute` method in StakingDistributor)
       const newDistributorInfo = await Distributor.info(0);
       const currentNextEpoch = newDistributorInfo.nextEpochTime;
       const currentStartRate =
-        currentNextEpoch === initialNextEpoch ? expectedStartRateLocked : expectedStartRateLocked - 15_000_000;
+      currentNextEpoch === initialNextEpoch || itterationsIntoNextEpoch <= 1 ? expectedStartRateLocked : expectedStartRateLocked - 15_000_000;
+      if(currentNextEpoch !== initialNextEpoch){
+        itterationsIntoNextEpoch += 1;
+      }
       const calculatedExpectedRate = expectedRate(currentStartRate, expectedDrsLocked, expectedDysLocked);
       const expectedRateUpperBound = calculatedExpectedRate + 1; // Allow for a small range of expected rates
       const expectedRateLowerBound = calculatedExpectedRate - 1;
 
       // Proportional change in circulating pTheo (above zero) should equal the expected rate of reward
-      if (pTheoCirculatingChange > 0) {
+      // Allow for initial ramp-up in pTheo circulating
+      if (i > 0) {
         expect(pTheoCirculatingChange).to.be.lessThanOrEqual(expectedRateUpperBound);
         expect(pTheoCirculatingChange).to.be.greaterThanOrEqual(expectedRateLowerBound);
       }
@@ -536,12 +540,12 @@ describe('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and recei
     }
   });
 
-  it('allows ten users to bond and (after redeeming the bonding note for THEO) enter locked staking, then to unstake pTHEO for THEO with rebase rewards', async function () {
+  it.only('allows ten users to bond and (after redeeming the bonding note for THEO) enter locked staking, then to unstake pTHEO for THEO with rebase rewards', async function () {
     const [owner] = await ethers.getSigners();
     const usersToTest = users.slice(1, 11);
     // Set autostake to false to redeem for THEO rather than sTHEO
     const autoStake = false;
-    await setupForRebaseUnlocked();
+    await setupForRebaseLocked();
 
     // Deploy a new mock bonding calculator that will return a Quote-Token per THEO value of around 1;
     // This is to allow for testing with a wider range of user deposit amounts
@@ -570,11 +574,58 @@ describe('bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and recei
     const additionalTimeProportion = randomIntFromInterval(100, 500) / 100;
     await moveTimeForward(vesting * additionalTimeProportion);
 
+    // Redeem bonding note for THEO
+    // Then stake THEO for pTHEO (immediate claim, no warmup)
     for (let i = 0; i < usersToTest.length; i++) {
       await BondDepository.redeemAll(usersToTest[i].address);
       const postBondRedeemTheoBalance = await TheopetraERC20Token.balanceOf(usersToTest[i].address);
 
       expect(postBondRedeemTheoBalance.toNumber()).to.be.greaterThan(initialTheoBalances[i]);
+
+
+      const claim = true;
+      await usersToTest[i].TheopetraERC20Token.approve(StakingLocked.address, postBondRedeemTheoBalance);
+      await usersToTest[i].StakingLocked.stake(usersToTest[i].address, postBondRedeemTheoBalance, claim);
+      expect(await pTheo.balanceOf(usersToTest[i].address)).to.equal(postBondRedeemTheoBalance);
+    }
+
+    // Move time forward with regular rebasing, past the staking expiry time
+    // (zero slashing penalty will be applied when unstaking)
+    const timePerInterval = 60 * 60 * 24 * 7;
+    const intervalsInStakingPeriod = Math.ceil(lockedStakingTerm / timePerInterval);
+    const distributorInfo = await Distributor.info(0);
+    const initialNextEpoch = distributorInfo.nextEpochTime;
+    let itterationsIntoNextEpoch = 0;
+    for (let i = 0; i < intervalsInStakingPeriod; i++) {
+      const pTheoCirculating = await pTheo.circulatingSupply();
+      await StakingLocked.rebase();
+      const newPTheoCirculating = await pTheo.circulatingSupply();
+
+      // Calculate proportional change in pTheo circulating supply. Rate denominator is 1e9
+      // const pTheoCirculatingChange = Math.ceil(newPTheoCirculating.div(pTheoCirculating).sub(1).toNumber() * 10 ** 9);
+      const pTheoCirculatingChange = ((newPTheoCirculating.mul(10**9).div(pTheoCirculating)).sub(10**9)).toNumber();
+      // Because of a few additional previous movements in time prior to intervalsInStakingPeriod being calculated,
+      // the time can move into the Distributor's next epoch, at which point the starting rate for calculating APY is
+      // wound down by 1.5% (the first occurence of rebasing in the new epoch still uses the previous rate - see `distribute` method in StakingDistributor)
+      const newDistributorInfo = await Distributor.info(0);
+      const currentNextEpoch = newDistributorInfo.nextEpochTime;
+      const currentStartRate =
+      currentNextEpoch === initialNextEpoch || itterationsIntoNextEpoch <= 1 ? expectedStartRateLocked : expectedStartRateLocked - 15_000_000;
+      if(currentNextEpoch !== initialNextEpoch){
+        itterationsIntoNextEpoch += 1;
+      }
+      const calculatedExpectedRate = expectedRate(currentStartRate, expectedDrsLocked, expectedDysLocked);
+      const expectedRateUpperBound = calculatedExpectedRate + 1; // Allow for a small range of expected rates
+      const expectedRateLowerBound = calculatedExpectedRate - 1;
+
+      // Proportional change in circulating pTheo (above zero) should equal the expected rate of reward
+      // Allow for initial ramp-up in pTheo circulating
+      if (i > 0) {
+        expect(pTheoCirculatingChange).to.be.lessThanOrEqual(expectedRateUpperBound);
+        expect(pTheoCirculatingChange).to.be.greaterThanOrEqual(expectedRateLowerBound);
+      }
+
+      await moveTimeForward(timePerInterval);
     }
   });
 });
