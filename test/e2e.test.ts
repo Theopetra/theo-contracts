@@ -101,7 +101,7 @@ describe('E2E: a single user: whitelist bonding with USDC and redeeming for THEO
     const SignerHelper = await signerHelperFactory.deploy();
     // Create a hash in the same way as created by Signed contract
     const bobHash = await SignerHelper.createHash(
-      'somedata',
+      '',
       bob.address,
       WhitelistBondDepository.address,
       'supersecret'

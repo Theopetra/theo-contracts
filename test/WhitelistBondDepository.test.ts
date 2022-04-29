@@ -146,7 +146,7 @@ describe('Whitelist Bond depository', function () {
     const SignerHelper = await signerHelperFactory.deploy();
     // Create a hash in the same way as created by Signed contract
     const bobHash = await SignerHelper.createHash(
-      'somedata',
+      '',
       bob.address,
       WhitelistBondDepository.address,
       'supersecret'
@@ -332,7 +332,7 @@ describe('Whitelist Bond depository', function () {
 
       // Create a hash in the same way as created by Signed contract
       const bobHash = await SignerHelper.createHash(
-        'somedata',
+        '',
         bob.address,
         WhitelistBondDepository.address,
         'supersecret'
@@ -358,7 +358,7 @@ describe('Whitelist Bond depository', function () {
 
       // Create a hash in the same way as created by Signed contract
       const bobHash = await SignerHelper.createHash(
-        'somedata',
+        '',
         bob.address,
         WhitelistBondDepository.address,
         'supersecret'
@@ -380,7 +380,7 @@ describe('Whitelist Bond depository', function () {
 
       // Create a hash in the same way as created by Signed contract
       const bobHash = await SignerHelper.createHash(
-        'somedata',
+        '',
         bob.address,
         WhitelistBondDepository.address,
         'supersecret'
@@ -429,7 +429,7 @@ describe('Whitelist Bond depository', function () {
 
       //Whitelist alice, for an example of a working deposit
       const aliceHash = await SignerHelper.createHash(
-        'somedata',
+        '',
         alice.address,
         WhitelistBondDepository.address,
         'supersecret'
@@ -795,7 +795,7 @@ describe('Whitelist Bond depository', function () {
       const SignerHelper = await signerHelperFactory.deploy();
       // Create a hash in the same way as created by Signed contract
       const bobHash = await SignerHelper.createHash(
-        'somedata',
+        '',
         bob.address,
         WhitelistBondDepository.address,
         'supersecret'
