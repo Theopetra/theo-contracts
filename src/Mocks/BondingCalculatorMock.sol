@@ -13,20 +13,17 @@ contract BondingCalculatorMock {
 
     address public immutable theo;
     address public immutable quoteToken;
-    bool public immutable isUsdc;
 
     constructor(
         address _theo,
-        address _quoteToken,
-        bool _isUsdc
+        address _quoteToken
     ) {
         theo = _theo;
         quoteToken = _quoteToken;
-        isUsdc = _isUsdc;
     }
 
     function valuation(address tokenIn, uint256 _amount) public view returns (uint256 amountOut) {
-        return amountOut = isUsdc ? 1000242674 : 4120754590000;
+        return amountOut = 4120754590000;
     }
 
 }

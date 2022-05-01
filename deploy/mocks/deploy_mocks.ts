@@ -35,7 +35,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         // Most tests that use this mock expect a relatively low Quote-Token per THEO value, 242674 (9 decimals)
         // This is selected using the boolean false for the third arg below.
         // Deployment with true will give a higher value that equates to ca. 1 THEO per quote token
-        args = [tokenToUse, namedMockAddresses.UsdcERC20Mock, false];
+        args = [tokenToUse, namedMockAddresses.UsdcERC20Mock];
       }
       await deploy(MOCKSWITHARGS[key], {
         from: deployer,
