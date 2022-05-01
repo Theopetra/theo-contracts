@@ -13,6 +13,7 @@ contract BondingCalculatorMock {
 
     address public immutable theo;
     address public immutable quoteToken;
+    uint160 public mockPrice = 0; // 9 decimals
 
     constructor(address _theo, address _quoteToken) {
         theo = _theo;
@@ -40,10 +41,19 @@ contract BondingCalculatorMock {
     }
 
     /**
+     * @notice Sets the mock price to be returned.
+     * @param _mockPrice price to set the mock valuation (9 decimals)
+     */
+    function setValuation(uint160 _mockPrice) public {
+        mockPrice = _mockPrice;
+    }
+
+    /**
      * @notice             Return Quote-Token per THEO value
      * @dev                for example: 242674 (9 decimals): 0.000242674 ETH per THEO (ca. 4120 THEO per ETH)
      */
-    function getPriceX96FromSqrtPriceX96(uint160 sqrtPriceX96) public pure returns (uint256 priceX96) {
+    function getPriceX96FromSqrtPriceX96(uint160 sqrtPriceX96) public view returns (uint256 priceX96) {
+        if(mockPrice > 0) return mockPrice;
         return 242674; // 9 decimals
     }
 }

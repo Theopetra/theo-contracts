@@ -1,7 +1,7 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 import { moveTimeForward, setupUsers } from './utils';
-import { CAPTABLE, CONTRACTS, INITIALMINT, UNLOCKSCHEDULE } from '../utils/constants';
+import { CAPTABLE, CONTRACTS, FDVTARGET, INITIALMINT, UNLOCKSCHEDULE } from '../utils/constants';
 import { getContracts } from '../utils/helpers';
 
 const badAddress = '0x0000000000000000000000000000000000001234';
@@ -25,6 +25,7 @@ describe('Theopetra Founder Vesting', function () {
   let TheopetraFounderVesting: any;
   let TheopetraTreasury: any;
   let TheopetraERC20Token: any;
+  let BondingCalculatorMock: any;
 
   let owner: any;
   let users: any;
@@ -34,6 +35,7 @@ describe('Theopetra Founder Vesting', function () {
       FounderVesting: TheopetraFounderVesting,
       Treasury: TheopetraTreasury,
       TheopetraERC20Token,
+      BondingCalculatorMock,
       users,
       owner,
     } = await setup());
@@ -318,6 +320,36 @@ describe('Theopetra Founder Vesting', function () {
     });
   });
 
+  describe('getFdvFactor', function() {
+    it('reverts when no bonding calculator is available', async function() {
+      await expect(TheopetraFounderVesting.getFdvFactor()).to.be.revertedWith("TheopetraFounderVesting: No bonding calculator")
+    });
+    it('reverts when bonding calculator is address 0x00', async function() {
+      const addressZero = await ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
+      await TheopetraTreasury.setTheoBondingCalculator(addressZero);
+      await expect(TheopetraFounderVesting.getFdvFactor()).to.be.revertedWith("TheopetraFounderVesting: No bonding calculator")
+    });
+    it('to equal 1 (9 decimals) if the FDV target is hit', async function() {
+      const expectedFdvFactor = 1_000_000_000;
+      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+      BondingCalculatorMock.setValuation(100_000_000);
+
+      const fdvFactor = await TheopetraFounderVesting.getFdvFactor();
+
+      expect(fdvFactor).to.equal(expectedFdvFactor);
+    });
+    it('to equal proportional value (9 decimals) if the FDV target is not hit', async function() {
+      const initialBalance = await TheopetraERC20Token.totalSupply();
+      const testValuationValue = ethers.BigNumber.from(FDVTARGET).mul(10**(await TheopetraFounderVesting.decimals())).div(initialBalance).sub(10_000);
+      const expectedFdvFactor = testValuationValue.mul(initialBalance).div(FDVTARGET);
+      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+      BondingCalculatorMock.setValuation(testValuationValue);
+
+      const fdvFactor = await TheopetraFounderVesting.getFdvFactor();
+
+      expect(fdvFactor).to.equal(expectedFdvFactor);
+    });
+  });
   describe('rebalance', function() {
     it('mints tokens to rebalance the founder shares to the expected ownership percentage', async function() {
       const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);

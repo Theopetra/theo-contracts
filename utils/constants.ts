@@ -30,7 +30,7 @@ export const MOCKSWITHARGS: Record<string, string> = {
 
 export const TESTWITHMOCKS = 'test-with-mocks';
 
-export const INITIALMINT = 1_000_000_000_000_000;
+export const INITIALMINT = 1_000_000_000_000;
 export const FDVTARGET = 100_000_000; // in dollars
 export const CAPTABLE = {
   addresses: [

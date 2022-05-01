@@ -141,6 +141,31 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         return 0;
     }
 
+    /**
+     * @notice Scale the founder amount with respect to the FDV target value
+     * @dev calculated as currentFDV / FDVtarget (using 9 decimals)
+     * @return uint256 proportion of FDV target, 9 decimals
+     */
+    function getFdvFactor() public view returns (uint256) {
+        IBondCalculator theoBondingCalculator = treasury.getTheoBondingCalculator();
+        if (address(theoBondingCalculator) == address(0)) {
+            revert("TheopetraFounderVesting: No bonding calculator");
+        }
+
+        // expects valuation to be come back as fixed point with 9 decimals
+        uint256 currentPrice = IBondCalculator(theoBondingCalculator).valuation(address(THEO), 1);
+        uint256 calculatedFdv = currentPrice.mul(THEO.totalSupply());
+
+        if(calculatedFdv >= fdvTarget.mul(10**decimals())) {
+            return 10**decimals();
+        }
+
+        return calculatedFdv.div(fdvTarget);
+    }
+
+    /**
+     * @dev Mints or burns tokens for this contract to balance shares to their appropriate percentage
+     */
     function rebalance() public {
         uint256 totalSupply = THEO.totalSupply();
         uint256 contractBalance = THEO.balanceOf(address(this));
