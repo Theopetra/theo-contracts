@@ -433,8 +433,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         }
         uint8 quoteTokenDecimals = IERC20Metadata(address(markets[_id].quoteToken)).decimals();
         return
-            (10**18 / (theoBondingCalculator.valuation(address(markets[_id].quoteToken), 10**quoteTokenDecimals)) * (10**9 - bondRateVariable(_id))) /
-            10**9;
+            ((10**18 / (theoBondingCalculator.valuation(address(markets[_id].quoteToken), 10**quoteTokenDecimals))) *
+                (10**9 - bondRateVariable(_id))) / 10**9;
     }
 
     /**

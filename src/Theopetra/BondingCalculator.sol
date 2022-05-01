@@ -33,44 +33,25 @@ contract TwapGetter is IBondCalculator {
         secondsAgo = _secondsAgo;
     }
 
-
-    function valuation(address tokenIn, uint256 _amount)
-        external
-        view
-        override
-        returns (uint256 amountOut)
-    {
+    function valuation(address tokenIn, uint256 _amount) external view override returns (uint256 amountOut) {
         address tokenOut = tokenIn == theo ? performanceToken : theo;
 
-        address _pool = IUniswapV3Factory(factory).getPool(
-            tokenIn,
-            tokenOut,
-            fee
-        );
+        address _pool = IUniswapV3Factory(factory).getPool(tokenIn, tokenOut, fee);
         require(_pool != address(0), "Pool does not exist");
 
         uint32[] memory secondsAgos = new uint32[](2);
         secondsAgos[0] = secondsAgo;
         secondsAgos[1] = 0;
 
-        (int56[] memory tickCumulatives, ) = IUniswapV3Pool(_pool).observe(
-            secondsAgos
-        );
+        (int56[] memory tickCumulatives, ) = IUniswapV3Pool(_pool).observe(secondsAgos);
 
         int56 tickCumulativesDelta = tickCumulatives[1] - tickCumulatives[0];
 
         int24 tick = int24(tickCumulativesDelta / secondsAgo);
         // Always round to negative infinity
-        if (
-            tickCumulativesDelta < 0 && (tickCumulativesDelta % secondsAgo != 0)
-        ) tick--;
+        if (tickCumulativesDelta < 0 && (tickCumulativesDelta % secondsAgo != 0)) tick--;
 
         uint128 amount_ = _amount.toUint128();
-        amountOut = OracleLibrary.getQuoteAtTick(
-            tick,
-            amount_,
-            tokenIn,
-            tokenOut
-        );
+        amountOut = OracleLibrary.getQuoteAtTick(tick, amount_, tokenIn, tokenOut);
     }
 }

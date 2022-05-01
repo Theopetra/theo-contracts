@@ -468,7 +468,6 @@ describe('E2E: bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
 
     const expectedPayouts = await Promise.all(
       usersToTest.map(async (user: any) => {
-
         const [expectedPayout] = await user.BondDepository.callStatic.deposit(
           bid,
           depositAmount,

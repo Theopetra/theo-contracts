@@ -77,12 +77,11 @@ contract TheopetraStaking is TheopetraAccessControlled {
         uint256[] memory penalties = new uint256[](20);
 
         for (uint256 i = 1; i < 21; i++) {
-            bands[i-1] = i;
-            penalties[i-1] = 21 - i;
+            bands[i - 1] = i;
+            penalties[i - 1] = 21 - i;
         }
 
         _definePenalties(bands, penalties);
-
 
         require(_THEO != address(0), "Invalid address");
         THEO = _THEO;
