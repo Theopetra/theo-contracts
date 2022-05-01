@@ -44,7 +44,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       firstEpochTime,
       stakingTerm,
       TheopetraAuthority.address,
-      Treasury.address
+      Treasury.address,
     ];
 
     if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
@@ -66,7 +66,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         firstEpochTime,
         stakingTerm,
         TheopetraAuthority.address,
-        Treasury.address
+        Treasury.address,
       ];
     }
 
