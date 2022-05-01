@@ -145,12 +145,7 @@ describe('Whitelist Bond depository', function () {
     const signerHelperFactory = new SignerHelper__factory(governorWallet);
     const SignerHelper = await signerHelperFactory.deploy();
     // Create a hash in the same way as created by Signed contract
-    const bobHash = await SignerHelper.createHash(
-      'somedata',
-      bob.address,
-      WhitelistBondDepository.address,
-      'supersecret'
-    );
+    const bobHash = await SignerHelper.createHash('', bob.address, WhitelistBondDepository.address, 'supersecret');
 
     // Set the secret on the Signed contract
     await WhitelistBondDepository.setSecret('supersecret');
@@ -331,12 +326,7 @@ describe('Whitelist Bond depository', function () {
       const [, anotherUserWallet] = await ethers.getSigners();
 
       // Create a hash in the same way as created by Signed contract
-      const bobHash = await SignerHelper.createHash(
-        'somedata',
-        bob.address,
-        WhitelistBondDepository.address,
-        'supersecret'
-      );
+      const bobHash = await SignerHelper.createHash('', bob.address, WhitelistBondDepository.address, 'supersecret');
 
       const messageHashBinary = ethers.utils.arrayify(bobHash);
 
@@ -357,12 +347,7 @@ describe('Whitelist Bond depository', function () {
       expect(await TheopetraAuthority.whitelistSigner()).to.equal(newSignerWallet.address);
 
       // Create a hash in the same way as created by Signed contract
-      const bobHash = await SignerHelper.createHash(
-        'somedata',
-        bob.address,
-        WhitelistBondDepository.address,
-        'supersecret'
-      );
+      const bobHash = await SignerHelper.createHash('', bob.address, WhitelistBondDepository.address, 'supersecret');
 
       const messageHashBinary = ethers.utils.arrayify(bobHash);
 
@@ -379,12 +364,7 @@ describe('Whitelist Bond depository', function () {
       const [governorWallet] = await ethers.getSigners();
 
       // Create a hash in the same way as created by Signed contract
-      const bobHash = await SignerHelper.createHash(
-        'somedata',
-        bob.address,
-        WhitelistBondDepository.address,
-        'supersecret'
-      );
+      const bobHash = await SignerHelper.createHash('', bob.address, WhitelistBondDepository.address, 'supersecret');
 
       const messageHashBinary = ethers.utils.arrayify(bobHash);
 
@@ -429,7 +409,7 @@ describe('Whitelist Bond depository', function () {
 
       //Whitelist alice, for an example of a working deposit
       const aliceHash = await SignerHelper.createHash(
-        'somedata',
+        '',
         alice.address,
         WhitelistBondDepository.address,
         'supersecret'
@@ -794,12 +774,7 @@ describe('Whitelist Bond depository', function () {
       const signerHelperFactory = new SignerHelper__factory(governorWallet);
       const SignerHelper = await signerHelperFactory.deploy();
       // Create a hash in the same way as created by Signed contract
-      const bobHash = await SignerHelper.createHash(
-        'somedata',
-        bob.address,
-        WhitelistBondDepository.address,
-        'supersecret'
-      );
+      const bobHash = await SignerHelper.createHash('', bob.address, WhitelistBondDepository.address, 'supersecret');
 
       // Set the secret on the Signed contract
       await WhitelistBondDepository.setSecret('supersecret');

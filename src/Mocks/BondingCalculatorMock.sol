@@ -13,10 +13,16 @@ contract BondingCalculatorMock {
 
     address public immutable theo;
     address public immutable quoteToken;
+    bool public immutable isUsdc;
 
-    constructor(address _theo, address _quoteToken) {
+    constructor(
+        address _theo,
+        address _quoteToken,
+        bool _isUsdc
+    ) {
         theo = _theo;
         quoteToken = _quoteToken;
+        isUsdc = _isUsdc;
     }
 
     function getPoolFromFactory(
@@ -43,7 +49,8 @@ contract BondingCalculatorMock {
      * @notice             Return Quote-Token per THEO value
      * @dev                for example: 242674 (9 decimals): 0.000242674 ETH per THEO (ca. 4120 THEO per ETH)
      */
-    function getPriceX96FromSqrtPriceX96(uint160 sqrtPriceX96) public pure returns (uint256 priceX96) {
-        return 242674; // 9 decimals
+    function getPriceX96FromSqrtPriceX96(uint160 sqrtPriceX96) public view returns (uint256 priceX96) {
+        // 9 decimals
+        return isUsdc ? 1000242674 : 242674;
     }
 }
