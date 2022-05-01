@@ -281,20 +281,9 @@ describe('E2E: bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
   }
 
   it('allows a single user to bond, redeem for sTHEO and unstake for THEO, with rebase rewards', async function () {
-    const [owner] = await ethers.getSigners();
     const [, , bob] = users;
     const autoStake = true;
     await setupForRebaseUnlocked();
-
-    // Deploy a new mock bonding calculator that will return a Quote-Token per THEO value of around 1;
-    // This is to allow for testing with a wider range of user deposit amounts
-    const NewBondingCalculatorMock = await new BondingCalculatorMock__factory(owner).deploy(
-      TheopetraERC20Token.address,
-      UsdcTokenMock.address,
-      true
-    );
-    // Set the address of the bonding calculator
-    await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
 
     // Deposit requires a maxPrice. For this, the current value (with 9 decimals) of THEO per USDC can be determined
     const usdcPerTheo = (await BondDepository.marketPrice(0)).toNumber();
@@ -474,26 +463,15 @@ describe('E2E: bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
     const autoStake = true;
     await setupForRebaseUnlocked();
 
-    // Deploy a new mock bonding calculator that will return a Quote-Token per THEO value of around 1;
-    // This is to allow for testing with a wider range of user deposit amounts
-    const NewBondingCalculatorMock = await new BondingCalculatorMock__factory(owner).deploy(
-      TheopetraERC20Token.address,
-      UsdcTokenMock.address,
-      true
-    );
-    // Set the address of the bonding calculator
-    await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
-
     // Deposit requires a maxPrice. For this, the current value (with 9 decimals) of THEO per USDC can be determined
     const usdcPerTheo = (await BondDepository.marketPrice(0)).toNumber();
 
     const expectedPayouts = await Promise.all(
       usersToTest.map(async (user: any) => {
-        const userDepositAmount = 2000000000; // 2e9
 
         const [expectedPayout] = await user.BondDepository.callStatic.deposit(
           bid,
-          userDepositAmount,
+          depositAmount,
           usdcPerTheo,
           user.address,
           user.address,
@@ -501,7 +479,7 @@ describe('E2E: bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
         );
 
         // Bond: users make deposit in the market
-        await user.BondDepository.deposit(bid, userDepositAmount, usdcPerTheo, user.address, user.address, autoStake);
+        await user.BondDepository.deposit(bid, depositAmount, usdcPerTheo, user.address, user.address, autoStake);
         return expectedPayout.toNumber();
       })
     );
@@ -570,25 +548,14 @@ describe('E2E: bonding with USDC, redeeming to staked THEO (sTHEO or pTHEO) and 
     const autoStake = false;
     await setupForRebaseLocked();
 
-    // Deploy a new mock bonding calculator that will return a Quote-Token per THEO value of around 1;
-    // This is to allow for testing with a wider range of user deposit amounts
-    const NewBondingCalculatorMock = await new BondingCalculatorMock__factory(owner).deploy(
-      TheopetraERC20Token.address,
-      UsdcTokenMock.address,
-      true
-    );
-    // Set the address of the bonding calculator
-    await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
-
     // Deposit requires a maxPrice. For this, the current value (with 9 decimals) of THEO per USDC can be determined
     const usdcPerTheo = (await BondDepository.marketPrice(0)).toNumber();
 
-    const userDepositAmount = 50000000000; // 5e10
     const initialTheoBalances = await Promise.all(
       usersToTest.map(async (user: any) => {
         const initialTheoBalance = await TheopetraERC20Token.balanceOf(user.address);
         // Bond: users make deposit in the market
-        await user.BondDepository.deposit(bid, userDepositAmount, usdcPerTheo, user.address, user.address, autoStake);
+        await user.BondDepository.deposit(bid, depositAmount, usdcPerTheo, user.address, user.address, autoStake);
         return initialTheoBalance.toNumber();
       })
     );
