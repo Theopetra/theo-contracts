@@ -5,10 +5,12 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 
 import "../Interfaces/IERC20Metadata.sol";
+import "../Interfaces/IBondCalculator.sol";
+import "../Libraries/SafeCast.sol";
 
-import "hardhat/console.sol";
+contract TwapGetter is IBondCalculator {
+    using SafeCast for uint256;
 
-contract TwapGetter {
     address public immutable factory;
     address public immutable theo;
     address public immutable performanceToken;
@@ -32,12 +34,12 @@ contract TwapGetter {
     }
 
 
-    function valuation(address tokenIn, uint128 _amount)
+    function valuation(address tokenIn, uint256 _amount)
         external
         view
+        override
         returns (uint256 amountOut)
     {
-        // require(tokenIn == token0 || tokenIn == token1, "Invalid token");
         address tokenOut = tokenIn == theo ? performanceToken : theo;
 
         address _pool = IUniswapV3Factory(factory).getPool(
@@ -63,9 +65,10 @@ contract TwapGetter {
             tickCumulativesDelta < 0 && (tickCumulativesDelta % secondsAgo != 0)
         ) tick--;
 
+        uint128 amount_ = _amount.toUint128();
         amountOut = OracleLibrary.getQuoteAtTick(
             tick,
-            _amount,
+            amount_,
             tokenIn,
             tokenOut
         );
