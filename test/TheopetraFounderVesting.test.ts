@@ -85,6 +85,8 @@ describe('Theopetra Founder Vesting', function () {
 
   describe('getReleased', function() {
     beforeEach(async function() {
+      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+      BondingCalculatorMock.setValuation(100_000_000);
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
     });
@@ -105,6 +107,8 @@ describe('Theopetra Founder Vesting', function () {
 
   describe('release', function() {
     beforeEach(async function() {
+      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+      BondingCalculatorMock.setValuation(100_000_000);
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
     });
@@ -154,6 +158,10 @@ describe('Theopetra Founder Vesting', function () {
   });
 
   describe('scheduled release', function() {
+    beforeEach(async function() {
+      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+      BondingCalculatorMock.setValuation(100_000_000);
+    });
     it('reverts if no payment due to address at deploy time', async function() {
       // Attempting release at time 0 should fail
       await expect(TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0])).to.be.revertedWith("TheopetraFounderVesting: account is not due payment");
@@ -192,6 +200,8 @@ describe('Theopetra Founder Vesting', function () {
 
   describe('releaseAmount', function() {
     beforeEach(async function() {
+      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+      BondingCalculatorMock.setValuation(100_000_000);
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
     });
@@ -241,6 +251,10 @@ describe('Theopetra Founder Vesting', function () {
   });
 
   describe('scheduled releaseAmount', function() {
+    beforeEach(async function() {
+      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+      BondingCalculatorMock.setValuation(100_000_000);
+    });
     it('reverts if no payment due to address at deploy time', async function() {
       // Attempting release at time 0 should fail
       await expect(TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, CAPTABLE.addresses[0], 100)).to.be.revertedWith("TheopetraFounderVesting: account is not due payment");
@@ -273,6 +287,8 @@ describe('Theopetra Founder Vesting', function () {
 
   describe('getReleasable', function() {
     beforeEach(async function() {
+      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+      BondingCalculatorMock.setValuation(100_000_000);
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
     });
@@ -295,6 +311,10 @@ describe('Theopetra Founder Vesting', function () {
   });
 
   describe('scheduled getReleasable', function() {
+    beforeEach(async function() {
+      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+      BondingCalculatorMock.setValuation(100_000_000);
+    });
     it('returns balance of address with full shares after full schedule', async function() {
       const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
       const expectedMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
@@ -351,6 +371,10 @@ describe('Theopetra Founder Vesting', function () {
     });
   });
   describe('rebalance', function() {
+    beforeEach(async function() {
+      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+      BondingCalculatorMock.setValuation(100_000_000);
+    });
     it('mints tokens to rebalance the founder shares to the expected ownership percentage', async function() {
       const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
       const expectedInitialMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
@@ -378,6 +402,32 @@ describe('Theopetra Founder Vesting', function () {
     it('does not burn or mint tokens if the supply remains the same', async function() {
       const initialBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
 
+      await TheopetraFounderVesting.rebalance();
+
+      const postBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
+      expect(postBalance - initialBalance).to.equal(0);
+    });
+    it('does not mint tokens after one rebalance call after unlock schedule', async function() {
+
+      // move forward 1 hour past unlock schedule
+      await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
+      await TheopetraFounderVesting.rebalance();
+      const initialBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
+
+      await TheopetraERC20Token.mint(owner, 1_000_000_000);
+      await TheopetraFounderVesting.rebalance();
+
+      const postBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
+      expect(postBalance - initialBalance).to.equal(0);
+    });
+    it('does not burn tokens after one rebalance call after unlock schedule', async function() {
+
+      // move forward 1 hour past unlock schedule
+      await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
+      await TheopetraFounderVesting.rebalance();
+      const initialBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
+
+      await TheopetraERC20Token.burnFrom(owner, 1_000_000);
       await TheopetraFounderVesting.rebalance();
 
       const postBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);

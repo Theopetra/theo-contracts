@@ -51,6 +51,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     uint256[] private unlockTimes;
     uint256[] private unlockAmounts;
 
+    bool private founderRebalanceLocked = false;
 
     /**
      * @notice return the decimals in the percentage values and
@@ -171,13 +172,23 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         uint256 contractBalance = THEO.balanceOf(address(this));
         uint256 totalReleased = erc20TotalReleased[THEO];
 
-        uint256 founderAmount = totalShares.mul(totalSupply - contractBalance)
+        // Checks if rebalance has been locked
+        if(founderRebalanceLocked) return;
+
+        uint256 founderAmount = totalShares.mul(totalSupply - (contractBalance + totalReleased))
+            .mul(getFdvFactor()).div(10**decimals())
             .div(10**decimals() - totalShares);
 
         if (founderAmount > (contractBalance + totalReleased)) {
             treasury.mint(address(this), founderAmount - (contractBalance + totalReleased));
         } else if (founderAmount < (contractBalance + totalReleased)) {
             THEO.burnFrom(address(this), contractBalance + totalReleased - founderAmount);
+        }
+
+        // locks the rebalance to not occur again after it is called once after unlock schedule
+        uint256 timeSinceDeploy = block.timestamp - deployTime;
+        if(timeSinceDeploy > unlockTimes[unlockTimes.length - 1]) {
+            founderRebalanceLocked = true;
         }
     }
 
@@ -188,6 +199,8 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
      */
     function release(IERC20 token, address account) public override {
         require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
+
+        rebalance();
 
         uint256 totalReceived = token.balanceOf(address(this)) + getTotalReleased(token);
         uint256 payment = _pendingPayment(account, totalReceived, getReleased(token, account));
@@ -209,6 +222,8 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     function releaseAmount(IERC20 token, address account, uint256 amount) public override {
         require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
         require(amount > 0, "TheopetraFounderVesting: amount cannot be 0");
+
+        rebalance();
 
         uint256 totalReceived = token.balanceOf(address(this)) + getTotalReleased(token);
         uint256 payment = _pendingPayment(account, totalReceived, getReleased(token, account));
@@ -244,12 +259,6 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         uint256 totalReceived,
         uint256 alreadyReleased
     ) private view returns (uint256) {
-        // console.log(totalReceived);
-        // console.log(shares[account]);
-        // console.log(getUnlockedMultiplier());
-        // console.log(totalShares);
-        // console.log(alreadyReleased);
-        // console.log((totalReceived * shares[account] * getUnlockedMultiplier()) / (totalShares * 10**decimals()) - alreadyReleased);
         return (totalReceived * shares[account] * getUnlockedMultiplier()) / (totalShares * 10**decimals()) - alreadyReleased;
     }
 
