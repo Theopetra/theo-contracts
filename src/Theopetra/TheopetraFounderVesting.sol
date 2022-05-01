@@ -12,7 +12,6 @@ import "../Interfaces/IFounderVesting.sol";
 import "../Interfaces/ITHEO.sol";
 import "../Interfaces/ITreasury.sol";
 
-import "hardhat/console.sol";
 /**
  * @title TheopetraFounderVesting
  * @dev This contract allows to split THEO payments among a group of accounts. The sender does not need to be aware
