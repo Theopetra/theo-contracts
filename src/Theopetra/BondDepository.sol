@@ -431,8 +431,9 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
         if (address(theoBondingCalculator) == address(0)) {
             revert("No bonding calculator");
         }
+        uint8 quoteTokenDecimals = IERC20Metadata(address(markets[_id].quoteToken)).decimals();
         return
-            (theoBondingCalculator.valuation(address(FrontEndRewarder.theo), 1) * (10**9 - bondRateVariable(_id))) /
+            (10**18 / (theoBondingCalculator.valuation(address(markets[_id].quoteToken), 10**quoteTokenDecimals)) * (10**9 - bondRateVariable(_id))) /
             10**9;
     }
 
