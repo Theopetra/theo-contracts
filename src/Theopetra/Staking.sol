@@ -7,6 +7,7 @@ import "../Libraries/SafeERC20.sol";
 import "../Interfaces/IDistributor.sol";
 import "../Interfaces/IStakedTHEOToken.sol";
 import "../Interfaces/ITHEO.sol";
+import "../Interfaces/ITreasury.sol";
 
 contract TheopetraStaking is TheopetraAccessControlled {
     using SafeMath for *;
@@ -20,6 +21,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
     address public immutable THEO;
     address public immutable sTHEO;
+    address public immutable treasury;
     uint256 public immutable stakingTerm;
 
     address public distributor;
@@ -67,7 +69,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
         uint256 _firstEpochNumber,
         uint256 _firstEpochTime,
         uint256 _stakingTerm,
-        address _authority
+        address _authority,
+        address _treasury
     ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {
         definePenalties();
         require(_THEO != address(0), "Invalid address");
@@ -75,6 +78,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
         require(_sTHEO != address(0), "Invalid address");
         sTHEO = _sTHEO;
         stakingTerm = _stakingTerm;
+        require(_treasury != address(0), "Invalid address");
+        treasury = _treasury;
 
         epoch = Epoch({ length: _epochLength, number: _firstEpochNumber, end: _firstEpochTime, distribute: 0 });
     }
@@ -345,6 +350,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
     function rebase() public returns (uint256) {
         uint256 bounty;
         if (epoch.end <= block.timestamp) {
+            ITreasury(treasury).tokenPerformanceUpdate();
+
             IStakedTHEOToken(sTHEO).rebase(epoch.distribute, epoch.number);
 
             epoch.end = epoch.end.add(epoch.length);

@@ -213,7 +213,8 @@ describe('Distributor', function () {
         firstEpochNumber,
         0,
         0,
-        TheopetraAuthority.address
+        TheopetraAuthority.address,
+        Treasury.address
       );
 
       await sTheo.initialize(StakingNew.address, Treasury.address);
