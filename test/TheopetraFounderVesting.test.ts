@@ -419,7 +419,7 @@ describe('Theopetra Founder Vesting', function () {
       const expectedRebalanceMint = totalShares.mul(INITIALMINT+1_000_000).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
       const initialBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
 
-      await TheopetraERC20Token.mint(owner, 1_000_000);
+      await users[1].Treasury.mint(owner, 1_000_000);
       await TheopetraFounderVesting.rebalance();
 
       const postBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
@@ -431,7 +431,7 @@ describe('Theopetra Founder Vesting', function () {
       const expectedRebalanceMint = totalShares.mul(INITIALMINT-1_000_000).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
       const initialBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
 
-      await TheopetraERC20Token.burnFrom((await ethers.getSigners())[5].address, 1_000_000);
+      await TheopetraERC20Token.connect((await ethers.getSigners())[5]).burn(1_000_000);
       await TheopetraFounderVesting.rebalance();
 
       const postBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
@@ -452,7 +452,7 @@ describe('Theopetra Founder Vesting', function () {
       await TheopetraFounderVesting.rebalance();
       const initialBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
 
-      await TheopetraERC20Token.mint(owner, 1_000_000_000);
+      await users[1].Treasury.mint(owner, 1_000_000_000);
       await TheopetraFounderVesting.rebalance();
 
       const postBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
@@ -465,7 +465,7 @@ describe('Theopetra Founder Vesting', function () {
       await TheopetraFounderVesting.rebalance();
       const initialBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
 
-      await TheopetraERC20Token.burnFrom((await ethers.getSigners())[5].address, 1_000_000);
+      await TheopetraERC20Token.connect((await ethers.getSigners())[5]).burn(1_000_000);
       await TheopetraFounderVesting.rebalance();
 
       const postBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);

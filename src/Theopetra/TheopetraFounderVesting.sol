@@ -190,7 +190,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         if (founderAmount > (contractBalance + totalReleased)) {
             treasury.mint(address(this), founderAmount - (contractBalance + totalReleased));
         } else if (founderAmount < (contractBalance + totalReleased)) {
-            THEO.burnFrom(address(this), contractBalance + totalReleased - founderAmount);
+            THEO.burn(contractBalance + totalReleased - founderAmount);
         }
 
         // locks the rebalance to not occur again after it is called once after unlock schedule
