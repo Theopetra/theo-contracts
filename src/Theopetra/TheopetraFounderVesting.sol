@@ -93,7 +93,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         }
     }
 
-    function initialMint() public {
+    function initialMint() public onlyGovernor {
         require( erc20TotalReleased[THEO] == 0, "TheopetraFounderVesting: initialMint can only be called before tokens are released");
         require( THEO.balanceOf(address(this)) == 0, "TheopetraFounderVesting: initialMint can only be called when contract value is 0");
 
@@ -172,6 +172,8 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
      * @dev Mints or burns tokens for this contract to balance shares to their appropriate percentage
      */
     function rebalance() public {
+        require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
+
         uint256 totalSupply = THEO.totalSupply();
         uint256 contractBalance = THEO.balanceOf(address(this));
         uint256 totalReleased = erc20TotalReleased[THEO];

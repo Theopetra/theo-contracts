@@ -1,5 +1,6 @@
 import { ethers } from 'hardhat';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
+import { TheopetraFounderVesting } from '../../typechain-types';
 import { CONTRACTS, TESTWITHMOCKS } from '../../utils/constants';
 import { getContracts } from '../../utils/helpers';
 
@@ -20,6 +21,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
       Distributor,
       pTheo,
       StakingLocked,
+      TheopetraFounderVesting,
     } = await getContracts();
 
     /* ======== Setup for `Treasury.mint` (when `TheopetraBondDepository.deposit` is called) ======== */
@@ -44,6 +46,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
 
     /* ======== Setup for Whitelist Bond Depository ======== */
     await Treasury.connect(owner).enable(8, WhitelistBondDepository.address, addressZero); // Set Whitelist Bond Depo as reward manager in Treasury (to allow call to mint from NoteKeeper when adding new note)
+    await Treasury.connect(owner).enable(8, TheopetraFounderVesting.address, addressZero); // Set Whitelist Founder Vesting as reward manager in Treasury (to allow call to mint)
 
     /* ======== Distributor and Staking setup  ======== */
     // Set Distributor on Staking (unlocked) and StakingLocked contracts
