@@ -20,6 +20,14 @@ contract BondingCalculatorMock {
         quoteToken = _quoteToken;
     }
 
+    /**
+     * @notice Sets the mock price to be returned.
+     * @param _mockPrice price to set the mock valuation (9 decimals)
+     */
+    function setValuation(uint160 _mockPrice) public {
+        mockPrice = _mockPrice;
+    }
+
     function valuation(address tokenIn, uint256 _amount) public view returns (uint256 amountOut) {
         return mockPrice;
     }
