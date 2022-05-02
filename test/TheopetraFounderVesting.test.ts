@@ -14,6 +14,8 @@ const setup = deployments.createFixture(async function () {
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
+  await contracts.Treasury.enable(8, users[1].address, owner);
+
   return {
     ...contracts,
     users,
@@ -53,7 +55,8 @@ describe('Theopetra Founder Vesting', function () {
 
   describe('initialMint', function() {
     it('reverts if the contract balance is not 0', async function() {
-      await TheopetraERC20Token.mint(owner, INITIALMINT);
+
+      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       await TheopetraFounderVesting.initialMint();
 
       await expect(TheopetraFounderVesting.initialMint()).to.be.revertedWith("TheopetraFounderVesting: initialMint can only be called when contract value is 0");
@@ -63,14 +66,14 @@ describe('Theopetra Founder Vesting', function () {
       BondingCalculatorMock.setValuation(100_000_000);
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
-      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       await TheopetraFounderVesting.initialMint();
       await TheopetraFounderVesting.release(TheopetraERC20Token.address);
 
       await expect(TheopetraFounderVesting.initialMint()).to.be.revertedWith("TheopetraFounderVesting: initialMint can only be called before tokens are released");
     });
     it('mints tokens to the vesting contract to cover the input shares', async function () {
-      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
       const expectedMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
 
@@ -111,7 +114,7 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
-      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       await TheopetraFounderVesting.initialMint();
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
@@ -135,7 +138,7 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
-      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       await TheopetraFounderVesting.initialMint();
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
@@ -189,7 +192,7 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
-      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       await TheopetraFounderVesting.initialMint();
     });
     it('reverts if no payment due to address at deploy time', async function() {
@@ -232,13 +235,13 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
-      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       await TheopetraFounderVesting.initialMint();
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
     });
     it('reverts if no shares designated to address', async function() {
-      await expect(TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, badAddress, 1)).to.be.revertedWith("TheopetraFounderVesting: account has no shares");
+      await expect(TheopetraFounderVesting.connect((await ethers.getSigners())[1]).releaseAmount(TheopetraERC20Token.address, 1)).to.be.revertedWith("TheopetraFounderVesting: account has no shares");
     });
     it('reverts if amount is 0', async function() {
       await expect(TheopetraFounderVesting.releaseAmount(TheopetraERC20Token.address, 0)).to.be.revertedWith("TheopetraFounderVesting: amount cannot be 0");
@@ -286,7 +289,7 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
-      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       await TheopetraFounderVesting.initialMint();
     });
     it('reverts if no payment due to address at deploy time', async function() {
@@ -323,7 +326,7 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
-      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       await TheopetraFounderVesting.initialMint();
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
@@ -350,7 +353,7 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
-      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       await TheopetraFounderVesting.initialMint();
     });
     it('returns balance of address with full shares after full schedule', async function() {
@@ -380,7 +383,7 @@ describe('Theopetra Founder Vesting', function () {
 
   describe('getFdvFactor', function() {
     beforeEach(async function () {
-      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       await TheopetraFounderVesting.initialMint();
     });
     it('reverts when no bonding calculator is available', async function() {
@@ -416,7 +419,7 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
-      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       await TheopetraFounderVesting.initialMint();
     });
     it('mints tokens to rebalance the founder shares to the expected ownership percentage', async function() {
@@ -437,7 +440,7 @@ describe('Theopetra Founder Vesting', function () {
       const expectedRebalanceMint = totalShares.mul(INITIALMINT-1_000_000).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
       const initialBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
 
-      await TheopetraERC20Token.burnFrom(owner, 1_000_000);
+      await TheopetraERC20Token.burnFrom((await ethers.getSigners())[5].address, 1_000_000);
       await TheopetraFounderVesting.rebalance();
 
       const postBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
@@ -471,7 +474,7 @@ describe('Theopetra Founder Vesting', function () {
       await TheopetraFounderVesting.rebalance();
       const initialBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);
 
-      await TheopetraERC20Token.burnFrom(owner, 1_000_000);
+      await TheopetraERC20Token.burnFrom((await ethers.getSigners())[5].address, 1_000_000);
       await TheopetraFounderVesting.rebalance();
 
       const postBalance = await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address);

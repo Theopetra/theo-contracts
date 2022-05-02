@@ -1,3 +1,5 @@
+import { ethers } from 'hardhat';
+
 export const CONTRACTS: Record<string, string> = {
   authority: 'TheopetraAuthority',
   theoToken: 'TheopetraERC20Token',

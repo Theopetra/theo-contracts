@@ -1,9 +1,8 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { ethers } from 'hardhat';
 
 import getNamedMockAddresses from './mocks/helpers';
-import { CONTRACTS, MOCKS, CAPTABLE, FDVTARGET, TESTWITHMOCKS, INITIALMINT, UNLOCKSCHEDULE } from '../utils/constants';
+import { CONTRACTS, CAPTABLE, FDVTARGET, TESTWITHMOCKS, UNLOCKSCHEDULE } from '../utils/constants';
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, getChainId, getNamedAccounts } = hre;
