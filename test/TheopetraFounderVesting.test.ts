@@ -45,16 +45,40 @@ describe('Theopetra Founder Vesting', function () {
     it('can be deployed', async function () {
       expect(TheopetraFounderVesting).to.not.be.undefined;
     });
-    it('mints tokens to the vesting contract to cover the input shares', async function () {
-      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
-      const expectedMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
-      expect(await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address)).to.equal(expectedMint);
-    });
     it('sets total released THEO tokens to 0', async function () {
       const totalReleased = await TheopetraFounderVesting.getTotalReleased(TheopetraERC20Token.address);
       expect(totalReleased).to.equal(ethers.constants.Zero);
     })
   });
+
+  describe('initialMint', function() {
+    it('reverts if the contract balance is not 0', async function() {
+      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await TheopetraFounderVesting.initialMint();
+
+      await expect(TheopetraFounderVesting.initialMint()).to.be.revertedWith("TheopetraFounderVesting: initialMint can only be called when contract value is 0");
+    });
+    it('reverts if the contract has released any THEO tokens', async function() {
+      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
+      BondingCalculatorMock.setValuation(100_000_000);
+      // move forward 1 hour past unlock schedule
+      await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
+      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await TheopetraFounderVesting.initialMint();
+      await TheopetraFounderVesting.release(TheopetraERC20Token.address, CAPTABLE.addresses[0]);
+
+      await expect(TheopetraFounderVesting.initialMint()).to.be.revertedWith("TheopetraFounderVesting: initialMint can only be called before tokens are released");
+    });
+    it('mints tokens to the vesting contract to cover the input shares', async function () {
+      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
+      const expectedMint = totalShares.mul(INITIALMINT).div(ethers.BigNumber.from(10**(await TheopetraFounderVesting.decimals())).sub(totalShares));
+
+      await TheopetraFounderVesting.initialMint();
+
+      expect(await TheopetraERC20Token.balanceOf(TheopetraFounderVesting.address)).to.equal(expectedMint);
+    });
+  })
 
   describe('decimals', function () {
     it('returns 9', async function () {
@@ -87,6 +111,8 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
+      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await TheopetraFounderVesting.initialMint();
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
     });
@@ -109,6 +135,8 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
+      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await TheopetraFounderVesting.initialMint();
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
     });
@@ -161,6 +189,8 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
+      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await TheopetraFounderVesting.initialMint();
     });
     it('reverts if no payment due to address at deploy time', async function() {
       // Attempting release at time 0 should fail
@@ -202,6 +232,8 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
+      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await TheopetraFounderVesting.initialMint();
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
     });
@@ -254,6 +286,8 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
+      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await TheopetraFounderVesting.initialMint();
     });
     it('reverts if no payment due to address at deploy time', async function() {
       // Attempting release at time 0 should fail
@@ -289,6 +323,8 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
+      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await TheopetraFounderVesting.initialMint();
       // move forward 1 hour past unlock schedule
       await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
     });
@@ -314,6 +350,8 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
+      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await TheopetraFounderVesting.initialMint();
     });
     it('returns balance of address with full shares after full schedule', async function() {
       const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);
@@ -341,6 +379,10 @@ describe('Theopetra Founder Vesting', function () {
   });
 
   describe('getFdvFactor', function() {
+    beforeEach(async function () {
+      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await TheopetraFounderVesting.initialMint();
+    });
     it('reverts when no bonding calculator is available', async function() {
       await expect(TheopetraFounderVesting.getFdvFactor()).to.be.revertedWith("TheopetraFounderVesting: No bonding calculator")
     });
@@ -374,6 +416,8 @@ describe('Theopetra Founder Vesting', function () {
     beforeEach(async function() {
       TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
       BondingCalculatorMock.setValuation(100_000_000);
+      await TheopetraERC20Token.mint(owner, INITIALMINT);
+      await TheopetraFounderVesting.initialMint();
     });
     it('mints tokens to rebalance the founder shares to the expected ownership percentage', async function() {
       const totalShares = CAPTABLE.shares.reduce((acc, curr) => acc.add(curr), ethers.constants.Zero);

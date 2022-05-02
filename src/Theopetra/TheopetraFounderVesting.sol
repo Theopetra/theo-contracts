@@ -91,6 +91,11 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         for (uint256 i = 0; i < _payees.length; i++) {
             _addPayee(_payees[i], _shares[i]);
         }
+    }
+
+    function initialMint() public {
+        require( erc20TotalReleased[THEO] == 0, "TheopetraFounderVesting: initialMint can only be called before tokens are released");
+        require( THEO.balanceOf(address(this)) == 0, "TheopetraFounderVesting: initialMint can only be called when contract value is 0");
 
         // mint tokens for the initial shares
         uint256 tokensToMint = totalShares.mul(THEO.totalSupply())
