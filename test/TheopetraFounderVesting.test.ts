@@ -1,7 +1,7 @@
 import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 import { moveTimeForward, setupUsers } from './utils';
-import { CAPTABLE, CONTRACTS, FDVTARGET, INITIALMINT, UNLOCKSCHEDULE } from '../utils/constants';
+import { CAPTABLE, CONTRACTS, FDVTARGET, INITIALMINT, TESTWITHMOCKS, UNLOCKSCHEDULE } from '../utils/constants';
 import { getContracts } from '../utils/helpers';
 
 const badAddress = '0x0000000000000000000000000000000000001234';
@@ -14,7 +14,9 @@ const setup = deployments.createFixture(async function () {
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
-  await contracts.Treasury.enable(8, users[1].address, owner);
+  if(process.env.NODE_ENV !== TESTWITHMOCKS) {
+    await contracts.Treasury.enable(8, users[1].address, owner);
+  }
 
   return {
     ...contracts,
