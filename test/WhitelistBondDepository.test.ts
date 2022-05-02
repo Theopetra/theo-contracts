@@ -15,7 +15,7 @@ import {
   TheopetraTreasury,
 } from '../typechain-types';
 import { setupUsers } from './utils';
-import { CONTRACTS } from '../utils/constants';
+import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 import { getContracts } from '../utils/helpers';
 
 const setup = deployments.createFixture(async function () {
@@ -58,6 +58,7 @@ describe('Whitelist Bond depository', function () {
   let TheopetraAuthority: TheopetraAuthority;
   let TheopetraERC20Token: TheopetraERC20Token;
   let Staking: TheopetraStaking;
+  let sTheo: any;
   let AggregatorMockETH: AggregatorMockETH;
   let UsdcTokenMock: UsdcERC20Mock;
   let AggregatorMockUSDC: AggregatorMockUSDC;
@@ -69,6 +70,7 @@ describe('Whitelist Bond depository', function () {
   let expectedPayoutTheoWEth: number;
   let expectedPricePerUSDC: number;
   let expectedPayoutTheoUsdc: number;
+  let usdcMarketId: any;
 
   beforeEach(async function () {
     ({
@@ -77,6 +79,7 @@ describe('Whitelist Bond depository', function () {
       TheopetraAuthority,
       TheopetraERC20Token,
       Staking,
+      sTheo,
       AggregatorMockETH,
       AggregatorMockUSDC,
       UsdcTokenMock,
@@ -107,6 +110,11 @@ describe('Whitelist Bond depository', function () {
       [vesting, conclusion]
     );
 
+    if (process.env.NODE_ENV === TESTWITHMOCKS) {
+      // Only call this if using mock sTheo, as only the mock has a mint function (sTheo itself uses `initialize` instead)
+      await sTheo.mint(WhitelistBondDepository.address, '1000000000000000000000');
+    }
+
     // Calculate the `expectedPricePerWETH` (9 decimals) of THEO per ETH using mock price consumer values
     const [, mockPriceConsumerPrice] = await AggregatorMockETH.latestRoundData();
     const mockPriceConsumerDecimals = await AggregatorMockETH.decimals();
@@ -128,6 +136,39 @@ describe('Whitelist Bond depository', function () {
     // Expect payout of 10_000_000_000 THEO (10 THEO, with 9 decimals)
     expectedPayoutTheoUsdc = Math.floor((Number(usdcDepositAmount) * 1e18) / expectedPricePerUSDC / 10 ** 6); // 1e18 = theo decimals (9) + fixed bond price decimals (9); 10**6 decimals for USDC
   });
+
+  async function setupForDeposit() {
+    const [governorWallet] = await ethers.getSigners();
+    const [, , bob] = users;
+
+    // Deploy SignerHelper contract
+    const signerHelperFactory = new SignerHelper__factory(governorWallet);
+    const SignerHelper = await signerHelperFactory.deploy();
+    // Create a hash in the same way as created by Signed contract
+    const bobHash = await SignerHelper.createHash('', bob.address, WhitelistBondDepository.address, 'supersecret');
+
+    // Set the secret on the Signed contract
+    await WhitelistBondDepository.setSecret('supersecret');
+
+    // 32 bytes of data in Uint8Array
+    const messageHashBinary = ethers.utils.arrayify(bobHash);
+
+    // To sign the 32 bytes of data, pass in the data
+    signature = await governorWallet.signMessage(messageHashBinary);
+
+    // Create second market, with USDC as quote token
+    const usdcMarketblock = await ethers.provider.getBlock('latest');
+    const usdcMarketconclusion = usdcMarketblock.timestamp + timeToConclusion;
+    await WhitelistBondDepository.create(
+      UsdcTokenMock.address,
+      AggregatorMockUSDC.address,
+      [capacity, fixedBondPrice],
+      [capacityInQuote, fixedTerm],
+      [vesting, usdcMarketconclusion]
+    );
+    [usdcMarketId] = await WhitelistBondDepository.liveMarketsFor(UsdcTokenMock.address);
+    expect(Number(usdcMarketId)).to.equal(1);
+  }
 
   describe('Deployment', function () {
     it('can be deployed', async function () {
@@ -285,12 +326,7 @@ describe('Whitelist Bond depository', function () {
       const [, anotherUserWallet] = await ethers.getSigners();
 
       // Create a hash in the same way as created by Signed contract
-      const bobHash = await SignerHelper.createHash(
-        'somedata',
-        bob.address,
-        WhitelistBondDepository.address,
-        'supersecret'
-      );
+      const bobHash = await SignerHelper.createHash('', bob.address, WhitelistBondDepository.address, 'supersecret');
 
       const messageHashBinary = ethers.utils.arrayify(bobHash);
 
@@ -311,12 +347,7 @@ describe('Whitelist Bond depository', function () {
       expect(await TheopetraAuthority.whitelistSigner()).to.equal(newSignerWallet.address);
 
       // Create a hash in the same way as created by Signed contract
-      const bobHash = await SignerHelper.createHash(
-        'somedata',
-        bob.address,
-        WhitelistBondDepository.address,
-        'supersecret'
-      );
+      const bobHash = await SignerHelper.createHash('', bob.address, WhitelistBondDepository.address, 'supersecret');
 
       const messageHashBinary = ethers.utils.arrayify(bobHash);
 
@@ -333,12 +364,7 @@ describe('Whitelist Bond depository', function () {
       const [governorWallet] = await ethers.getSigners();
 
       // Create a hash in the same way as created by Signed contract
-      const bobHash = await SignerHelper.createHash(
-        'somedata',
-        bob.address,
-        WhitelistBondDepository.address,
-        'supersecret'
-      );
+      const bobHash = await SignerHelper.createHash('', bob.address, WhitelistBondDepository.address, 'supersecret');
 
       const messageHashBinary = ethers.utils.arrayify(bobHash);
 
@@ -383,7 +409,7 @@ describe('Whitelist Bond depository', function () {
 
       //Whitelist alice, for an example of a working deposit
       const aliceHash = await SignerHelper.createHash(
-        'somedata',
+        '',
         alice.address,
         WhitelistBondDepository.address,
         'supersecret'
@@ -411,44 +437,8 @@ describe('Whitelist Bond depository', function () {
   });
 
   describe('Deposit success', function () {
-    let usdcMarketId: any;
-
     beforeEach(async function () {
-      const [governorWallet] = await ethers.getSigners();
-      const [, , bob] = users;
-
-      // Deploy SignerHelper contract
-      const signerHelperFactory = new SignerHelper__factory(governorWallet);
-      const SignerHelper = await signerHelperFactory.deploy();
-      // Create a hash in the same way as created by Signed contract
-      const bobHash = await SignerHelper.createHash(
-        'somedata',
-        bob.address,
-        WhitelistBondDepository.address,
-        'supersecret'
-      );
-
-      // Set the secret on the Signed contract
-      await WhitelistBondDepository.setSecret('supersecret');
-
-      // 32 bytes of data in Uint8Array
-      const messageHashBinary = ethers.utils.arrayify(bobHash);
-
-      // To sign the 32 bytes of data, pass in the data
-      signature = await governorWallet.signMessage(messageHashBinary);
-
-      // Create second market, with USDC as quote token
-      const usdcMarketblock = await ethers.provider.getBlock('latest');
-      const usdcMarketconclusion = usdcMarketblock.timestamp + timeToConclusion;
-      await WhitelistBondDepository.create(
-        UsdcTokenMock.address,
-        AggregatorMockUSDC.address,
-        [capacity, fixedBondPrice],
-        [capacityInQuote, fixedTerm],
-        [vesting, usdcMarketconclusion]
-      );
-      [usdcMarketId] = await WhitelistBondDepository.liveMarketsFor(UsdcTokenMock.address);
-      expect(Number(usdcMarketId)).to.equal(1);
+      await setupForDeposit();
     });
 
     it('should allow a deposit to a WETH-THEO market', async function () {
@@ -562,7 +552,7 @@ describe('Whitelist Bond depository', function () {
       expect(Number(newTotalTheoSupply) - Number(initialTotalTheoSupply)).to.equal(payout_);
     });
 
-    it('stakes the payout', async function () {
+    it('does not the payout', async function () {
       const [, , bob] = users;
 
       const initialStakingTheoBalance = await TheopetraERC20Token.balanceOf(Staking.address);
@@ -570,10 +560,11 @@ describe('Whitelist Bond depository', function () {
       await bob.WhitelistBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
 
       const newStakingTHEOBalance = await TheopetraERC20Token.balanceOf(Staking.address);
-      expect(Number(initialStakingTheoBalance)).to.be.lessThan(Number(newStakingTHEOBalance));
+      expect(Number(initialStakingTheoBalance)).to.be.equal(Number(newStakingTHEOBalance));
 
       const [payout_] = await WhitelistBondDepository.pendingFor(bob.address, 0);
-      expect(Number(newStakingTHEOBalance) - Number(initialStakingTheoBalance)).to.equal(payout_);
+      const expectedPayout = Math.floor(Number(depositAmount) / expectedPricePerWETH);
+      expect(expectedPayout).to.equal(payout_);
     });
 
     it('will revert if the attempted deposit amount is larger than the market capacity', async function () {
@@ -734,6 +725,33 @@ describe('Whitelist Bond depository', function () {
     });
   });
 
+  describe('Redeem', function () {
+    beforeEach(async function () {
+      await setupForDeposit();
+    });
+
+    it('should allow a note to be redeemed for THEO', async function () {
+      const [, , bob] = users;
+      const initialBobBalance = await bob.TheopetraERC20Token.balanceOf(bob.address);
+      await bob.WhitelistBondDepository.deposit(
+        usdcMarketId,
+        usdcDepositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
+
+      const latestBlock = await ethers.provider.getBlock('latest');
+      const newTimestampInSeconds = latestBlock.timestamp + vesting * 2;
+      await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+
+      await expect(WhitelistBondDepository.redeemAll(bob.address)).to.not.be.reverted;
+      const finalBobBalance = await bob.TheopetraERC20Token.balanceOf(bob.address);
+      expect(Number(finalBobBalance)).to.be.greaterThan(Number(initialBobBalance));
+    });
+  });
+
   describe('External view', function () {
     it('can give the current price of THEO per quote token', async function () {
       expect(await WhitelistBondDepository.calculatePrice(marketId)).to.equal(expectedPricePerWETH);
@@ -756,12 +774,7 @@ describe('Whitelist Bond depository', function () {
       const signerHelperFactory = new SignerHelper__factory(governorWallet);
       const SignerHelper = await signerHelperFactory.deploy();
       // Create a hash in the same way as created by Signed contract
-      const bobHash = await SignerHelper.createHash(
-        'somedata',
-        bob.address,
-        WhitelistBondDepository.address,
-        'supersecret'
-      );
+      const bobHash = await SignerHelper.createHash('', bob.address, WhitelistBondDepository.address, 'supersecret');
 
       // Set the secret on the Signed contract
       await WhitelistBondDepository.setSecret('supersecret');

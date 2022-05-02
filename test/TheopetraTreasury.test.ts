@@ -10,7 +10,7 @@ import {
   TheopetraYieldReporter,
 } from '../typechain-types';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
-import { setupUsers, moveTimeForward, waitFor } from './utils';
+import { setupUsers, moveTimeForward, waitFor, randomIntFromInterval } from './utils';
 import { getContracts } from '../utils/helpers';
 
 const setup = deployments.createFixture(async () => {
@@ -126,10 +126,6 @@ describe('TheopetraTreasury', () => {
   });
 
   describe('Token price', function () {
-    function randomIntFromInterval(min: number, max: number) {
-      return Math.floor(Math.random() * (max - min + 1) + min);
-    }
-
     describe('deltaTokenPrice', function () {
       it('should get the difference in token price', async function () {
         await expect(Treasury.deltaTokenPrice()).to.be.reverted; // Will revert if called before tokenPerformanceUpdate updates contract state, as currentTokenPrice will be zero

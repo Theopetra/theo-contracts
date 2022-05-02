@@ -1,4 +1,5 @@
-import { Contract } from 'ethers';
+import { Contract, Event } from 'ethers';
+import { LogDescription } from '@ethersproject/abi';
 import { ethers } from 'hardhat';
 import { TheopetraTreasury, TheopetraYieldReporter, YieldReporterMock } from '../../typechain-types';
 
@@ -36,6 +37,18 @@ export async function moveTimeForward<T>(timeInSeconds: number): Promise<void & 
   await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
 }
 
+export function decodeLogs(logs: Event[], targets: Contract[]): LogDescription[] {
+  const decoded: LogDescription[] = [];
+
+  logs.forEach((log) => {
+    const contract = targets.find((c: Contract) => c.address === log.address);
+    if (!contract) return;
+    decoded.push(contract.interface.parseLog(log));
+  });
+
+  return decoded;
+}
+
 export async function performanceUpdate<T>(
   Treasury: TheopetraTreasury,
   YieldReporter: TheopetraYieldReporter | YieldReporterMock,
@@ -60,4 +73,8 @@ export async function performanceUpdate<T>(
   // Difference in reported yields is chosen to be relatively low, to avoid hiting the maximum rate (cap) when calculating the nextRewardRate
   await waitFor(YieldReporter.reportYield(50_000_000_000));
   await waitFor(YieldReporter.reportYield(65_000_000_000));
+}
+
+export function randomIntFromInterval<T>(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1) + min);
 }

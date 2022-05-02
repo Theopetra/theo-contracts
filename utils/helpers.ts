@@ -19,7 +19,7 @@ import {
   STheopetra,
   BondingCalculatorMock,
   YieldReporterMock,
-  PTheopetra
+  PTheopetra,
 } from '../typechain-types';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTWITHMOCKS } from './constants';
 
@@ -57,5 +57,9 @@ export async function getContracts(currentContract?: string): Promise<any> {
     AggregatorMockUSDC: <AggregatorMockUSDC>await ethers.getContract(MOCKS.aggregatorMockUSDC),
     pTheo: <PTheopetra>await ethers.getContract(CONTRACTS.pTheo),
     FounderVesting: <TheopetraFounderVesting>await ethers.getContract(CONTRACTS.founderVesting),
+    StakingLocked:
+      isWithMocks && currentContract !== CONTRACTS.staking
+        ? <StakingMock>await ethers.getContract(MOCKSWITHARGS.stakingMock)
+        : <TheopetraStaking>await ethers.getContract(CONTRACTS.stakingLocked),
   };
 }

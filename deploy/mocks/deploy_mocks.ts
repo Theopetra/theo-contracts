@@ -23,13 +23,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     for (const key in MOCKSWITHARGS) {
       let args;
-      if (key === 'treasuryMock' || key === 'stakingMock') {
+      if (key === 'treasuryMock') {
         args = [namedMockAddresses.TheopetraERC20Mock];
+      } else if (key === 'stakingMock') {
+        args = [namedMockAddresses.TheopetraERC20Mock, namedMockAddresses.sTheoMock];
       } else if (key === 'bondingCalculatorMock') {
         const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
         const tokenToUse =
           process.env.NODE_ENV === TESTWITHMOCKS ? namedMockAddresses.TheopetraERC20Mock : TheopetraERC20Token.address;
 
+        // Most tests that use this mock expect a relatively low Quote-Token per THEO value, 242674 (9 decimals)
+        // This is selected using the boolean false for the third arg below.
+        // Deployment with true will give a higher value that equates to ca. 1 THEO per quote token
         args = [tokenToUse, namedMockAddresses.UsdcERC20Mock];
       }
       await deploy(MOCKSWITHARGS[key], {

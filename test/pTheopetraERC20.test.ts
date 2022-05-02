@@ -2,9 +2,8 @@ import { expect } from './chai-setup';
 import { deployments, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 
 import { setupUsers } from './utils';
-import { CONTRACTS } from '../utils/constants';
+import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 import { getContracts } from '../utils/helpers';
-
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture();
@@ -43,13 +42,15 @@ describe('pTheopetra', function () {
   });
 
   describe('initialize', function () {
-    it('initializes with the staking contract', async function () {
-      const { pTheo, Staking, addressZero } = await setup();
+    it('initializes with the locked tranche staking contract', async function () {
+      const { pTheo, StakingLocked, addressZero } = await setup();
 
-      expect(await pTheo.stakingContract()).to.equal(addressZero);
-
-      await pTheo.initialize(Staking.address);
-      expect(await pTheo.stakingContract()).to.equal(Staking.address);
+      // pTHEO has already been initialized during setup for tests without mocks
+      if (process.env.NODE_ENV === TESTWITHMOCKS) {
+        expect(await pTheo.stakingContract()).to.equal(addressZero);
+        await pTheo.initialize(StakingLocked.address);
+      }
+      expect(await pTheo.stakingContract()).to.equal(StakingLocked.address);
     });
   });
 

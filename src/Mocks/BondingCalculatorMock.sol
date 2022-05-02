@@ -13,47 +13,14 @@ contract BondingCalculatorMock {
 
     address public immutable theo;
     address public immutable quoteToken;
-    uint160 public mockPrice = 0; // 9 decimals
+    uint160 public mockPrice = 4120754590000; // 9 decimals
 
     constructor(address _theo, address _quoteToken) {
         theo = _theo;
         quoteToken = _quoteToken;
     }
 
-    function getPoolFromFactory(
-        address factoryAddress,
-        address tokenA,
-        address tokenB,
-        uint24 fee
-    ) internal view returns (address pool) {
-        return 0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8; // Just using an example address for this mock
-    }
-
-    function valuation(address _theo, uint256 _amount) public view returns (uint256 sqrtPriceX96) {
-        require(_theo == theo, "Incorrect address for THEO");
-        // Get address of the Uniswap pool for the token pair (i.e the Quote-Token/THEO pair)
-        getPoolFromFactory(0x1F98431c8aD98523631AE4a59f267346ea31F984, quoteToken, address(_theo), 3000);
-
-        // Uniswap pool address would be used to get a TWAP, or potentially just a spot price as a Uniswap sqrtPriceX96
-
-        // Return price (converted from sqrtPriceX96)
-        return _amount * getPriceX96FromSqrtPriceX96(1234217676608908277512433764);
-    }
-
-    /**
-     * @notice Sets the mock price to be returned.
-     * @param _mockPrice price to set the mock valuation (9 decimals)
-     */
-    function setValuation(uint160 _mockPrice) public {
-        mockPrice = _mockPrice;
-    }
-
-    /**
-     * @notice             Return Quote-Token per THEO value
-     * @dev                for example: 242674 (9 decimals): 0.000242674 ETH per THEO (ca. 4120 THEO per ETH)
-     */
-    function getPriceX96FromSqrtPriceX96(uint160 sqrtPriceX96) public view returns (uint256 priceX96) {
-        if(mockPrice > 0) return mockPrice;
-        return 242674; // 9 decimals
+    function valuation(address tokenIn, uint256 _amount) public view returns (uint256 amountOut) {
+        return mockPrice;
     }
 }

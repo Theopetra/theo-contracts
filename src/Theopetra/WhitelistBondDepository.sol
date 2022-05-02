@@ -72,7 +72,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         address _referral,
         bytes calldata signature
     ) external override returns (DepositInfo memory depositInfo) {
-        verifySignature("somedata", signature);
+        verifySignature("", signature);
         Market storage market = markets[_id];
         Terms memory term = terms[_id];
         uint48 currentTime = uint48(block.timestamp);
@@ -159,7 +159,8 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
             uint48(depositInfo.expiry_),
             uint48(_id),
             _referral,
-            0
+            0,
+            false
         );
 
         // transfer payment to treasury

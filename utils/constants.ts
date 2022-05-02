@@ -10,6 +10,7 @@ export const CONTRACTS: Record<string, string> = {
   yieldReporter: 'TheopetraYieldReporter',
   pTheo: 'pTheopetra',
   founderVesting: 'TheopetraFounderVesting',
+  stakingLocked: 'TheopetraStakingLocked',
 };
 
 export const MOCKS: Record<string, string> = {
