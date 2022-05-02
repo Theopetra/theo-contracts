@@ -172,7 +172,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
      * @dev Mints or burns tokens for this contract to balance shares to their appropriate percentage
      */
     function rebalance() public {
-        require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
+        require(shares[msg.sender] > 0, "TheopetraFounderVesting: account has no shares");
 
         uint256 totalSupply = THEO.totalSupply();
         uint256 contractBalance = THEO.balanceOf(address(this));
@@ -203,7 +203,8 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
      * percentage of the total shares and their previous withdrawals. `token` must be the address of an IERC20
      * contract.
      */
-    function release(IERC20 token, address account) public override {
+    function release(IERC20 token) public override {
+        address account = msg.sender;
         require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
 
         rebalance();
@@ -225,7 +226,8 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
      * percentage of the total shares and their previous withdrawals. `token` must be the address of an IERC20
      * contract.
      */
-    function releaseAmount(IERC20 token, address account, uint256 amount) public override {
+    function releaseAmount(IERC20 token, uint256 amount) public override {
+        address account = msg.sender;
         require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
         require(amount > 0, "TheopetraFounderVesting: amount cannot be 0");
 

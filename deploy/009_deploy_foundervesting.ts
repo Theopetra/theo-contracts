@@ -29,6 +29,8 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   // If on Hardhat network, use the following values for testing
   if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
     const {TreasuryMock, TheopetraERC20Mock } = await getNamedMockAddresses(hre);
+    const captableAddresses = CAPTABLE.addresses;
+    captableAddresses[0] = deployer;
     args = [
       TheopetraAuthority.address,
       TreasuryMock,
