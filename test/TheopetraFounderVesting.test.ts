@@ -56,23 +56,12 @@ describe('Theopetra Founder Vesting', function () {
   });
 
   describe('initialMint', function() {
-    it('reverts if the contract balance is not 0', async function() {
+    it('reverts if initialMint is called more than once', async function() {
 
       await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
       await TheopetraFounderVesting.initialMint();
 
-      await expect(TheopetraFounderVesting.initialMint()).to.be.revertedWith("TheopetraFounderVesting: initialMint can only be called when contract value is 0");
-    });
-    it('reverts if the contract has released any THEO tokens', async function() {
-      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
-      BondingCalculatorMock.setValuation(100_000_000);
-      // move forward 1 hour past unlock schedule
-      await moveTimeForward(UNLOCKSCHEDULE.times[UNLOCKSCHEDULE.times.length - 1] + 3600);
-      await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);
-      await TheopetraFounderVesting.initialMint();
-      await TheopetraFounderVesting.release(TheopetraERC20Token.address);
-
-      await expect(TheopetraFounderVesting.initialMint()).to.be.revertedWith("TheopetraFounderVesting: initialMint can only be called before tokens are released");
+      await expect(TheopetraFounderVesting.initialMint()).to.be.revertedWith("TheopetraFounderVesting: initialMint can only be run once");
     });
     it('mints tokens to the vesting contract to cover the input shares', async function () {
       await users[1].Treasury.mint((await ethers.getSigners())[5].address, INITIALMINT);

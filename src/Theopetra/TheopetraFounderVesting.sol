@@ -51,6 +51,8 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     uint256[] private unlockAmounts;
 
     bool private founderRebalanceLocked = false;
+    bool private initialized = false;
+
 
     /**
      * @notice return the decimals in the percentage values and
@@ -94,8 +96,8 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     }
 
     function initialMint() public onlyGovernor {
-        require( erc20TotalReleased[THEO] == 0, "TheopetraFounderVesting: initialMint can only be called before tokens are released");
-        require( THEO.balanceOf(address(this)) == 0, "TheopetraFounderVesting: initialMint can only be called when contract value is 0");
+        require( !initialized, "TheopetraFounderVesting: initialMint can only be run once");
+        initialized = true;
 
         // mint tokens for the initial shares
         uint256 tokensToMint = totalShares.mul(THEO.totalSupply())
