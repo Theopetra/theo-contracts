@@ -1,9 +1,7 @@
-import hre from 'hardhat';
 import * as dotenv from 'dotenv';
-import { ethers, getUnnamedAccounts, getNamedAccounts } from 'hardhat';
+import { ethers, getNamedAccounts } from 'hardhat';
 import {StakingDistributor__factory, STheopetra__factory, TheopetraAuthority__factory, TheopetraStaking__factory, TheopetraTreasury, TheopetraTreasury__factory} from "../typechain-types";
 dotenv.config();
-
 
 // Some contracts need permissions enabled on them, or need initializing
 // See `deploy/setup/setupIntegration.ts`
@@ -36,6 +34,9 @@ const connectContracts = async () => {
   await Treasury.connect(owner).enable(8, Distributor.address, addressZero);
   const isEnabled = await Treasury.permissions(8, Distributor.address);
   console.log("Distributor as Reward Manager >>>>>>", isEnabled);
+
+  // Please check tests for other setup required for specific functionality
+  // E.g. Setup for rebasing needs Staking contract set as as a recipient on the distributor (via `addRecipient`), along with starting rate, Drs and Dys
 };
 
 const setupContracts = async () => {
