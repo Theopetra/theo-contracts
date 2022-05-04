@@ -7,12 +7,12 @@ const tokenNameAndSymbol = async () => {
   // Connect to Ethereum test network (rinkeby, using Alchemy as a backer below)
   // Default provider (via `getDefaultProvider`) is provided by ethers but highly throttled
   // const provider = hre.ethers.getDefaultProvider('rinkeby');
-  // E.g. with Metamask would be like:
+  // With Metamask would be something like:
   // const provider = new ethers.providers.Web3Provider(window.ethereum)
-  // Using Alchemy below
+  // With Alchemy:
   const provider = new ethers.providers.AlchemyProvider("rinkeby", process.env.ALCHEMY_API_KEY)
   // Call existing contract using contract's factory from typechain-types
-  // Address can be found in deployments/rinkeby folder
+  // Address can be found in the deployments/rinkeby folder
   const TheopetraERC20Token = TheopetraERC20Token__factory.connect("0x1A2EA28399A2e4f8f3EEfeA5f41770B4C61fE643", provider);
   // Call the methods `name` and `symbol` on the contract
   const contractName = await TheopetraERC20Token.name();
