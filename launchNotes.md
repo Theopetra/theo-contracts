@@ -68,3 +68,48 @@ For example, if -- when mint is called for the first time on the contract -- the
 
  Therefore care should be taken to ensure that the `amount_` used for the first call to `mint` is correct as desired/needed.
 
+### WhitelistBondDepository
+
+#### Creating markets
+
+Before a user can `deposit` in the WhitelistBondDepository, a market needs to be available to deposit into.
+
+Below is an example of creating a market for the WhitelistBondDepository, taken from within `WhitelistBondDepository.test.ts`. In this test example, a mock has been used for the USDC token (and should therefore be replaced with the appropriate address of the actual USDC token, on whichever network is needed).
+In addition, in the test-based example below, a mock (`AggregatorMockUSDC`) has been used in place of the Chainlink Aggregator. On the Rinkeby network, the actual aggregator contract (the code for which is found within this repo in `types/PriceConsumerV3.sol`) can be used. Please that this repo does not contain a deployment script for the PriceConsumer. Instead, for the time being, the contract has simply been deployed to Rinkeby via Remix, at the address `0x4a6057191E56647a10433A732611A4B45D9169D0`
+
+```
+    await WhitelistBondDepository.create(
+      UsdcTokenMock.address,
+      AggregatorMockUSDC.address,
+      [capacity, fixedBondPrice],
+      [capacityInQuote, fixedTerm],
+      [vesting, usdcMarketconclusion]
+    );
+```
+
+#### Signing
+Note that the deployment of the `SignerHelper` contract shown below is just for the purpose of testing; for the testnet / mainnet, a SignerHelper will be deployed for use;
+
+```
+async function setupForDeposit() {
+    const [governorWallet] = await ethers.getSigners();
+    const [, , bob] = users;
+
+    // Deploy SignerHelper contract
+    const signerHelperFactory = new SignerHelper__factory(governorWallet);
+    const SignerHelper = await signerHelperFactory.deploy();
+    // Create a hash in the same way as created by Signed contract
+    const bobHash = await SignerHelper.createHash('', bob.address, WhitelistBondDepository.address, 'supersecret');
+
+    // Set the secret on the Signed contract
+    await WhitelistBondDepository.setSecret('supersecret');
+
+    // 32 bytes of data in Uint8Array
+    const messageHashBinary = ethers.utils.arrayify(bobHash);
+
+    // To sign the 32 bytes of data, pass in the data
+    signature = await governorWallet.signMessage(messageHashBinary);
+    ...
+}
+
+```
