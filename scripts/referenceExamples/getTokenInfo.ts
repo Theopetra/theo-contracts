@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import { ethers, getUnnamedAccounts } from 'hardhat';
-import {TheopetraERC20Token__factory} from "../typechain-types";
+import {TheopetraERC20Token__factory} from "../../typechain-types";
 dotenv.config();
 
 const tokenNameAndSymbol = async () => {

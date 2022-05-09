@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import { ethers, getNamedAccounts } from 'hardhat';
-import {StakingDistributor__factory, STheopetra__factory, TheopetraAuthority__factory, TheopetraStaking__factory, TheopetraTreasury, TheopetraTreasury__factory} from "../typechain-types";
+import {StakingDistributor__factory, STheopetra__factory, TheopetraAuthority__factory, TheopetraStaking__factory, TheopetraTreasury, TheopetraTreasury__factory} from "../../typechain-types";
 dotenv.config();
 
 // Some contracts need permissions enabled on them, or need initializing

@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import { ethers, getUnnamedAccounts } from 'hardhat';
-import { TheopetraBondDepository__factory, IERC20, IERC20__factory } from '../typechain-types';
+import { TheopetraBondDepository__factory, IERC20, IERC20__factory } from '../../typechain-types';
 dotenv.config();
 
 // Note re whitelist bond depo:

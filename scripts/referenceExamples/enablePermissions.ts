@@ -12,9 +12,9 @@ import {
   TheopetraTreasury__factory,
   TheopetraYieldReporter__factory,
   WhitelistTheopetraBondDepository__factory,
-} from '../typechain-types';
+} from '../../typechain-types';
 dotenv.config();
-import { waitFor } from '../test/utils';
+import { waitFor } from '../../test/utils';
 
 // This script shows basic permissions (that will be commonly required by contracts), which have been enabled or set up
 // This includes showing that sTHEO and pTHEO have been initialized (calls made to `initialize` on sTheo and pTheo)
