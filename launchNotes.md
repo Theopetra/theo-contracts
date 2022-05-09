@@ -64,7 +64,7 @@ Numerous methods within the contracts require certain permissions to be set, and
     await waitFor(Distributor.setStaking(StakingLocked.address));
 ```
 
-Further information on and demonstration of the above permissions being enabled can be found within the file `/reference/scripts/enablePermissions.ts`
+Further information on and demonstration of the above permissions being enabled can be found within the file `/scripts/referenceExamples/enablePermissions.ts`
 
 ### Minting THEO
 
