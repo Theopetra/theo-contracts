@@ -8,6 +8,23 @@
 
 ## Contract Setup
 
+### Constructor arguments
+The constructor arguments used for each deployed contract can be found within the relevant deployment script, in the `/deploy` folder.
+For example, the arguments for TheopetraStaking (see `/deploy/005_deploy_staking.ts`):
+
+```
+    args = [
+      TheopetraERC20Token.address,
+      sTheopetraERC20.address,
+      epochLength,
+      firstEpochNumber,
+      firstEpochTime,
+      stakingTerm,
+      TheopetraAuthority.address,
+      Treasury.address,
+    ];
+```
+
 ### Commonly used permissions, and initialization of staking tokens
 Numerous methods within the contracts require certain permissions to be set, and for sTHEO and pTHEO to be initialized. This has already been carried out for the contracts that are deployed to Rinkeby. The snippet below shows a summary of the relevant methods used to set up permissions and initialize sTHEO and pTHEO (code taken from `deploy/setup/setupIntegration.ts` within the branch `sn/rinkeby-testnet-deploy-new-testing`, which was also used to deploy the contracts to the Rinkeby network):
 
@@ -142,7 +159,7 @@ For more information about the method arguments used above, please see the test 
 
 #### Performance update
 
-For successful calls to `marketPrice` (during `deposit`), there needs to be some setup in the Treasury and YieldReporter. A helper function showing an example of this is shown below (taken from `test/utils/index.ts`), please see `BondDepository.test.ts` for more context on how this helper function is used:
+For successful calls to `marketPrice` (during `deposit`), there needs to be some setup in the Treasury and YieldReporter, to get values for deltaTokenPrice and deltaTreasuryYield. A helper function showing an example of this is shown below (taken from `test/utils/index.ts`), please see `BondDepository.test.ts` for more context on how this helper function is used:
 
 ```
 export async function performanceUpdate<T>(
@@ -173,8 +190,26 @@ export async function performanceUpdate<T>(
 }
 ```
 
-### Updating bonding rates
+#### Updating bonding rates
 
 The Discount Rate Return Bond (Drb) and Discount Rate Return Yield (Dyb) are initially set during `create`, and can subsequently be updated via `setDiscountRateBond` and `setDiscountRateYield`
+
+
+### StakingDistributor
+
+#### addRecipient
+
+A recipient for distributions needs to be added in the await Distributor.addRecipient(Staking.address, expectedStartRateUnlocked, expectedDrs, expectedDys, isLocked); contract, before `distribute` can be successfully called.
+See for example the following, taken from within the beforeEach block of `StakingDistributor.test.ts`:
+
+```
+await Distributor.addRecipient(Staking.address, expectedStartRateUnlocked, expectedDrs, expectedDys, isLocked);
+```
+
+For further context, see also the comments in `addRecipient` and `distribute`, in `StakingDistributor.sol`.
+
+#### Reward rates
+
+In order to calculate reward rates, the Treasury needs to be set for calls to its methods  `deltaTokenPrice` and `deltaTreasuryYield`. An example of such setup can be found elsewhere, in the section 'Performance update' above.
 
 
