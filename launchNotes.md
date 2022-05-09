@@ -4,11 +4,10 @@
 - [ ] In Distributor deploy script: `epochLength` and `nextEpoch` to be updated as needed for other networks
 - [ ] Testing very large deposits to the bond depo with e2e testing (with sTHEO supply increasing via rebasing)
 
-
-
 ## Contract Setup
 
 ### Constructor arguments
+
 The constructor arguments used for each deployed contract can be found within the relevant deployment script, in the `/deploy` folder.
 For example, the arguments for TheopetraStaking (see `/deploy/005_deploy_staking.ts`):
 
@@ -26,7 +25,8 @@ For example, the arguments for TheopetraStaking (see `/deploy/005_deploy_staking
 ```
 
 ### Commonly used permissions, and initialization of staking tokens
-Numerous methods within the contracts require certain permissions to be set, and for sTHEO and pTHEO to be initialized. This has already been carried out for the contracts that are deployed to Rinkeby. The snippet below shows a summary of the relevant methods used to set up permissions and initialize sTHEO and pTHEO (code taken from `deploy/setup/setupIntegration.ts` within the branch `sn/rinkeby-testnet-deploy-new-testing`, which was also used to deploy the contracts to the Rinkeby network):
+
+Numerous methods within the contracts require certain permissions to be set, and for sTHEO and pTHEO to be initialized. This has already been carried out for the contracts that are deployed to Rinkeby. The snippet below shows a summary of the relevant methods used to set up permissions and initialize sTHEO and pTHEO (code taken from `deploy/setup/setupIntegration.ts`):
 
 ```
     /* ======== Setup for `Treasury.mint` (when `TheopetraBondDepository.deposit` is called) ======== */
@@ -64,15 +64,17 @@ Numerous methods within the contracts require certain permissions to be set, and
     await waitFor(Distributor.setStaking(StakingLocked.address));
 ```
 
-Further information on and demonstration of the above permissions being enabled can be found in the branch `sn/rinkeby-testnet-enable-basic-permissions` within the file `scripts/enablePermissions.ts`
-
+Further information on and demonstration of the above permissions being enabled can be found within the file `/reference/scripts/enablePermissions.ts`
 
 ### Minting THEO
+
 For users to bond or stake, THEO must first be available (minted). An example of minting THEO (taken from `e2e.test.ts`) is shown below
+
 ```
     await TheopetraERC20Token.connect(treasurySigner).mint(WhitelistBondDepository.address, '10000000000000000'); // 1e16
 ```
-`mint` can only be successfully called by the vault (`onlyVault`), which in the example above is `treasurySigner`
+
+`mint` can only be successfully called by the vault (owing to the function modifier `onlyVault`), which in the example above is `treasurySigner`
 
 #### First call to `mint`, please note:
 
@@ -83,7 +85,7 @@ The amount of new tokens minted is limited to at most 5% of the initial supply o
 
 For example, if -- when mint is called for the first time on the contract -- the mint `amount_` is 100, the cap on minting will then be set as 5. Any future calls to mint will mint at most 5 THEO tokens. e.g., a request to mint 50 tokens, `mint(<address>, 50)` will mint only 5 tokens.
 
- Therefore care should be taken to ensure that the `amount_` used for the first call to `mint` is correct as desired/needed.
+Therefore care should be taken to ensure that the `amount_` used for the first call to `mint` is correct as desired/needed.
 
 ### WhitelistTheopetraBondDepository
 
@@ -104,9 +106,10 @@ In addition, in the test-based example below, a mock (`AggregatorMockUSDC`) has 
     );
 ```
 
-For more information about the method arguments used above, please see the test file `WhitelistBondDepository.test.ts`, as well as the comments within the `create` method in `WhitelistBondDepository.sol`. Furthermore, please also see comments within the `deposit` method, which also relate to arguments used during market creation; For example information on  `market.capacity` within `deposit` is important to note, because the market capacity can prevent deposits depending on its value (setting `market.capacity` higher during market creation will allow for larger deposits).
+For more information about the method arguments used above, please see the test file `WhitelistBondDepository.test.ts`, as well as the comments within the `create` method in `WhitelistBondDepository.sol`. Furthermore, please also see comments within the `deposit` method, which also relate to arguments used during market creation; For example information on `market.capacity` within `deposit` is important to note, because the market capacity can prevent deposits depending on its value (setting `market.capacity` higher during market creation will allow for larger deposits).
 
 #### Signing
+
 Addresses for whitelisting should be hashed using SignerHelper -- A script can be used for this purpose, to itterate over addresses and, in a similar way to that shown below, to create hashes that can then be signed by the `whitelistSigner` as set within `TheopetraAuthority` (when initially deployed, the `whitelistSigner` is the governor):
 
 ```
@@ -156,10 +159,9 @@ Below is an example of creating a market for the TheopetraBondDepository, taken 
 
 For more information about the method arguments used above, please see the test file `BondDepository.test.ts`, as well as the comments within the `create` method in `BondDepository.sol`. Furthermore, please also see the use of variables within the `deposit` method; For example, `market.maxPayout` used within `deposit` is important to note, because this can prevent deposits depending on its value (setting `market.maxPayout` higher during market creation will allow for larger deposits) -- Examples of this, as well as the importance of other variables used during market creation can be found within the describe blocks `Deposit` and `Create market` in `BondDepository.test.ts`.
 
-
 #### Performance update
 
-For successful calls to `marketPrice` (during `deposit`), there needs to be some setup in the Treasury and YieldReporter, to get values for deltaTokenPrice and deltaTreasuryYield. A helper function showing an example of this is shown below (taken from `test/utils/index.ts`), please see `BondDepository.test.ts` for more context on how this helper function is used:
+For successful calls to `marketPrice` (during `deposit`), there needs to be some setup in the Treasury and YieldReporter, to get values for deltaTokenPrice and deltaTreasuryYield. A helper function showing an example of this is shown below (adapted from `test/utils/index.ts`), please see `BondDepository.test.ts` for more context on how this helper function is used:
 
 ```
 export async function performanceUpdate<T>(
@@ -183,7 +185,7 @@ export async function performanceUpdate<T>(
 
   ...
 
-  // If not using the mock, report a couple of yields using the Yield Reporter (for use when calculating deltaTreasuryYield)
+  // Report a couple of yields using the Yield Reporter (for use when calculating deltaTreasuryYield)
   // Difference in reported yields is chosen to be relatively low, to avoid hiting the maximum rate (cap) when calculating the nextRewardRate
   await waitFor(YieldReporter.reportYield(50_000_000_000));
   await waitFor(YieldReporter.reportYield(65_000_000_000));
@@ -194,12 +196,11 @@ export async function performanceUpdate<T>(
 
 The Discount Rate Return Bond (Drb) and Discount Rate Return Yield (Dyb) are initially set during `create`, and can subsequently be updated via `setDiscountRateBond` and `setDiscountRateYield`
 
-
 ### StakingDistributor
 
 #### addRecipient
 
-A recipient for distributions needs to be added in the await Distributor.addRecipient(Staking.address, expectedStartRateUnlocked, expectedDrs, expectedDys, isLocked); contract, before `distribute` can be successfully called.
+A recipient(s) (Staking contract(s)) for distributions needs to be added in the StakingDistributor contract, before `distribute` can be successfully called.
 See for example the following, taken from within the beforeEach block of `StakingDistributor.test.ts`:
 
 ```
@@ -210,6 +211,4 @@ For further context, see also the comments in `addRecipient` and `distribute`, i
 
 #### Reward rates
 
-In order to calculate reward rates, the Treasury needs to be set for calls to its methods  `deltaTokenPrice` and `deltaTreasuryYield`. An example of such setup can be found elsewhere, in the section 'Performance update' above.
-
-
+In order to calculate reward rates, the Treasury needs to be setup for calls to its methods `deltaTokenPrice` and `deltaTreasuryYield`. An example of such setup can be found elsewhere, in the section 'Performance update' above.
