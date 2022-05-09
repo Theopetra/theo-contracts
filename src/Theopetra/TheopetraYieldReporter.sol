@@ -84,10 +84,10 @@ contract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {
      * @notice reports a yield value
      * @param  _amount  yield value to report
      * @return uint256  index of the reported yield
-     * @dev reverts if called by a non-policy address
+     * @dev reverts if called by a non-manager address
      * @dev emits a ReportYield event
      */
-    function reportYield(int256 _amount) external onlyPolicy returns (uint256) {
+    function reportYield(int256 _amount) external onlyManager returns (uint256) {
         yields[++currentIndex] = _amount;
         emit ReportYield(currentIndex, _amount);
         return currentIndex;
