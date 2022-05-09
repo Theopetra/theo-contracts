@@ -87,8 +87,10 @@ In addition, in the test-based example below, a mock (`AggregatorMockUSDC`) has 
     );
 ```
 
+For more information about the method arguments used above, please see the comments on the `create` method in `WhitelistBondDepository.sol`
+
 #### Signing
-Note that the deployment of the `SignerHelper` contract shown below is just for the purpose of testing; for the testnet / mainnet, a SignerHelper will be deployed for use;
+Addresses for whitelisting should be hashed using SignerHelper -- A script can be used for this purpose, to itterate over addresses and, in a similar way to that shown below, to create hashes that can then be signed by the `whitelistSigner` as set within `TheopetraAuthority` (when initially deployed, the `whitelistSigner` is the governor):
 
 ```
 async function setupForDeposit() {
@@ -113,3 +115,5 @@ async function setupForDeposit() {
 }
 
 ```
+
+Further examples of signature verification can be found within `WhitelistBondDepository.test.ts` in the describe block `'Deposit signature verification'`
