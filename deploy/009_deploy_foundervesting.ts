@@ -29,33 +29,15 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   if (chainId === '1337') {
     const captableAddresses = CAPTABLE.addresses;
     captableAddresses[0] = deployer;
-    args = [
-      TheopetraAuthority.address,
-      args[1],
-      args[2],
-      args[3],
-      args[4],
-      args[5],
-      args[6],
-      args[7],
-    ];
-  };
+    args = [TheopetraAuthority.address, args[1], args[2], args[3], args[4], args[5], args[6], args[7]];
+  }
 
   if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
-    const {TreasuryMock, TheopetraERC20Mock } = await getNamedMockAddresses(hre);
+    const { TreasuryMock, TheopetraERC20Mock } = await getNamedMockAddresses(hre);
     const captableAddresses = CAPTABLE.addresses;
     captableAddresses[0] = deployer;
-    args = [
-      TheopetraAuthority.address,
-      TreasuryMock,
-      TheopetraERC20Mock,
-      args[3],
-      args[4],
-      args[5],
-      args[6],
-      args[7],
-    ];
-  };
+    args = [TheopetraAuthority.address, TreasuryMock, TheopetraERC20Mock, args[3], args[4], args[5], args[6], args[7]];
+  }
 
   await deploy(CONTRACTS.founderVesting, {
     from: deployer,

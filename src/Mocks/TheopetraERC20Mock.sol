@@ -17,5 +17,4 @@ contract TheopetraERC20Mock is ERC20 {
     function burn(uint256 amount) public {
         _burn(msg.sender, amount);
     }
-
 }

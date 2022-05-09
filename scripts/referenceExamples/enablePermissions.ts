@@ -52,21 +52,27 @@ const connectContracts = async () => {
   const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
 
   // Vault address has been pushed to Treasury as part of deployment
-  console.log("Vault address (Treasury) >>>>", await TheopetraAuthority.vault());
+  console.log('Vault address (Treasury) >>>>', await TheopetraAuthority.vault());
 
   // sTHEO initialized, using Unlocked Staking contract
   // const {events} = await waitFor(STheopetra.connect(owner).initialize(TheopetraStaking.address, Treasury.address));
-  console.log("Unlocked Staking contract balance of initialized sTHEO >>>>>", (await STheopetra.balanceOf(TheopetraStaking.address)).toString());
+  console.log(
+    'Unlocked Staking contract balance of initialized sTHEO >>>>>',
+    (await STheopetra.balanceOf(TheopetraStaking.address)).toString()
+  );
 
   // pTHEO initialized, using Locked Staking contract
   // const {events} = await waitFor(PTheopetra.connect(owner).initialize(TheopetraStakingLocked.address));
-  console.log("Locked Staking contract balance of initialized pTHEO >>>>>", (await PTheopetra.balanceOf(TheopetraStakingLocked.address)).toString());
+  console.log(
+    'Locked Staking contract balance of initialized pTHEO >>>>>',
+    (await PTheopetra.balanceOf(TheopetraStakingLocked.address)).toString()
+  );
 
   /* ======== Setup for `Treasury.mint` (when `mint` is called on Treasury from StakingDistributor) ======== */
   // Set Distributor as reward manager in Treasury (to allow call to mint from Distributor when Rebasing)
   // await Treasury.connect(owner).enable(8, Distributor.address, addressZero);
   const isDistributorRewardManager = await Treasury.permissions(8, Distributor.address);
-  console.log("Is Distributor enabled as Reward Manager? >>>>>>", isDistributorRewardManager);
+  console.log('Is Distributor enabled as Reward Manager? >>>>>>', isDistributorRewardManager);
 
   /* ======== Other setup for `TheopetraBondDepository.deposit()` ======== */
   // Enable Yield Reporter in Treasury
@@ -77,7 +83,7 @@ const connectContracts = async () => {
   // Set Bond Depo as reward manager in Treasury (to allow call to mint from NoteKeeper when adding new note)
   // await waitFor(Treasury.connect(owner).enable(8, BondDepository.address, addressZero));
   const isBondDepoRewardManager = await Treasury.permissions(8, BondDepository.address);
-  console.log("Is Bond Depo enabled as Reward manager? >>>>>", isBondDepoRewardManager);
+  console.log('Is Bond Depo enabled as Reward manager? >>>>>', isBondDepoRewardManager);
 
   /* ======== Setup to allow Pushing Claim during `TheopetraBondDepository.redeem()` and `WhitelistTheopetraBondDepository.redeem()` ======== */
   // Set Bond Depo in Staking, to allow bond depo to push claims to user when they redeem a note
@@ -104,9 +110,9 @@ const connectContracts = async () => {
   /* ======== Distributor and Staking setup  ======== */
   // Set Distributor on Staking (unlocked) and StakingLocked contracts
   // await waitFor(TheopetraStaking.connect(owner).setContract(0, Distributor.address));
-  console.log("Distributor Address set in Unlocked Staking >>>>", await TheopetraStaking.distributor());
+  console.log('Distributor Address set in Unlocked Staking >>>>', await TheopetraStaking.distributor());
   // await waitFor(TheopetraStakingLocked.connect(owner).setContract(0, Distributor.address));
-  console.log("Distributor Address set in Locked Staking >>>>", await TheopetraStakingLocked.distributor());
+  console.log('Distributor Address set in Locked Staking >>>>', await TheopetraStakingLocked.distributor());
 
   // Set staking contracts on Distributor
   // await waitFor(Distributor.connect(owner).setStaking(TheopetraStaking.address));

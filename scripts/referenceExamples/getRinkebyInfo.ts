@@ -9,9 +9,9 @@ const rinkebyInfo = async () => {
 
 const getRinkebyInfo = async () => {
   try {
-      await rinkebyInfo();
+    await rinkebyInfo();
   } catch (err) {
-      console.log(err);
+    console.log(err);
   }
 };
 
