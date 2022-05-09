@@ -68,11 +68,11 @@ For example, if -- when mint is called for the first time on the contract -- the
 
  Therefore care should be taken to ensure that the `amount_` used for the first call to `mint` is correct as desired/needed.
 
-### WhitelistBondDepository
+### WhitelistTheopetraBondDepository
 
 #### Creating markets
 
-Before a user can `deposit` in the WhitelistBondDepository, a market needs to be available to deposit into.
+Before a user can `deposit` in the WhitelistBondDepository, a market needs to be available to deposit into. Market creation is done using the method `create`. `create` has a function modifier that limits which account can call the function: `onlyPolicy`.
 
 Below is an example of creating a market for the WhitelistBondDepository, taken from within `WhitelistBondDepository.test.ts`. In this test example, a mock has been used for the USDC token (and should therefore be replaced with the appropriate address of the actual USDC token, on whichever network is needed).
 In addition, in the test-based example below, a mock (`AggregatorMockUSDC`) has been used in place of the Chainlink Aggregator. On the Rinkeby network, the actual aggregator contract (the code for which is found within this repo in `types/PriceConsumerV3.sol`) can be used. Please that this repo does not contain a deployment script for the PriceConsumer. Instead, for the time being, the contract has simply been deployed to Rinkeby via Remix, at the address `0x4a6057191E56647a10433A732611A4B45D9169D0`
@@ -87,7 +87,7 @@ In addition, in the test-based example below, a mock (`AggregatorMockUSDC`) has 
     );
 ```
 
-For more information about the method arguments used above, please see the comments on the `create` method in `WhitelistBondDepository.sol`
+For more information about the method arguments used above, please see the test file `WhitelistBondDepository.test.ts`, as well as the comments within the `create` method in `WhitelistBondDepository.sol`. Furthermore, please also see comments within the `deposit` method, which also relate to arguments used during market creation; For example information on  `market.capacity` within `deposit` is important to note, because the market capacity can prevent deposits depending on its value (setting `market.capacity` higher during market creation will allow for larger deposits).
 
 #### Signing
 Addresses for whitelisting should be hashed using SignerHelper -- A script can be used for this purpose, to itterate over addresses and, in a similar way to that shown below, to create hashes that can then be signed by the `whitelistSigner` as set within `TheopetraAuthority` (when initially deployed, the `whitelistSigner` is the governor):
@@ -117,3 +117,64 @@ async function setupForDeposit() {
 ```
 
 Further examples of signature verification can be found within `WhitelistBondDepository.test.ts` in the describe block `'Deposit signature verification'`
+
+### TheopetraBondDepository
+
+#### Creating markets
+
+Before a user can `deposit` in the TheopetraBondDepository, a market needs to be available to deposit into. Market creation is done using the method `create`. `create` has a function modifier that limits which account can call the function: `onlyPolicy`.
+
+Below is an example of creating a market for the TheopetraBondDepository, taken from within `BondDepository.test.ts`. In this test example, a mock has been used for the USDC token (and should therefore be replaced with the appropriate address of the actual USDC token, on whichever network is needed).
+
+```
+    await BondDepository.create(
+      UsdcTokenMock.address,
+      [capacity, initialPrice, buffer],
+      [capacityInQuote, fixedTerm],
+      [vesting, conclusion],
+      [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+      [depositInterval, tuneInterval]
+    );
+```
+
+For more information about the method arguments used above, please see the test file `BondDepository.test.ts`, as well as the comments within the `create` method in `BondDepository.sol`. Furthermore, please also see the use of variables within the `deposit` method; For example, `market.maxPayout` used within `deposit` is important to note, because this can prevent deposits depending on its value (setting `market.maxPayout` higher during market creation will allow for larger deposits) -- Examples of this, as well as the importance of other variables used during market creation can be found within the describe blocks `Deposit` and `Create market` in `BondDepository.test.ts`.
+
+
+#### Performance update
+
+For successful calls to `marketPrice` (during `deposit`), there needs to be some setup in the Treasury and YieldReporter. A helper function showing an example of this is shown below (taken from `test/utils/index.ts`), please see `BondDepository.test.ts` for more context on how this helper function is used:
+
+```
+export async function performanceUpdate<T>(
+  Treasury: TheopetraTreasury,
+  YieldReporter: TheopetraYieldReporter | YieldReporterMock,
+  BondingCalculatorAddress: string
+): Promise<void & T> {
+
+  ...
+
+  // Set the address of the bonding calculator
+  await Treasury.setTheoBondingCalculator(BondingCalculatorAddress);
+
+  // Move forward 8 hours to allow tokenPerformanceUpdate to update contract state for token price
+  // current token price will subsequently be updated, last token price will still be zero
+  await moveTimeForward(60 * 60 * 8);
+  await Treasury.tokenPerformanceUpdate();
+  // Move forward in time again to update again, this time current token price becomes last token price
+  await moveTimeForward(60 * 60 * 8);
+  await Treasury.tokenPerformanceUpdate();
+
+  ...
+
+  // If not using the mock, report a couple of yields using the Yield Reporter (for use when calculating deltaTreasuryYield)
+  // Difference in reported yields is chosen to be relatively low, to avoid hiting the maximum rate (cap) when calculating the nextRewardRate
+  await waitFor(YieldReporter.reportYield(50_000_000_000));
+  await waitFor(YieldReporter.reportYield(65_000_000_000));
+}
+```
+
+### Updating bonding rates
+
+The Discount Rate Return Bond (Drb) and Discount Rate Return Yield (Dyb) are initially set during `create`, and can subsequently be updated via `setDiscountRateBond` and `setDiscountRateYield`
+
+
