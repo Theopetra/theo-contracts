@@ -12,6 +12,9 @@ import {
   WhitelistTheopetraBondDepository,
   AggregatorMockETH,
   SignerHelper__factory,
+  TheopetraStaking,
+  TheopetraERC20Token,
+  STheopetra,
 } from '../typechain-types';
 
 const setup = deployments.createFixture(async () => {
@@ -56,6 +59,9 @@ describe.only('WethHelper', function () {
   let YieldReporter: any;
   let WETH: WETH9;
   let AggregatorMockETH: AggregatorMockETH;
+  let Staking: TheopetraStaking;
+  let TheopetraERC20Token: TheopetraERC20Token;
+  let sTheo: STheopetra;
   let users: any;
   let conclusion: number;
   let block: any;
@@ -71,12 +77,14 @@ describe.only('WethHelper', function () {
       BondingCalculatorMock,
       WhitelistBondDepository,
       AggregatorMockETH,
+      Staking,
+      TheopetraERC20Token,
+      sTheo,
       users,
     } = await setup());
 
-
     // Set WethHelper address on Whitelist Bond Depo contract
-    await waitFor(WhitelistBondDepository.setWethHelper(WethHelperBondDepo.address))
+    await waitFor(WhitelistBondDepository.setWethHelper(WethHelperBondDepo.address));
 
     block = await ethers.provider.getBlock('latest');
     conclusion = block.timestamp + timeToConclusion;
@@ -145,13 +153,13 @@ describe.only('WethHelper', function () {
       await Treasury.setTheoBondingCalculator(BondingCalculatorMock.address);
     });
 
-    describe('Regular Bond Depo', function () {
+    describe('with Bond Depo (not Whitelist)', function () {
+      // Use a mock signature, as deposit is not being made to the Whitelist Bond Depo
+      const mockSignature = [0x000000000000000000000000000000000000000000000000000000000000000];
+      const isWhitelist = false;
+
       it('can receive ETH which is then deposited as WETH for a user, in a bond market', async function () {
         const [, bob] = users;
-        const isWhitelist = false;
-
-        // Use a mock signature, as deposit is not being made to the Whitelist Bond Depo
-        const mockSignature = [0x000000000000000000000000000000000000000000000000000000000000000];
 
         const { events } = await waitFor(
           bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, false, isWhitelist, mockSignature, {
@@ -174,10 +182,6 @@ describe.only('WethHelper', function () {
 
       it('will revert if the msg.value is zero', async function () {
         const [, bob] = users;
-        const isWhitelist = false;
-
-        // Use a mock signature, as deposit is not being made to the Whitelist Bond Depo
-        const mockSignature = [0x000000000000000000000000000000000000000000000000000000000000000];
 
         await expect(
           bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, false, isWhitelist, mockSignature, {
@@ -185,18 +189,64 @@ describe.only('WethHelper', function () {
           })
         ).to.be.revertedWith('No value');
       });
+
+      it('should stake the payout if autostake is true', async function () {
+        const [, bob] = users;
+        const autoStake = true;
+
+        const initialStakingTheoBalance = await TheopetraERC20Token.balanceOf(Staking.address);
+
+        const { events } = await waitFor(
+          bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, autoStake, isWhitelist, mockSignature, {
+            value: ethers.utils.parseEther('1'),
+          })
+        );
+
+        const newStakingTHEOBalance = await TheopetraERC20Token.balanceOf(Staking.address);
+        expect(Number(initialStakingTheoBalance)).to.be.lessThan(Number(newStakingTHEOBalance));
+      });
+
+      it('allows a user to bond then redeem', async function () {
+        const [, bob] = users;
+        const autoStake = true;
+        const bobInitialBalance = Number(await sTheo.balanceOf(bob.address));
+        await waitFor(
+          bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, autoStake, isWhitelist, mockSignature, {
+            value: ethers.utils.parseEther('1'),
+          })
+        );
+
+        const latestBlock = await ethers.provider.getBlock('latest');
+        const newTimestampInSeconds = latestBlock.timestamp + vesting * 2;
+        await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+
+        await BondDepository.redeemAll(bob.address);
+        const bobFinalBalance = Number(await sTheo.balanceOf(bob.address));
+        expect(bobFinalBalance).to.be.greaterThan(bobInitialBalance);
+      });
     });
 
-    describe('Whitelist Bond Depo', function () {
+    describe('with Whitelist Bond Depo', function () {
+      const isWhitelist = true;
+
       beforeEach(async function () {
         await setupForWhitelistDeposit();
       });
 
+      it('reverts if the user is not whitelisted', async function () {
+        const [, , carol] = users;
+
+        await expect(
+          carol.WethHelper.deposit(bid, initialPrice, carol.address, carol.address, false, isWhitelist, signature, {
+            value: ethers.utils.parseEther('1'),
+          })
+        ).to.be.revertedWith('Signature verification failed');
+      });
+
       it('can receive ETH which is then deposited as WETH for a user, in a bond market', async function () {
         const [, bob] = users;
-        const isWhitelist = true;
 
-        const { events } = await waitFor(
+        await waitFor(
           bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, false, isWhitelist, signature, {
             value: ethers.utils.parseEther('1'),
           })
@@ -204,6 +254,25 @@ describe.only('WethHelper', function () {
 
         const bobNotesIndexes = await WhitelistBondDepository.indexesFor(bob.address);
         expect(bobNotesIndexes.length).to.equal(1);
+      });
+
+      it('allows a user to bond and then redeem for THEO', async function () {
+        const [, bob] = users;
+        const initialBobBalance = await bob.TheopetraERC20Token.balanceOf(bob.address);
+
+        await waitFor(
+          bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, false, isWhitelist, signature, {
+            value: ethers.utils.parseEther('1'),
+          })
+        );
+
+        const latestBlock = await ethers.provider.getBlock('latest');
+        const newTimestampInSeconds = latestBlock.timestamp + vesting * 2;
+        await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+
+        await expect(WhitelistBondDepository.redeemAll(bob.address)).to.not.be.reverted;
+        const finalBobBalance = await bob.TheopetraERC20Token.balanceOf(bob.address);
+        expect(Number(finalBobBalance)).to.be.greaterThan(Number(initialBobBalance));
       });
     });
   });
