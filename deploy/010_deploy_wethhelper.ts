@@ -10,18 +10,23 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
   const chainId = await getChainId();
-  let args: any = [];
-
-  // TODO: Update args to use WETH address when deploying to live network
 
   const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
   const TheopetraBondDepository = await deployments.get(CONTRACTS.bondDepo);
   const WhitelistTheopetraBondDepository = await deployments.get(CONTRACTS.whitelistBondDepo);
 
+  const args = [TheopetraAuthority.address, TheopetraBondDepository.address, WhitelistTheopetraBondDepository.address];
 
+  // Add WETH address, depending on network
   if(chainId === '1337'){
     const { WETH9 } = await getNamedMockAddresses(hre);
-    args = [TheopetraAuthority.address, WETH9, TheopetraBondDepository.address, WhitelistTheopetraBondDepository.address];
+    args.unshift(WETH9);
+  } else if (chainId === '4') {
+    // Rinkeby network WETH address
+    args.unshift('0xc778417E063141139Fce010982780140Aa0cD5Ab')
+  } else if (chainId === '1') {
+    // Mainnet WETH address
+    args.unshift('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2')
   }
 
   await deploy(CONTRACTS.WethHelper, {

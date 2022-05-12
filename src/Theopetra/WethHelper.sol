@@ -12,7 +12,7 @@ contract WethHelper is Signed {
     IBondDepository public bondDepo;
     IWhitelistBondDepository public whitelistBondDepo;
 
-    constructor(ITheopetraAuthority _authority, address _weth, address _bondDepo, address _whitelistBondDepo) TheopetraAccessControlled(_authority) {
+    constructor(address _weth, ITheopetraAuthority _authority, address _bondDepo, address _whitelistBondDepo) TheopetraAccessControlled(_authority) {
         weth = IWETH9(_weth);
         bondDepo = IBondDepository(_bondDepo);
         whitelistBondDepo = IWhitelistBondDepository(_whitelistBondDepo);
