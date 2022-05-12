@@ -13,7 +13,7 @@ import {
   TheopetraStaking,
   TheopetraERC20Token,
   TheopetraTreasury,
-  WethHelper
+  WethHelper,
 } from '../typechain-types';
 import { setupUsers } from './utils';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
@@ -886,22 +886,16 @@ describe('Whitelist Bond depository', function () {
   describe('setWethHelper', function () {
     it('will revert if called with zero address', async function () {
       const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
-      await expect(
-        WhitelistBondDepository.setWethHelper(addressZero)
-      ).to.be.revertedWith('Zero address');
+      await expect(WhitelistBondDepository.setWethHelper(addressZero)).to.be.revertedWith('Zero address');
     });
 
     it('will revert if called by an address that is not the governor', async function () {
       const [, , bob] = users;
-      await expect(
-        bob.WhitelistBondDepository.setWethHelper(WethHelper.address)
-      ).to.be.revertedWith('UNAUTHORIZED');
-    })
+      await expect(bob.WhitelistBondDepository.setWethHelper(WethHelper.address)).to.be.revertedWith('UNAUTHORIZED');
+    });
 
-    it('allows the governor to set the address for the WethHelper contract', async function (){
-      await expect(
-        WhitelistBondDepository.setWethHelper(WethHelper.address)
-      ).to.not.be.reverted;
-    })
-  })
+    it('allows the governor to set the address for the WethHelper contract', async function () {
+      await expect(WhitelistBondDepository.setWethHelper(WethHelper.address)).to.not.be.reverted;
+    });
+  });
 });

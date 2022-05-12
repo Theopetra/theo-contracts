@@ -20,7 +20,7 @@ import {
   BondingCalculatorMock,
   YieldReporterMock,
   PTheopetra,
-  WethHelper
+  WethHelper,
 } from '../typechain-types';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTWITHMOCKS } from './constants';
 
@@ -62,6 +62,6 @@ export async function getContracts(currentContract?: string): Promise<any> {
       isWithMocks && currentContract !== CONTRACTS.staking
         ? <StakingMock>await ethers.getContract(MOCKSWITHARGS.stakingMock)
         : <TheopetraStaking>await ethers.getContract(CONTRACTS.stakingLocked),
-    WethHelper: <WethHelper>await ethers.getContract(CONTRACTS.WethHelper)
+    WethHelper: <WethHelper>await ethers.getContract(CONTRACTS.WethHelper),
   };
 }

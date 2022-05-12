@@ -18,21 +18,21 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const args = [TheopetraAuthority.address, TheopetraBondDepository.address, WhitelistTheopetraBondDepository.address];
 
   // Add WETH address, depending on network
-  if(chainId === '1337'){
+  if (chainId === '1337') {
     const { WETH9 } = await getNamedMockAddresses(hre);
     args.unshift(WETH9);
   } else if (chainId === '4') {
     // Rinkeby network WETH address
-    args.unshift('0xc778417E063141139Fce010982780140Aa0cD5Ab')
+    args.unshift('0xc778417E063141139Fce010982780140Aa0cD5Ab');
   } else if (chainId === '1') {
     // Mainnet WETH address
-    args.unshift('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2')
+    args.unshift('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
   }
 
   await deploy(CONTRACTS.WethHelper, {
     from: deployer,
     log: true,
-    args
+    args,
   });
 };
 

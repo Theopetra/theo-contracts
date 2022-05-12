@@ -13,7 +13,7 @@ export const CONTRACTS: Record<string, string> = {
   pTheo: 'pTheopetra',
   founderVesting: 'TheopetraFounderVesting',
   stakingLocked: 'TheopetraStakingLocked',
-  WethHelper: 'WethHelper'
+  WethHelper: 'WethHelper',
 };
 
 export const MOCKS: Record<string, string> = {
@@ -55,9 +55,9 @@ export const CAPTABLE = {
     100_000, // 0.01%
     50_000, // 0.005%
     10_000, // 0.001%
-    5_000,  // 0.0005%
-  ]
-}
+    5_000, // 0.0005%
+  ],
+};
 
 export const UNLOCKSCHEDULE = {
   times: [
@@ -76,4 +76,4 @@ export const UNLOCKSCHEDULE = {
     833_333_333, // 83.3% or 5/6
     1_000_000_000, // 100%
   ],
-}
+};

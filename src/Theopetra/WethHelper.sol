@@ -12,7 +12,12 @@ contract WethHelper is Signed {
     IBondDepository public bondDepo;
     IWhitelistBondDepository public whitelistBondDepo;
 
-    constructor(address _weth, ITheopetraAuthority _authority, address _bondDepo, address _whitelistBondDepo) TheopetraAccessControlled(_authority) {
+    constructor(
+        address _weth,
+        ITheopetraAuthority _authority,
+        address _bondDepo,
+        address _whitelistBondDepo
+    ) TheopetraAccessControlled(_authority) {
         weth = IWETH9(_weth);
         bondDepo = IBondDepository(_bondDepo);
         whitelistBondDepo = IWhitelistBondDepository(_whitelistBondDepo);
@@ -31,7 +36,7 @@ contract WethHelper is Signed {
 
         weth.deposit{ value: msg.value }();
 
-        if(_isWhitelist){
+        if (_isWhitelist) {
             verifySignature("", signature);
             weth.approve(address(whitelistBondDepo), msg.value);
             whitelistBondDepo.deposit(_id, msg.value, _maxPrice, _user, _referral, signature);

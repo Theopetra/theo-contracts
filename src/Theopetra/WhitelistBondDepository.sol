@@ -73,7 +73,7 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         address _referral,
         bytes calldata signature
     ) external override returns (DepositInfo memory depositInfo) {
-        if (msg.sender != wethHelper){
+        if (msg.sender != wethHelper) {
             verifySignature("", signature);
         }
         Market storage market = markets[_id];
