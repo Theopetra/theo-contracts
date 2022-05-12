@@ -5,7 +5,14 @@ import { setupUsers, performanceUpdate, waitFor, decodeLogs } from './utils';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
 import { getContracts } from '../utils/helpers';
 
-import { WETH9, WethHelper, BondingCalculatorMock } from '../typechain-types';
+import {
+  WETH9,
+  WethHelper,
+  BondingCalculatorMock,
+  WhitelistTheopetraBondDepository,
+  AggregatorMockETH,
+  SignerHelper__factory,
+} from '../typechain-types';
 
 const setup = deployments.createFixture(async () => {
   await deployments.fixture();
@@ -39,40 +46,51 @@ describe.only('WethHelper', function () {
   const maxBondRateVariable = 40_000_000; // 4% in decimal form (i.e. 0.04 with 9 decimals)
   const discountRateBond = 10_000_000; // 1% in decimal form (i.e. 0.01 with 9 decimals)
   const discountRateYield = 20_000_000; // 2% in decimal form (i.e. 0.02 with 9 decimals)
+  const fixedBondPrice = 10e9; // 10 USD per THEO (9 decimals), for Whitelist Bond Depo market
 
   let BondDepository: any;
   let BondingCalculatorMock: BondingCalculatorMock;
+  let WhitelistBondDepository: WhitelistTheopetraBondDepository;
   let WethHelperBondDepo: WethHelper;
   let Treasury: any;
   let YieldReporter: any;
   let WETH: WETH9;
+  let AggregatorMockETH: AggregatorMockETH;
   let users: any;
   let conclusion: number;
   let block: any;
+  let signature: any;
 
   beforeEach(async function () {
     ({
       BondDepository,
-      users,
       WETH9: WETH,
       WethHelper: WethHelperBondDepo,
       Treasury,
       YieldReporter,
       BondingCalculatorMock,
+      WhitelistBondDepository,
+      AggregatorMockETH,
+      users,
     } = await setup());
+
+
+    // Set WethHelper address on Whitelist Bond Depo contract
+    await waitFor(WhitelistBondDepository.setWethHelper(WethHelperBondDepo.address))
 
     block = await ethers.provider.getBlock('latest');
     conclusion = block.timestamp + timeToConclusion;
-
-    await BondDepository.create(
-      WETH.address,
-      [capacity, initialPrice, buffer],
-      [capacityInQuote, fixedTerm],
-      [vesting, conclusion],
-      [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
-      [depositInterval, tuneInterval]
+    // Create market in regular Bond Depo
+    await waitFor(
+      BondDepository.create(
+        WETH.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      )
     );
-
     expect(await BondDepository.isLive(bid)).to.equal(true);
 
     // Setup for successful calls to `marketPrice` (during `deposit`) when test use wired-up contracts
@@ -81,12 +99,43 @@ describe.only('WethHelper', function () {
     }
   });
 
+  async function setupForWhitelistDeposit() {
+    const [governorWallet] = await ethers.getSigners();
+    const [, bob] = users;
+
+    // Deploy SignerHelper contract
+    const signerHelperFactory = new SignerHelper__factory(governorWallet);
+    const SignerHelper = await signerHelperFactory.deploy();
+    // Create a hash in the same way as created by Signed contract
+    const bobHash = await SignerHelper.createHash('', bob.address, WethHelperBondDepo.address, 'supersecret');
+
+    // Set the secret on the Signed contract
+    await WethHelperBondDepo.setSecret('supersecret');
+
+    // 32 bytes of data in Uint8Array
+    const messageHashBinary = ethers.utils.arrayify(bobHash);
+
+    // To sign the 32 bytes of data, pass in the data
+    signature = await governorWallet.signMessage(messageHashBinary);
+
+    // Create market in Whitelist Bond Depo
+    await waitFor(
+      WhitelistBondDepository.create(
+        WETH.address,
+        AggregatorMockETH.address,
+        [capacity, fixedBondPrice],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion]
+      )
+    );
+    expect(await WhitelistBondDepository.isLive(bid)).to.equal(true);
+  }
+
   describe('Deployment', function () {
     it('it is deployed with the correct constructor arguments', async function () {
-      const wethAddress = await WethHelperBondDepo.weth();
-      const bondDepoAddress = await WethHelperBondDepo.bondDepo();
-      expect(wethAddress).to.equal(WETH.address);
-      expect(bondDepoAddress).to.equal(BondDepository.address);
+      expect(await WethHelperBondDepo.weth()).to.equal(WETH.address);
+      expect(await WethHelperBondDepo.bondDepo()).to.equal(BondDepository.address);
+      expect(await WethHelperBondDepo.whitelistBondDepo()).to.equal(WhitelistBondDepository.address);
     });
   });
 
@@ -96,36 +145,66 @@ describe.only('WethHelper', function () {
       await Treasury.setTheoBondingCalculator(BondingCalculatorMock.address);
     });
 
-    it('can receive ETH which is then deposited as WETH for a user, in a bond market', async function () {
-      const [, bob] = users;
+    describe('Regular Bond Depo', function () {
+      it('can receive ETH which is then deposited as WETH for a user, in a bond market', async function () {
+        const [, bob] = users;
+        const isWhitelist = false;
 
-      const { events } = await waitFor(
-        bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, false, {
-          value: ethers.utils.parseEther('1'),
-        })
-      );
+        // Use a mock signature, as deposit is not being made to the Whitelist Bond Depo
+        const mockSignature = [0x000000000000000000000000000000000000000000000000000000000000000];
 
-      const wethHelperBalance = await WETH.balanceOf(WethHelperBondDepo.address);
-      expect(wethHelperBalance).to.equal(0);
+        const { events } = await waitFor(
+          bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, false, isWhitelist, mockSignature, {
+            value: ethers.utils.parseEther('1'),
+          })
+        );
 
-      // Bond made for Bob
-      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
-      expect(bobNotesIndexes.length).to.equal(1);
+        const wethHelperBalance = await WETH.balanceOf(WethHelperBondDepo.address);
+        expect(wethHelperBalance).to.equal(0);
 
-      const [bondLog] = decodeLogs(events, [BondDepository]);
-      expect(bondLog.name).to.equal('Bond');
-      const [, amount] = bondLog.args;
-      expect(amount).to.equal(ethers.utils.parseEther('1'));
+        // Bond made for Bob
+        const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+        expect(bobNotesIndexes.length).to.equal(1);
+
+        const [bondLog] = decodeLogs(events, [BondDepository]);
+        expect(bondLog.name).to.equal('Bond');
+        const [, amount] = bondLog.args;
+        expect(amount).to.equal(ethers.utils.parseEther('1'));
+      });
+
+      it('will revert if the msg.value is zero', async function () {
+        const [, bob] = users;
+        const isWhitelist = false;
+
+        // Use a mock signature, as deposit is not being made to the Whitelist Bond Depo
+        const mockSignature = [0x000000000000000000000000000000000000000000000000000000000000000];
+
+        await expect(
+          bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, false, isWhitelist, mockSignature, {
+            value: 0,
+          })
+        ).to.be.revertedWith('No value');
+      });
     });
 
-    it('will revert if the msg.value is zero', async function () {
-      const [, bob] = users;
+    describe('Whitelist Bond Depo', function () {
+      beforeEach(async function () {
+        await setupForWhitelistDeposit();
+      });
 
-      await expect(
-        bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, false, {
-          value: 0,
-        })
-      ).to.be.revertedWith('No value');
+      it('can receive ETH which is then deposited as WETH for a user, in a bond market', async function () {
+        const [, bob] = users;
+        const isWhitelist = true;
+
+        const { events } = await waitFor(
+          bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, false, isWhitelist, signature, {
+            value: ethers.utils.parseEther('1'),
+          })
+        );
+
+        const bobNotesIndexes = await WhitelistBondDepository.indexesFor(bob.address);
+        expect(bobNotesIndexes.length).to.equal(1);
+      });
     });
   });
 });

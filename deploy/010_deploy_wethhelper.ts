@@ -14,11 +14,14 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   // TODO: Update args to use WETH address when deploying to live network
 
+  const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
   const TheopetraBondDepository = await deployments.get(CONTRACTS.bondDepo);
+  const WhitelistTheopetraBondDepository = await deployments.get(CONTRACTS.whitelistBondDepo);
+
 
   if(chainId === '1337'){
     const { WETH9 } = await getNamedMockAddresses(hre);
-    args = [WETH9, TheopetraBondDepository.address];
+    args = [TheopetraAuthority.address, WETH9, TheopetraBondDepository.address, WhitelistTheopetraBondDepository.address];
   }
 
   await deploy(CONTRACTS.WethHelper, {
