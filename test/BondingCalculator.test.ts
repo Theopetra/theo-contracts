@@ -18,7 +18,7 @@ const setup = deployments.createFixture(async function () {
   };
 });
 
-describe.only('Bonding Calculator (TWAP Getter)', function () {
+describe('Bonding Calculator (TWAP Getter)', function () {
   describe('Deployment', function () {
     it('can be deployed', async function () {
       await setup();
