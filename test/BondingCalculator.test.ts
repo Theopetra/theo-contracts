@@ -24,12 +24,12 @@ describe('Bonding Calculator (TWAP Getter)', function () {
       await setup();
     });
 
-    it('is deployed with the correct constructor arguments', async function (){
+    it('is deployed with the correct constructor arguments', async function () {
       const { TwapGetter } = await setup();
       // Expected values to match deploy script
-      const expectedFactoryAddress = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
-      const expectedTheoAddress = "0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b";
-      const expectedPerformanceTokenAddress = "0xc778417E063141139Fce010982780140Aa0cD5Ab";
+      const expectedFactoryAddress = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
+      const expectedTheoAddress = '0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b';
+      const expectedPerformanceTokenAddress = '0xc778417E063141139Fce010982780140Aa0cD5Ab';
       const expectedSecondsAgo = 60;
       const expectedFee = 3000;
 
@@ -38,7 +38,6 @@ describe('Bonding Calculator (TWAP Getter)', function () {
       expect((await TwapGetter.performanceToken()).toString()).to.equal(expectedPerformanceTokenAddress);
       expect(Number(await TwapGetter.fee())).to.equal(expectedFee);
       expect(Number(await TwapGetter.secondsAgo())).to.equal(expectedSecondsAgo);
-
-    })
-  })
+    });
+  });
 });
