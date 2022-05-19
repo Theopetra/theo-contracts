@@ -50,6 +50,7 @@ describe('WethHelper', function () {
   const discountRateBond = 10_000_000; // 1% in decimal form (i.e. 0.01 with 9 decimals)
   const discountRateYield = 20_000_000; // 2% in decimal form (i.e. 0.02 with 9 decimals)
   const fixedBondPrice = 10e9; // 10 USD per THEO (9 decimals), for Whitelist Bond Depo market
+  const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
 
   let BondDepository: any;
   let BondingCalculatorMock: BondingCalculatorMock;
@@ -274,6 +275,25 @@ describe('WethHelper', function () {
         const finalBobBalance = await bob.TheopetraERC20Token.balanceOf(bob.address);
         expect(Number(finalBobBalance)).to.be.greaterThan(Number(initialBobBalance));
       });
+    });
+
+    describe('with Public Pre-List Bond Depo', function () {
+      beforeEach(async function () {
+        await WethHelperBondDepo.setPublicPreList(WhitelistBondDepository.address);
+      });
+    })
+
+    describe('setPublicPreList', function () {
+      it.only('sets the address of the Public Pre-List Bond Depository contract', async function () {
+        expect(await WethHelperBondDepo.publicPreListBondDepo()).to.equal(addressZero);
+        await WethHelperBondDepo.setPublicPreList(WhitelistBondDepository.address);
+        expect(await WethHelperBondDepo.publicPreListBondDepo()).to.equal(WhitelistBondDepository.address);
+      })
+
+      it.only('will revert if called by an account other than that of the governor', async function() {
+        const [, bob] = users;
+        await expect(bob.WethHelper.setPublicPreList(WhitelistBondDepository.address)).to.be.revertedWith('UNAUTHORIZED');
+      })
     });
   });
 });
