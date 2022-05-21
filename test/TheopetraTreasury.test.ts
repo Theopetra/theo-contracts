@@ -9,7 +9,7 @@ import {
   BondingCalculatorMock,
   TheopetraYieldReporter,
 } from '../typechain-types';
-import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
+import { CONTRACTS, NEWBONDINGCALCULATORMOCK, TESTWITHMOCKS } from '../utils/constants';
 import { setupUsers, moveTimeForward, waitFor, randomIntFromInterval } from './utils';
 import { getContracts } from '../utils/helpers';
 
@@ -18,6 +18,7 @@ const setup = deployments.createFixture(async () => {
   const addressZero = '0x0000000000000000000000000000000000000000';
   const { deployer: owner } = await getNamedAccounts();
   const contracts = await getContracts(CONTRACTS.treasury);
+  const NewBondingCalculatorMock = { NewBondingCalculatorMock: await ethers.getContract(NEWBONDINGCALCULATORMOCK) };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
@@ -32,6 +33,7 @@ const setup = deployments.createFixture(async () => {
 
   return {
     ...contracts,
+    ...NewBondingCalculatorMock,
     owner,
     users,
     addressZero,
@@ -44,13 +46,23 @@ describe('TheopetraTreasury', () => {
   let BondingCalculatorMock: BondingCalculatorMock;
   let YieldReporter: TheopetraYieldReporter | YieldReporterMock;
   let TheopetraAuthority: TheopetraAuthority;
+  let NewBondingCalculatorMock: any;
   let users: any;
   let owner: any;
   let addressZero: any;
 
   beforeEach(async function () {
-    ({ Treasury, UsdcTokenMock, BondingCalculatorMock, YieldReporter, TheopetraAuthority, addressZero, users, owner } =
-      await setup());
+    ({
+      Treasury,
+      UsdcTokenMock,
+      BondingCalculatorMock,
+      YieldReporter,
+      TheopetraAuthority,
+      NewBondingCalculatorMock,
+      addressZero,
+      users,
+      owner,
+    } = await setup());
   });
 
   describe('Deployment', () => {
@@ -242,5 +254,35 @@ describe('TheopetraTreasury', () => {
       await expect(bob.Treasury.setTheoBondingCalculator(BondingCalculatorMock.address)).to.not.be.reverted;
       expect(await Treasury.getTheoBondingCalculator()).to.equal(BondingCalculatorMock.address);
     });
+
+    describe('NewBondingCalculatorMock', async function () {
+      beforeEach(async function () {
+        // set the address of the mock bonding calculator
+        await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
+      });
+
+      it.only('updates stored token prices with via call to `updatePerformanceTokenAmount`, to update deltaTokenPrice', async function () {
+              // Set initial value for performance token
+      const initialPerformanceTokenAmount = 1000000000;
+      await NewBondingCalculatorMock.setPerformanceTokenAmount(initialPerformanceTokenAmount);
+
+        await moveTimeForward(60 * 60 * 8);
+        await Treasury.tokenPerformanceUpdate();
+        // Need to call tokenPerformanceUpdate twice initially, before `lastTokenPrice` becomes non-zero (otherwise `deltaTokenPrice will revert`)
+        await moveTimeForward(60 * 60 * 8);
+        await NewBondingCalculatorMock.updatePerformanceTokenAmount(125);
+        await Treasury.tokenPerformanceUpdate();
+
+        const deltaTokenPrice = await Treasury.deltaTokenPrice();
+        expect((deltaTokenPrice).toNumber() / 10**9 * 100).to.equal(125);
+
+        await moveTimeForward(60 * 60 * 8);
+        await NewBondingCalculatorMock.updatePerformanceTokenAmount(125);
+        await Treasury.tokenPerformanceUpdate();
+
+        const deltaTokenPriceSecond = await Treasury.deltaTokenPrice();
+        expect((deltaTokenPriceSecond).toNumber() / 10**9 * 100).to.equal(125);
+      });
+    })
   });
 });
