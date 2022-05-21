@@ -2,7 +2,7 @@ import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts } from 'hardhat';
 import { TheopetraERC20Token, TheopetraAuthority } from '../typechain-types';
 import { setupUsers, waitFor } from './utils';
-import { CONTRACTS, MOCKSWITHARGS, NEWBONDINGCALCULATORMOCK } from '../utils/constants';
+import { CONTRACTS, MOCKS, MOCKSWITHARGS, NEWBONDINGCALCULATORMOCK } from '../utils/constants';
 
 
 const setup = deployments.createFixture(async () => {
@@ -10,7 +10,8 @@ const setup = deployments.createFixture(async () => {
   const { deployer: owner } = await getNamedAccounts();
   const contracts = {
     NewBondingCalculatorMock: await ethers.getContract('NewBondingCalculatorMock'),
-    TheopetraERC20Token: await ethers.getContract(CONTRACTS.theoToken)
+    TheopetraERC20Token: await ethers.getContract(CONTRACTS.theoToken),
+    Weth: await ethers.getContract(MOCKS.WETH9),
   };
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
   return {
@@ -28,7 +29,7 @@ describe.only(NEWBONDINGCALCULATORMOCK, function () {
   })
 
   describe('valuation', function () {
-    it('can return the valuation for the performance token', async function () {
+    it('can return the valuation for the performance token (for use in Treasury, via `tokenPerformanceUpdate`)', async function () {
       const {NewBondingCalculatorMock, TheopetraERC20Token} = await setup();
 
       // Set initial value for performance token
@@ -38,6 +39,21 @@ describe.only(NEWBONDINGCALCULATORMOCK, function () {
       const initialPrice = await NewBondingCalculatorMock.valuation(TheopetraERC20Token.address, 1_000_000_000);
       expect(initialPrice.toNumber()).to.equal(initialPerformanceTokenAmount);
     });
+
+    it.only('can return the valuation for THEO (for use in bond depo, via `marketPrice`)', async function (){
+      const {NewBondingCalculatorMock, Weth} = await setup();
+      // Use same values as mock bonding calculator for Theo per Weth (4000 $ per WETH; 0.01 $ per THEO)
+      const expectedTheoPerWeth = (4000 / 0.01) * 10**9 // In Theo decimals (9)
+
+      // Set Weth address on mock bonding calculator
+      await NewBondingCalculatorMock.setWethAddress(Weth.address);
+      expect(await NewBondingCalculatorMock.weth()).to.equal(Weth.address);
+
+      const wethAmount = (10**(await Weth.decimals())).toString(); // `marketPrice` calls valuation with 10**quoteTokenDecimals
+      const theoPerWeth = await NewBondingCalculatorMock.valuation(Weth.address, wethAmount);
+      expect(theoPerWeth.toString()).to.equal(expectedTheoPerWeth.toString());
+    })
+
   })
 
   describe('setInitialMockPerformanceTokenAmount', async function () {
@@ -67,6 +83,5 @@ describe.only(NEWBONDINGCALCULATORMOCK, function () {
       expect(updatedAmount.toNumber()).to.equal((initialPerformanceTokenAmount * 125 / 100) + initialPerformanceTokenAmount);
     });
 
-    it.skip('FOR TREASury can update the deltaToken price', async function() {})
   })
 })

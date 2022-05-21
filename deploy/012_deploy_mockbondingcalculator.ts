@@ -1,7 +1,6 @@
-import hre from 'hardhat';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { MOCKSWITHARGS, CONTRACTS } from '../utils/constants';
+import { CONTRACTS } from '../utils/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   try {
@@ -9,7 +8,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deploy } = deployments;
     const chainId = await getChainId();
     const { deployer } = await getNamedAccounts();
-    const factoryAddress = '0x1F98431c8aD98523631AE4a59f267346ea31F984'; // UniswapV3Factory address
 
 
     // On Hardhat or Rinkeby network
@@ -32,6 +30,3 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ['NewBondingCalculatorMock'];
-if (hre?.network?.config?.chainId === 1337 || hre?.network?.config?.chainId === 4) {
-  func.dependencies = ['MockOracleLibrary'];
-}

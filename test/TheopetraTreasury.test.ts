@@ -262,9 +262,9 @@ describe('TheopetraTreasury', () => {
       });
 
       it.only('updates stored token prices with via call to `updatePerformanceTokenAmount`, to update deltaTokenPrice', async function () {
-              // Set initial value for performance token
-      const initialPerformanceTokenAmount = 1000000000;
-      await NewBondingCalculatorMock.setPerformanceTokenAmount(initialPerformanceTokenAmount);
+        // Set initial value for performance token
+        const initialPerformanceTokenAmount = 1000000000;
+        await NewBondingCalculatorMock.setPerformanceTokenAmount(initialPerformanceTokenAmount);
 
         await moveTimeForward(60 * 60 * 8);
         await Treasury.tokenPerformanceUpdate();
@@ -274,15 +274,15 @@ describe('TheopetraTreasury', () => {
         await Treasury.tokenPerformanceUpdate();
 
         const deltaTokenPrice = await Treasury.deltaTokenPrice();
-        expect((deltaTokenPrice).toNumber() / 10**9 * 100).to.equal(125);
+        expect((deltaTokenPrice.toNumber() / 10 ** 9) * 100).to.equal(125);
 
         await moveTimeForward(60 * 60 * 8);
         await NewBondingCalculatorMock.updatePerformanceTokenAmount(125);
         await Treasury.tokenPerformanceUpdate();
 
         const deltaTokenPriceSecond = await Treasury.deltaTokenPrice();
-        expect((deltaTokenPriceSecond).toNumber() / 10**9 * 100).to.equal(125);
+        expect((deltaTokenPriceSecond.toNumber() / 10 ** 9) * 100).to.equal(125);
       });
-    })
+    });
   });
 });

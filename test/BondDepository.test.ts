@@ -2,7 +2,7 @@ import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } from 'hardhat';
 import { setupUsers, performanceUpdate, waitFor, moveTimeForward } from './utils';
 import { getContracts } from '../utils/helpers';
-import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
+import { CONTRACTS, TESTWITHMOCKS, NEWBONDINGCALCULATORMOCK } from '../utils/constants';
 import {
   BondingCalculatorMock,
   StakingMock,
@@ -20,10 +20,12 @@ const setup = deployments.createFixture(async function () {
   const { deployer: owner } = await getNamedAccounts();
 
   const contracts = await getContracts(CONTRACTS.bondDepo);
+  const NewBondingCalculatorMock = { NewBondingCalculatorMock: await ethers.getContract(NEWBONDINGCALCULATORMOCK) };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
   return {
     ...contracts,
+    ...NewBondingCalculatorMock,
     users,
     owner,
   };
@@ -62,6 +64,7 @@ describe('Bond depository', function () {
   let users: any;
   let WETH9: WETH9;
   let YieldReporter: TheopetraYieldReporter | YieldReporterMock;
+  let NewBondingCalculatorMock: any;
   const autoStake = true;
 
   async function expectedBondRateVariable(marketId: number) {
@@ -1332,4 +1335,15 @@ describe('Bond depository', function () {
       expect(notesCount).to.equal(3);
     });
   });
+
+  describe.only('market price with new mock bonding calculator', function (){
+    beforeEach(async function () {
+      // Set the address of the bonding calculator
+      await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
+    });
+
+    it.skip('', async function (){
+
+    })
+  })
 });
