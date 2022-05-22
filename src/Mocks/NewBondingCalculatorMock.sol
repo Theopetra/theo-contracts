@@ -35,11 +35,11 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
      *      when tokenIn is WETH or USDC (aka, a 'quote token'), valuation is being used for the Bond Depository (`marketPrice`)
      *      If tokenIn is WETH, the method returns the number of THEO expected per `_amount` of WETH
      *      where the number of THEO per quote token is calculated based on the following mock dollar prices:
-     *      4000 dollars per Weth
+     *      2000 dollars per Weth
      *      1 dollar per USDC
      *      0.01 dollars per THEO
-     *      THEO per WETH is 4000 / 0.01 (i.e., 400000)
-     *      THEO per USDC is 10 / 0.01 (i.e. 1000)
+     *      THEO per WETH is 2000 / 0.01 (i.e., 200000)
+     *      THEO per USDC is 1 / 0.01 (i.e. 100)
      *      THEO is 9 decimals, WETH is 18 decimals, USDC is 6 decimals
      */
     function valuation(address tokenIn, uint256 _amount) external view override returns (uint256) {
@@ -47,7 +47,9 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
 
             return performanceTokenAmount;
         } else if (tokenIn == weth) {
-            return (_amount * (400000 * 10**9)) / 10**18;
+            return (_amount * (200000 * 10**9)) / 10**18;
+        } else if (tokenIn == usdc) {
+            return (_amount * (100 * 10**9)) / 10**6;
         }
     }
 

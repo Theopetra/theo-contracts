@@ -12,6 +12,7 @@ const setup = deployments.createFixture(async () => {
     NewBondingCalculatorMock: await ethers.getContract('NewBondingCalculatorMock'),
     TheopetraERC20Token: await ethers.getContract(CONTRACTS.theoToken),
     Weth: await ethers.getContract(MOCKS.WETH9),
+    UsdcTokenMock: await ethers.getContract(MOCKS.usdcTokenMock),
   };
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
   return {
@@ -40,10 +41,10 @@ describe.only(NEWBONDINGCALCULATORMOCK, function () {
       expect(initialPrice.toNumber()).to.equal(initialPerformanceTokenAmount);
     });
 
-    it.only('can return the valuation for THEO (for use in bond depo, via `marketPrice`)', async function (){
+    it.only('can return the valuation for THEO when the quote token is WETH (for use in bond depo, via `marketPrice`)', async function (){
       const {NewBondingCalculatorMock, Weth} = await setup();
-      // Use same values as mock bonding calculator for Theo per Weth (4000 $ per WETH; 0.01 $ per THEO)
-      const expectedTheoPerWeth = (4000 / 0.01) * 10**9 // In Theo decimals (9)
+      // Use same values as mock bonding calculator for Theo per Weth (2000 $ per (W)ETH; 0.01 $ per THEO)
+      const expectedTheoPerWeth = (2000 / 0.01) * 10**9 // In Theo decimals (9)
 
       // Set Weth address on mock bonding calculator
       await NewBondingCalculatorMock.setWethAddress(Weth.address);
@@ -52,7 +53,21 @@ describe.only(NEWBONDINGCALCULATORMOCK, function () {
       const wethAmount = (10**(await Weth.decimals())).toString(); // `marketPrice` calls valuation with 10**quoteTokenDecimals
       const theoPerWeth = await NewBondingCalculatorMock.valuation(Weth.address, wethAmount);
       expect(theoPerWeth.toString()).to.equal(expectedTheoPerWeth.toString());
-    })
+    });
+
+    it.only('can return the valuation for THEO when the quote token is USDC (for use in bond depo, via `marketPrice`)', async function (){
+      const {NewBondingCalculatorMock, UsdcTokenMock} = await setup();
+      // Use same values as mock bonding calculator for Theo per Weth (2000 $ per (W)ETH; 0.01 $ per THEO)
+      const expectedTheoPerUsdc = (1 / 0.01) * 10**9 // In Theo decimals (9)
+
+      // Set Usdc address on mock bonding calculator
+      await NewBondingCalculatorMock.setUsdcAddress(UsdcTokenMock.address);
+      expect(await NewBondingCalculatorMock.usdc()).to.equal(UsdcTokenMock.address);
+
+      const usdcAmount = (10**(await UsdcTokenMock.decimals())).toString(); // `marketPrice` calls valuation with 10**quoteTokenDecimals
+      const theoPerUsdc = await NewBondingCalculatorMock.valuation(UsdcTokenMock.address, usdcAmount);
+      expect(theoPerUsdc.toString()).to.equal(expectedTheoPerUsdc.toString());
+    });
 
   })
 
