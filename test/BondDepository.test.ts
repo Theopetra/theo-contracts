@@ -92,6 +92,7 @@ describe('Bond depository', function () {
       users,
       WETH9,
       YieldReporter,
+      NewBondingCalculatorMock,
     } = await setup());
 
     const [, , bob] = users;
@@ -1336,14 +1337,61 @@ describe('Bond depository', function () {
     });
   });
 
-  describe.only('market price with new mock bonding calculator', function (){
+  describe.only('with new mock bonding calculator', function () {
     beforeEach(async function () {
-      // Set the address of the bonding calculator
+      // Set initial value for performance token
+      const initialPerformanceTokenAmount = 1000000000;
+      await NewBondingCalculatorMock.setPerformanceTokenAmount(initialPerformanceTokenAmount);
+
+      // Set Weth address on mock bonding calculator
+      await NewBondingCalculatorMock.setWethAddress(WETH9.address);
+
+      // Set Usdc address on mock bonding calculator
+      await NewBondingCalculatorMock.setUsdcAddress(UsdcTokenMock.address);
+
+      await performanceUpdate(Treasury, YieldReporter, NewBondingCalculatorMock.address);
+      // (re-)set the address of the bonding calculator
       await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
     });
 
-    it.skip('', async function (){
+    it.only('returns the correct Bond Rate Variable and Market Price', async function () {
+      // create a second market, so multiple markets are live
+      await BondDepository.create(
+        WETH9.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      );
 
-    })
-  })
+      const initialDeltaTokenPrice = await Treasury.deltaTokenPrice();
+      expect(initialDeltaTokenPrice.toNumber()).to.equal(0); // `updatePerformanceTokenAmount` has not yet been called on the mock bonding calculator
+
+      // Update the performance token amount in mock bonding calculator to result in a deltaTokenPrice of 125%
+      await NewBondingCalculatorMock.updatePerformanceTokenAmount(125);
+      await moveTimeForward(60 * 60 * 8);
+      await Treasury.tokenPerformanceUpdate();
+      const newDeltaTokenPrice = await Treasury.deltaTokenPrice();
+      expect((newDeltaTokenPrice.toNumber() / 10 ** 9) * 100).to.equal(125);
+
+      // Test Bond Market ID 1 (WETH-THEO market)
+      const marketPrice = await BondDepository.marketPrice(1);
+      const expectedWethPerTheo = 10 ** 18 / ((10 ** 18 * (200000 * 10 ** 9)) / 10 ** 18);
+      const brv = await BondDepository.bondRateVariable(1);
+      const expectedBrv = await expectedBondRateVariable(1);
+      expect(brv.toNumber()).to.equal(expectedBrv);
+      const expectedMarketPrice = Math.floor((expectedWethPerTheo * (10 ** 9 - expectedBrv)) / 10 ** 9);
+      expect(marketPrice.toString()).to.equal(expectedMarketPrice.toString());
+
+      // Test Bond Market ID 0 (USDC-THEO market)
+      const marketPriceTwo = await BondDepository.marketPrice(0);
+      const expectedUsdcPerTheo = 10 ** 18 / ((10 ** 6 * (100 * 10 ** 9)) / 10 ** 6);
+      const brvTwo = await BondDepository.bondRateVariable(0);
+      const expectedBrvTwo = await expectedBondRateVariable(0);
+      expect(brvTwo.toNumber()).to.equal(expectedBrvTwo);
+      const expectedMarketPriceTwo = Math.floor((expectedUsdcPerTheo * (10 ** 9 - expectedBrvTwo)) / 10 ** 9);
+      expect(marketPriceTwo.toString()).to.equal(expectedMarketPriceTwo.toString());
+    });
+  });
 });

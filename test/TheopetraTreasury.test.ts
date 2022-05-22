@@ -261,7 +261,7 @@ describe('TheopetraTreasury', () => {
         await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
       });
 
-      it.only('updates stored token prices with via call to `updatePerformanceTokenAmount`, to update deltaTokenPrice', async function () {
+      it('updates stored token prices with via call to `updatePerformanceTokenAmount`, to update deltaTokenPrice', async function () {
         // Set initial value for performance token
         const initialPerformanceTokenAmount = 1000000000;
         await NewBondingCalculatorMock.setPerformanceTokenAmount(initialPerformanceTokenAmount);

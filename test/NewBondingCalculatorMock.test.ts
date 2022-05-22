@@ -22,7 +22,7 @@ const setup = deployments.createFixture(async () => {
   };
 });
 
-describe.only(NEWBONDINGCALCULATORMOCK, function () {
+describe('NewBondingCalculatorMock', function () {
   describe('deployment', function () {
     it('can be deployed', async function () {
       await setup();
@@ -41,7 +41,7 @@ describe.only(NEWBONDINGCALCULATORMOCK, function () {
       expect(initialPrice.toNumber()).to.equal(initialPerformanceTokenAmount);
     });
 
-    it.only('can return the valuation for THEO when the quote token is WETH (for use in bond depo, via `marketPrice`)', async function (){
+    it('can return the valuation for THEO when the quote token is WETH (for use in bond depo, via `marketPrice`)', async function (){
       const {NewBondingCalculatorMock, Weth} = await setup();
       // Use same values as mock bonding calculator for Theo per Weth (2000 $ per (W)ETH; 0.01 $ per THEO)
       const expectedTheoPerWeth = (2000 / 0.01) * 10**9 // In Theo decimals (9)
@@ -55,7 +55,7 @@ describe.only(NEWBONDINGCALCULATORMOCK, function () {
       expect(theoPerWeth.toString()).to.equal(expectedTheoPerWeth.toString());
     });
 
-    it.only('can return the valuation for THEO when the quote token is USDC (for use in bond depo, via `marketPrice`)', async function (){
+    it('can return the valuation for THEO when the quote token is USDC (for use in bond depo, via `marketPrice`)', async function (){
       const {NewBondingCalculatorMock, UsdcTokenMock} = await setup();
       // Use same values as mock bonding calculator for Theo per Weth (2000 $ per (W)ETH; 0.01 $ per THEO)
       const expectedTheoPerUsdc = (1 / 0.01) * 10**9 // In Theo decimals (9)

@@ -12,8 +12,6 @@ import "../Libraries/SafeCast.sol";
 
 import "../Types/TheopetraAccessControlled.sol";
 
-import "hardhat/console.sol";
-
 contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled {
     using SafeMath for int256;
     using SafeCast for *;
