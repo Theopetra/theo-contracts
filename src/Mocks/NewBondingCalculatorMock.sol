@@ -13,7 +13,6 @@ import "../Libraries/SafeCast.sol";
 import "../Types/TheopetraAccessControlled.sol";
 
 contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled {
-    using SafeMath for int256;
     using SafeCast for *;
 
     address public immutable theo;
@@ -32,9 +31,9 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
     /**
      * @dev when tokenIn is theo, valuation is being used for the Treasury (`tokenPerformanceUpdate`)
      *      when tokenIn is WETH or USDC (aka, a 'quote token'), valuation is being used for the Bond Depository (`marketPrice`)
-     *      If tokenIn is WETH, the method returns the number of THEO expected per `_amount` of WETH
+     *      If tokenIn is WETH (or USDC), the method returns the number of THEO expected per `_amount` of WETH (or USDC)
      *      where the number of THEO per quote token is calculated based on the following mock dollar prices:
-     *      2000 dollars per Weth
+     *      2000 dollars per WETH
      *      1 dollar per USDC
      *      0.01 dollars per THEO
      *      THEO per WETH is 2000 / 0.01 (i.e., 200000)
@@ -43,7 +42,6 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
      */
     function valuation(address tokenIn, uint256 _amount) external view override returns (uint256) {
         if (tokenIn == theo) {
-
             return performanceTokenAmount;
         } else if (tokenIn == weth) {
             return (_amount * (200000 * 10**9)) / 10**18;
