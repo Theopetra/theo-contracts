@@ -20,6 +20,7 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
     uint256 public performanceTokenAmount;
     address public weth;
     address public usdc;
+    uint256 public timePerformanceTokenLastUpdated;
 
     constructor(
         address _theo,
@@ -69,5 +70,6 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
      */
     function updatePerformanceTokenAmount(int256 _percentageChange) public onlyGovernor {
         performanceTokenAmount = ((performanceTokenAmount).toInt256() + ((performanceTokenAmount).toInt256() * _percentageChange / 100)).toUint256();
+        timePerformanceTokenLastUpdated = block.timestamp;
     }
 }

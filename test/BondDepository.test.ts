@@ -1337,7 +1337,7 @@ describe('Bond depository', function () {
     });
   });
 
-  describe.only('with new mock bonding calculator', function () {
+  describe('with new mock bonding calculator', function () {
     beforeEach(async function () {
       // Set initial value for performance token
       const initialPerformanceTokenAmount = 1000000000;
@@ -1354,7 +1354,7 @@ describe('Bond depository', function () {
       await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
     });
 
-    it.only('returns the correct Bond Rate Variable and Market Price', async function () {
+    it('returns the correct Bond Rate Variable and Market Price', async function () {
       // create a second market, so multiple markets are live
       await BondDepository.create(
         WETH9.address,
