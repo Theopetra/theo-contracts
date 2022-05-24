@@ -1368,7 +1368,7 @@ describe('Bond depository', function () {
       const initialDeltaTokenPrice = await Treasury.deltaTokenPrice();
       expect(initialDeltaTokenPrice.toNumber()).to.equal(0); // `updatePerformanceTokenAmount` has not yet been called on the mock bonding calculator
 
-      // Update the performance token amount in mock bonding calculator to result in a deltaTokenPrice of 125%
+      // Update the performance token amount in mock bonding calculator, and subsequently call `tokenPerformanceUpdate`, to result in a deltaTokenPrice of 125%
       await NewBondingCalculatorMock.updatePerformanceTokenAmount(125);
       await moveTimeForward(60 * 60 * 8);
       await Treasury.tokenPerformanceUpdate();

@@ -81,7 +81,7 @@ describe('NewBondingCalculatorMock', function () {
     it('can only be called by the governor', async function () {
       const { users } = await setup();
       const [, bob] = users;
-      await expect(bob.NewBondingCalculatorMock.setPerformanceTokenAmount(125)).to.be.revertedWith('UNAUTHORIZED');
+      await expect(bob.NewBondingCalculatorMock.updatePerformanceTokenAmount(125)).to.be.revertedWith('UNAUTHORIZED');
     });
 
     it('can update the valuation for the performance token', async function () {

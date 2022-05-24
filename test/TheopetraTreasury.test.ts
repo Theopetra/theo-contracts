@@ -261,7 +261,7 @@ describe('TheopetraTreasury', () => {
         await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
       });
 
-      it('updates stored token prices with via call to `updatePerformanceTokenAmount`, to update deltaTokenPrice', async function () {
+      it('updates a stored value for `performanceTokenAmount`, via a call to `updatePerformanceTokenAmount`, to allow deltaTokenPrice to be updated', async function () {
         // Set initial value for performance token
         const initialPerformanceTokenAmount = 1000000000;
         await NewBondingCalculatorMock.setPerformanceTokenAmount(initialPerformanceTokenAmount);
@@ -271,6 +271,7 @@ describe('TheopetraTreasury', () => {
         // Need to call tokenPerformanceUpdate twice initially, before `lastTokenPrice` becomes non-zero (otherwise `deltaTokenPrice will revert`)
         await moveTimeForward(60 * 60 * 8);
         await NewBondingCalculatorMock.updatePerformanceTokenAmount(125);
+        // tokenPerformanceUpdate needs to be called after `updatePerformanceTokenAmount`. This will subsequently change `deltaTokenPrice`
         await Treasury.tokenPerformanceUpdate();
 
         const deltaTokenPrice = await Treasury.deltaTokenPrice();
