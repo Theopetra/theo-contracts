@@ -4,12 +4,6 @@ import { TheopetraBondDepository__factory, IERC20, IERC20__factory } from '../..
 import { waitFor } from '../../test/utils';
 dotenv.config();
 
-// Note re whitelist bond depo:
-// Whitelist bond depo market creation requires a `_priceFeed` argument, which is the address of the price consumer
-// Note that no deployment is done within this repo for the PriceConsumer
-// For the time being, this has simply been deployed to Rinkeby via Remix, at the address below
-// const priceConsumerRinkebyAddress = "0x4a6057191E56647a10433A732611A4B45D9169D0";
-
 // Non-whitelisted bond depo:
 const createMarket = async () => {
   const provider = new ethers.providers.AlchemyProvider('rinkeby', process.env.ALCHEMY_API_KEY);
