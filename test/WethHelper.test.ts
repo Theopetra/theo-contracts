@@ -15,6 +15,7 @@ import {
   TheopetraStaking,
   TheopetraERC20Token,
   STheopetra,
+  PublicPreListBondDepository,
 } from '../typechain-types';
 
 const setup = deployments.createFixture(async () => {
@@ -37,11 +38,9 @@ describe('WethHelper', function () {
   const buffer = 2e5;
   const capacity = '10000000000000000'; // 1e16
   const capacityInQuote = false;
-  const depositAmount = '100000000'; // 1e8, equivalent to 100 USDC (6 decimals for USDC)
   const depositInterval = 60 * 60 * 24 * 30;
   const fixedTerm = true;
   const initialPrice = 400e9;
-  const LARGE_APPROVAL = '100000000000000000000000000000000';
   const timeToConclusion = 60 * 60 * 24 * 180; // seconds in 180 days
   const tuneInterval = 60 * 60;
   const vesting = 60 * 60 * 24 * 14; // seconds in 14 days
@@ -63,6 +62,7 @@ describe('WethHelper', function () {
   let Staking: TheopetraStaking;
   let TheopetraERC20Token: TheopetraERC20Token;
   let sTheo: STheopetra;
+  let PublicPreListBondDepository: PublicPreListBondDepository;
   let users: any;
   let conclusion: number;
   let block: any;
@@ -81,6 +81,7 @@ describe('WethHelper', function () {
       Staking,
       TheopetraERC20Token,
       sTheo,
+      PublicPreListBondDepository,
       users,
     } = await setup());
 
@@ -138,6 +139,37 @@ describe('WethHelper', function () {
       )
     );
     expect(await WhitelistBondDepository.isLive(bid)).to.equal(true);
+  }
+
+  async function setupForPublicPreListDeposit() {
+    const [governorWallet] = await ethers.getSigners();
+
+    // Deploy SignerHelper contract
+    const signerHelperFactory = new SignerHelper__factory(governorWallet);
+    const SignerHelper = await signerHelperFactory.deploy();
+
+    const addressZero = ethers.utils.getAddress('0x0000000000000000000000000000000000000000');
+    const arbitraryHash = await SignerHelper.createHash(
+      'thisIsNotTheCorrectData',
+      addressZero,
+      addressZero,
+      'anything'
+    );
+    const messageHashBinary = ethers.utils.arrayify(arbitraryHash);
+    // Use an arbitrary signature for deposit into the Public Pre-List Bond Depo
+    signature = await governorWallet.signMessage(messageHashBinary);
+
+    // Create market in Public Pre-List Bond Depo
+    await waitFor(
+      PublicPreListBondDepository.create(
+        WETH.address,
+        AggregatorMockETH.address,
+        [capacity, fixedBondPrice],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion]
+      )
+    );
+    expect(await PublicPreListBondDepository.isLive(bid)).to.equal(true);
   }
 
   describe('Deployment', function () {
@@ -278,19 +310,55 @@ describe('WethHelper', function () {
     });
 
     describe('with Public Pre-List Bond Depo', function () {
+      const isWhitelist = true;
+
       beforeEach(async function () {
-        await WethHelperBondDepo.setPublicPreList(WhitelistBondDepository.address);
+        // Set the address of the Public Pre-List Bond Depository on the Weth Helper contract
+        await WethHelperBondDepo.setPublicPreList(PublicPreListBondDepository.address);
+        await setupForPublicPreListDeposit();
       });
-    })
+
+      it('can receive ETH which is then deposited as WETH for a user, in a bond market', async function () {
+        const [, bob] = users;
+
+        await waitFor(
+          bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, false, isWhitelist, signature, {
+            value: ethers.utils.parseEther('1'),
+          })
+        );
+
+        const bobNotesIndexes = await PublicPreListBondDepository.indexesFor(bob.address);
+        expect(bobNotesIndexes.length).to.equal(1);
+      });
+
+      it('allows a user to bond and then redeem for THEO', async function () {
+        const [, bob] = users;
+        const initialBobBalance = await bob.TheopetraERC20Token.balanceOf(bob.address);
+
+        await waitFor(
+          bob.WethHelper.deposit(bid, initialPrice, bob.address, bob.address, false, isWhitelist, signature, {
+            value: ethers.utils.parseEther('1'),
+          })
+        );
+
+        const latestBlock = await ethers.provider.getBlock('latest');
+        const newTimestampInSeconds = latestBlock.timestamp + vesting * 2;
+        await ethers.provider.send('evm_mine', [newTimestampInSeconds]);
+
+        await expect(PublicPreListBondDepository.redeemAll(bob.address)).to.not.be.reverted;
+        const finalBobBalance = await bob.TheopetraERC20Token.balanceOf(bob.address);
+        expect(Number(finalBobBalance)).to.be.greaterThan(Number(initialBobBalance));
+      });
+    });
 
     describe('setPublicPreList', function () {
-      it.only('sets the address of the Public Pre-List Bond Depository contract', async function () {
+      it('sets the address of the Public Pre-List Bond Depository contract', async function () {
         expect(await WethHelperBondDepo.publicPreListBondDepo()).to.equal(addressZero);
         await WethHelperBondDepo.setPublicPreList(WhitelistBondDepository.address);
         expect(await WethHelperBondDepo.publicPreListBondDepo()).to.equal(WhitelistBondDepository.address);
       })
 
-      it.only('will revert if called by an account other than that of the governor', async function() {
+      it('will revert if called by an account other than that of the governor', async function() {
         const [, bob] = users;
         await expect(bob.WethHelper.setPublicPreList(WhitelistBondDepository.address)).to.be.revertedWith('UNAUTHORIZED');
       })

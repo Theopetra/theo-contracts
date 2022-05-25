@@ -14,6 +14,7 @@ export const CONTRACTS: Record<string, string> = {
   founderVesting: 'TheopetraFounderVesting',
   stakingLocked: 'TheopetraStakingLocked',
   WethHelper: 'WethHelper',
+  publicPreListBondDepo: 'PublicPreListBondDepository'
 };
 
 export const MOCKS: Record<string, string> = {

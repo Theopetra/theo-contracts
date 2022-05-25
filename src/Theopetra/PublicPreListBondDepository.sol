@@ -13,6 +13,8 @@ import "../Interfaces/IWhitelistBondDepository.sol";
 /**
  * @title Theopetra Public Pre-List Bond Depository
  * @notice Based off of WhitelistTheopetraBondDepository, with the call to `verifySignature` removed
+ *         and the `signature` parameter removed from the `deposit` method,
+ *         as well as the function `setWethHelper` and state variable `wethHelper` removed
  */
 
 contract PublicPreListBondDepository is IWhitelistBondDepository, NoteKeeper, Signed, PriceConsumerV3 {
@@ -37,7 +39,6 @@ contract PublicPreListBondDepository is IWhitelistBondDepository, NoteKeeper, Si
     Market[] public markets; // persistent market data
     Terms[] public terms; // deposit construction data
     Metadata[] public metadata; // extraneous market data
-    address private wethHelper;
 
     // Queries
     mapping(address => uint256[]) public marketsForQuote; // market IDs for quote token
@@ -327,12 +328,5 @@ contract PublicPreListBondDepository is IWhitelistBondDepository, NoteKeeper, Si
             return _price / int256(10**uint256(_priceDecimals - _decimals));
         }
         return _price;
-    }
-
-    /* ====== POLICY FUNCTIONS ====== */
-
-    function setWethHelper(address _wethHelper) external onlyGovernor {
-        require(_wethHelper != address(0), "Zero address");
-        wethHelper = _wethHelper;
     }
 }
