@@ -12,8 +12,7 @@ import "../Interfaces/IWhitelistBondDepository.sol";
 
 /**
  * @title Theopetra Public Pre-List Bond Depository
- * @notice Based off of WhitelistTheopetraBondDepository, with the call to `verifySignature` removed
- *         and the `signature` parameter removed from the `deposit` method,
+ * @notice Based off of WhitelistTheopetraBondDepository, with the call to `verifySignature` removed,
  *         as well as the function `setWethHelper` and state variable `wethHelper` removed
  */
 
