@@ -13,7 +13,7 @@ import {
   TheopetraERC20Token,
   TheopetraTreasury,
   WethHelper,
-  PublicPreListBondDepository
+  PublicPreListBondDepository,
 } from '../typechain-types';
 import { setupUsers } from './utils';
 import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
@@ -321,7 +321,14 @@ describe(' Public Pre-List Bond Depository', function () {
     it('should allow a deposit to a WETH-THEO market (using an arbitrary signature)', async function () {
       const [, , bob] = users;
 
-      await bob.PublicPreListBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
+      await bob.PublicPreListBondDepository.deposit(
+        marketId,
+        depositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
       const bobNotesIndexes = await PublicPreListBondDepository.indexesFor(bob.address);
 
       expect(bobNotesIndexes.length).to.equal(1);
@@ -346,7 +353,14 @@ describe(' Public Pre-List Bond Depository', function () {
     it('should not change the (fixed) bond price', async function () {
       const [, , bob] = users;
 
-      await bob.PublicPreListBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
+      await bob.PublicPreListBondDepository.deposit(
+        marketId,
+        depositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
       const [, , , , , , usdPricePerTHEO] = await PublicPreListBondDepository.markets(marketId);
 
       expect(Number(usdPricePerTHEO)).to.equal(fixedBondPrice);
@@ -365,7 +379,14 @@ describe(' Public Pre-List Bond Depository', function () {
     it('adds the payout (due in THEO, 9 decimals) to the total amount of THEO sold by a WETH-THEO market', async function () {
       const [, , bob] = users;
 
-      await bob.PublicPreListBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
+      await bob.PublicPreListBondDepository.deposit(
+        marketId,
+        depositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
       const [, , , , sold] = await PublicPreListBondDepository.markets(marketId);
 
       expect(Number(sold)).to.equal(expectedPayoutTheoWEth);
@@ -390,10 +411,24 @@ describe(' Public Pre-List Bond Depository', function () {
     it('does not change the payout (if the price of THEO per quote token remains the same)', async function () {
       const [, , bob] = users;
 
-      await bob.PublicPreListBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
+      await bob.PublicPreListBondDepository.deposit(
+        marketId,
+        depositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
       const [payout1_] = await PublicPreListBondDepository.pendingFor(bob.address, 0);
 
-      await bob.PublicPreListBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
+      await bob.PublicPreListBondDepository.deposit(
+        marketId,
+        depositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
       const [payout2_] = await PublicPreListBondDepository.pendingFor(bob.address, 1);
 
       expect(payout1_).to.equal(payout2_);
@@ -403,7 +438,14 @@ describe(' Public Pre-List Bond Depository', function () {
     it('adds the amount of quote tokens in the deposit to the total amount purchased by the market', async function () {
       const [, , bob] = users;
 
-      await bob.PublicPreListBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
+      await bob.PublicPreListBondDepository.deposit(
+        marketId,
+        depositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
       const [, , , , , purchased] = await PublicPreListBondDepository.markets(marketId);
 
       expect(Number(purchased)).to.equal(Number(depositAmount));
@@ -434,7 +476,14 @@ describe(' Public Pre-List Bond Depository', function () {
 
       const initialStakingTheoBalance = await TheopetraERC20Token.balanceOf(Staking.address);
 
-      await bob.PublicPreListBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
+      await bob.PublicPreListBondDepository.deposit(
+        marketId,
+        depositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
 
       const newStakingTHEOBalance = await TheopetraERC20Token.balanceOf(Staking.address);
       expect(Number(initialStakingTheoBalance)).to.be.equal(Number(newStakingTHEOBalance));
@@ -480,9 +529,23 @@ describe(' Public Pre-List Bond Depository', function () {
     it('will allow deposits up to the market capacity but will revert deposit attempts after capacity is reached', async function () {
       const [, , bob] = users;
 
-      await bob.PublicPreListBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
+      await bob.PublicPreListBondDepository.deposit(
+        marketId,
+        depositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
 
-      await bob.PublicPreListBondDepository.deposit(marketId, depositAmount, maxPrice, bob.address, bob.address, signature);
+      await bob.PublicPreListBondDepository.deposit(
+        marketId,
+        depositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
 
       const [capacity] = await PublicPreListBondDepository.markets(marketId);
       const bigDepositAmount = ethers.utils.parseEther('299');
@@ -521,7 +584,14 @@ describe(' Public Pre-List Bond Depository', function () {
       const [capacity] = await PublicPreListBondDepository.markets(2); // Market Id is 2, as there are already two other markets created previously
       expect(Number(capacity)).to.equal(Number(lowCapacity));
       // First deposit
-      await bob.PublicPreListBondDepository.deposit(2, firstDepositAmount, maxPrice, bob.address, bob.address, signature);
+      await bob.PublicPreListBondDepository.deposit(
+        2,
+        firstDepositAmount,
+        maxPrice,
+        bob.address,
+        bob.address,
+        signature
+      );
       const [newCapacity] = await PublicPreListBondDepository.markets(2);
       expect(Number(newCapacity)).to.equal(Number(lowCapacity) - Number(firstDepositAmount));
 
@@ -651,7 +721,12 @@ describe(' Public Pre-List Bond Depository', function () {
       const signerHelperFactory = new SignerHelper__factory(governorWallet);
       const SignerHelper = await signerHelperFactory.deploy();
       // Create a hash in the same way as created by Signed contract
-      const bobHash = await SignerHelper.createHash('', bob.address, PublicPreListBondDepository.address, 'supersecret');
+      const bobHash = await SignerHelper.createHash(
+        '',
+        bob.address,
+        PublicPreListBondDepository.address,
+        'supersecret'
+      );
 
       // Set the secret on the Signed contract
       await PublicPreListBondDepository.setSecret('supersecret');

@@ -356,12 +356,14 @@ describe('WethHelper', function () {
         expect(await WethHelperBondDepo.publicPreListBondDepo()).to.equal(addressZero);
         await WethHelperBondDepo.setPublicPreList(WhitelistBondDepository.address);
         expect(await WethHelperBondDepo.publicPreListBondDepo()).to.equal(WhitelistBondDepository.address);
-      })
+      });
 
-      it('will revert if called by an account other than that of the governor', async function() {
+      it('will revert if called by an account other than that of the governor', async function () {
         const [, bob] = users;
-        await expect(bob.WethHelper.setPublicPreList(WhitelistBondDepository.address)).to.be.revertedWith('UNAUTHORIZED');
-      })
+        await expect(bob.WethHelper.setPublicPreList(WhitelistBondDepository.address)).to.be.revertedWith(
+          'UNAUTHORIZED'
+        );
+      });
     });
   });
 });

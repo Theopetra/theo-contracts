@@ -22,7 +22,7 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
       pTheo,
       StakingLocked,
       FounderVesting,
-      PublicPreListBondDepository
+      PublicPreListBondDepository,
     } = await getContracts();
 
     /* ======== Setup for `Treasury.mint` (when `TheopetraBondDepository.deposit` is called) ======== */
