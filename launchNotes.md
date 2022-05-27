@@ -66,6 +66,10 @@ Numerous methods within the contracts require certain permissions to be set, and
 
 Further information on and demonstration of the above permissions being enabled can be found within the file `/scripts/referenceExamples/enablePermissions.ts`
 
+### Treasury Deployment
+- the timelock length (in blocks) needs to be supplied to the constructor on deployment
+- it is currently set to 5760*2 in another (PR)[https://github.com/Theopetra/theo-contracts/pull/140/files] which is ~2 days
+
 ### Minting THEO
 
 For users to bond or stake, THEO must first be available (minted). An example of minting THEO (taken from `e2e.test.ts`) is shown below
