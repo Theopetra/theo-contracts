@@ -1306,16 +1306,15 @@ describe('Bond depository', function () {
           bobNotesIndexes[i]
         );
 
-        expect(payout).to.equal(expectedPayout);
+        expect(Number(payout)).to.be.lessThanOrEqual(expectedPayout + 1).and.to.be.greaterThanOrEqual(expectedPayout - 1);
 
         const currentTimestampLowerbound = currentTimestamp * 0.993;
         const currentTimestampUpperbound = currentTimestamp * 1.01;
-
         expect(createdAt).to.be.greaterThan(currentTimestampLowerbound).and.to.be.lessThan(currentTimestampUpperbound);
         expect(expiresAt)
           .to.be.greaterThan(currentTimestampLowerbound + vesting)
           .and.to.be.lessThan(currentTimestampUpperbound + vesting);
-        expect(timeRemaining).to.equal(expiresAt - createdAt);
+        expect(timeRemaining).to.be.lessThanOrEqual((expiresAt - createdAt) + 1).and.to.be.greaterThanOrEqual((expiresAt - createdAt) - 1);
 
         const expectedBrv = await expectedBondRateVariable(bid);
         expect(discount).to.equal(expectedBrv);
