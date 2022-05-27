@@ -97,6 +97,36 @@ describe('TheopetraTreasury', () => {
     });
   });
 
+  describe('queueTimelock', function () {
+    it('reverts if a call is made by an address that is not the Governor', async function () {
+      // enable the rewards manager
+      await expect(users[1].Treasury.queueTimelock(11, addressZero, addressZero)).to.be.revertedWith('UNAUTHORIZED');
+    });
+
+    it('succeeds if a call is made by an address that is the Governor', async function () {
+      // enable the rewards manager
+      await expect(Treasury.initialize()).to.not.be.reverted;
+      await expect(Treasury.queueTimelock(11, YieldReporter.address, addressZero)).to.not.be.reverted;
+    });
+    it('can\'t be called before the timelock period is up', async function () {
+      // enable the rewards manager
+      await expect(Treasury.initialize()).to.not.be.reverted;
+      await expect(Treasury.queueTimelock(11, YieldReporter.address, addressZero)).to.not.be.reverted;
+      await expect(Treasury.execute(0)).to.be.revertedWith('Timelock not complete');
+    });
+    it('can be called by anyone after timelock period is up', async function () {
+      // enable the rewards manager
+      await expect(Treasury.initialize()).to.not.be.reverted;
+      await expect(Treasury.queueTimelock(11, YieldReporter.address, addressZero)).to.not.be.reverted;
+
+      for (let i = 0; i < 5760*2 + 1; i++) {
+        await ethers.provider.send('evm_mine', []);
+      }
+
+      await expect(users[1].Treasury.execute(0)).to.not.be.reverted;
+    });
+  });
+
   describe('deltaTreasuryYield', function () {
     it('should revert if the yield reporter address is address zero', async function () {
       if (process.env.NODE_ENV !== TESTWITHMOCKS) {
