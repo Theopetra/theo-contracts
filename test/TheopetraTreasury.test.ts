@@ -114,7 +114,7 @@ describe('TheopetraTreasury', () => {
       await expect(Treasury.queueTimelock(11, YieldReporter.address, addressZero)).to.not.be.reverted;
       await expect(Treasury.execute(0)).to.be.revertedWith('Timelock not complete');
     });
-    it('can be called by anyone after timelock period is up', async function () {
+    it('can be called by anyone after timelock period is up, but only once', async function () {
       // enable the rewards manager
       await expect(Treasury.initialize()).to.not.be.reverted;
       await expect(Treasury.queueTimelock(11, YieldReporter.address, addressZero)).to.not.be.reverted;
@@ -124,6 +124,15 @@ describe('TheopetraTreasury', () => {
       }
 
       await expect(users[1].Treasury.execute(0)).to.not.be.reverted;
+      await expect(users[1].Treasury.execute(0)).to.be.revertedWith('Action has already been executed');
+    });
+    it('can be nullified by the governor', async function () {
+      // enable the rewards manager
+      await expect(Treasury.initialize()).to.not.be.reverted;
+      await expect(Treasury.queueTimelock(11, YieldReporter.address, addressZero)).to.not.be.reverted;
+      await expect(users[1].Treasury.nullify(0)).to.be.reverted;
+      await expect(Treasury.nullify(0)).to.not.be.reverted;
+      await expect(Treasury.execute(0)).to.be.revertedWith('Action has been nullified');
     });
   });
 
