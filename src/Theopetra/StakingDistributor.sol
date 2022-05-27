@@ -160,6 +160,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         for (uint256 i = 0; i < info.length; i++) {
             if (info[i].recipient == _recipient) {
                 reward = nextRewardAt(nextRewardRate(i), _recipient);
+                break;
             }
         }
         return reward;
