@@ -1331,5 +1331,46 @@ describe('Bond depository', function () {
 
       expect(notesCount).to.equal(3);
     });
+
+    it('allows a user to push an auto-staked note, and the recipient (after pulling the note) can redeem', async function () {
+      const [, , bob, carol] = users;
+
+      await bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address, autoStake);
+      const secondDepositAmount = '50000000'; // 5e7, equivalent to 50 USDC (6 decimals for USDC)
+      await bob.BondDepository.deposit(bid, secondDepositAmount, initialPrice, bob.address, bob.address, autoStake);
+      const bobNotesIndexes = await BondDepository.indexesFor(bob.address);
+
+      expect(bobNotesIndexes.length).to.equal(2);
+
+      // Bob pushes a note to carol
+      await bob.BondDepository.pushNote(carol.address, 1);
+      await carol.BondDepository.pullNote(bob.address, 1);
+
+      // Carol now has the note, bob has one less note
+      const bobNotesIndexesNew = await BondDepository.indexesFor(bob.address);
+      expect(bobNotesIndexesNew.length).to.equal(1);
+      const carolNotesIndexes = await BondDepository.indexesFor(carol.address);
+      expect(carolNotesIndexes.length).to.equal(1);
+
+      // Bond matures, and then carol redeems
+      await moveTimeForward(vesting * 2);
+      await BondDepository.redeemAll(carol.address);
+
+      // Mint some USDC for carol, and approve for the bond depo to receive a deposit,
+      // to allow callStatic deposit from carol (to get expected payout value)
+      await UsdcTokenMock.mint(carol.address, initialMint);
+      await carol.UsdcTokenMock.approve(BondDepository.address, LARGE_APPROVAL);
+      const [expectedPayout] = await carol.BondDepository.callStatic.deposit(
+        bid,
+        secondDepositAmount,
+        initialPrice,
+        carol.address,
+        carol.address,
+        autoStake
+      );
+
+      const carolBalance = await sTheo.balanceOf(carol.address);
+      expect(carolBalance).to.equal(expectedPayout);
+    })
   });
 });
