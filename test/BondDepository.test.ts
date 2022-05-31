@@ -1371,6 +1371,20 @@ describe('Bond depository', function () {
 
       const carolBalance = await sTheo.balanceOf(carol.address);
       expect(carolBalance).to.equal(expectedPayout);
+
+      // Check that bob can make another couple of auto-staked deposits, and redeem them both
+      const thirdDepositAmount = '72000000';
+      await bob.BondDepository.deposit(bid, thirdDepositAmount, initialPrice, bob.address, bob.address, autoStake);
+      const fourthDepositAmount = '77000000';
+      await bob.BondDepository.deposit(bid, fourthDepositAmount, initialPrice, bob.address, bob.address, autoStake);
+
+      // Bond matures, and then carol redeems
+      await moveTimeForward(vesting * 2);
+      const bobInitialBalance = await sTheo.balanceOf(bob.address);
+      await BondDepository.redeemAll(bob.address);
+      const bobNewBalance = await sTheo.balanceOf(bob.address);
+      expect(bobNewBalance.toNumber()).to.be.greaterThan(bobInitialBalance.toNumber());
     })
+
   });
 });
