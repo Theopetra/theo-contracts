@@ -1,0 +1,345 @@
+{
+  "address": "0xe0EC926a2Cba5d5118Eb6d7A4BFE97c08Bd812C0",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "contract ITheopetraAuthority",
+          "name": "_authority",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "contract ITheopetraAuthority",
+          "name": "authority",
+          "type": "address"
+        }
+      ],
+      "name": "AuthorityUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "int256",
+          "name": "yield",
+          "type": "int256"
+        }
+      ],
+      "name": "ReportYield",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "authority",
+      "outputs": [
+        {
+          "internalType": "contract ITheopetraAuthority",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "currentYield",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "decimals",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getCurrentIndex",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        }
+      ],
+      "name": "getYieldById",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "lastYield",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "int256",
+          "name": "_amount",
+          "type": "int256"
+        }
+      ],
+      "name": "reportYield",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract ITheopetraAuthority",
+          "name": "_newAuthority",
+          "type": "address"
+        }
+      ],
+      "name": "setAuthority",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x6345b1bbdee140526c1ad3421433ac19e06df551b692073a69f8ee4531ff785e",
+  "receipt": {
+    "to": null,
+    "from": "0x0a4B56B375aEAfB5A02ACaeEc5Ca0F6a6efb0025",
+    "contractAddress": "0xe0EC926a2Cba5d5118Eb6d7A4BFE97c08Bd812C0",
+    "transactionIndex": 23,
+    "gasUsed": "474448",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000080000008000000000000000000000000000000000000000000008000000000000000000100000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000008000000000000000000000040000000000000000000",
+    "blockHash": "0x946d934b1c096e9acfddd233888643f8f6f66a5d0e3a59100525f3ff16bc9ea8",
+    "transactionHash": "0x6345b1bbdee140526c1ad3421433ac19e06df551b692073a69f8ee4531ff785e",
+    "logs": [
+      {
+        "transactionIndex": 23,
+        "blockNumber": 10606100,
+        "transactionHash": "0x6345b1bbdee140526c1ad3421433ac19e06df551b692073a69f8ee4531ff785e",
+        "address": "0xe0EC926a2Cba5d5118Eb6d7A4BFE97c08Bd812C0",
+        "topics": [
+          "0x2f658b440c35314f52658ea8a740e05b284cdc84dc9ae01e891f21b8933e7cad",
+          "0x000000000000000000000000bcdf034ce6624a817c1bfeffbde8691443e5fdbb"
+        ],
+        "data": "0x",
+        "logIndex": 17,
+        "blockHash": "0x946d934b1c096e9acfddd233888643f8f6f66a5d0e3a59100525f3ff16bc9ea8"
+      }
+    ],
+    "blockNumber": 10606100,
+    "cumulativeGasUsed": "2625206",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0xBcdF034cE6624A817c1BfEffBDE8691443e5fDbB"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "60aee56ac40beaa3576af8be2fed4c30",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.10+commit.fc410830\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"contract ITheopetraAuthority\",\"name\":\"_authority\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"contract ITheopetraAuthority\",\"name\":\"authority\",\"type\":\"address\"}],\"name\":\"AuthorityUpdated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"yield\",\"type\":\"int256\"}],\"name\":\"ReportYield\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"authority\",\"outputs\":[{\"internalType\":\"contract ITheopetraAuthority\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"currentYield\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"decimals\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCurrentIndex\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_id\",\"type\":\"uint256\"}],\"name\":\"getYieldById\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"lastYield\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"_amount\",\"type\":\"int256\"}],\"name\":\"reportYield\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract ITheopetraAuthority\",\"name\":\"_newAuthority\",\"type\":\"address\"}],\"name\":\"setAuthority\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"currentYield()\":{\"returns\":{\"_0\":\"int256  current yield value\"}},\"decimals()\":{\"returns\":{\"_0\":\"uint256  number of decimals (9)\"}},\"getCurrentIndex()\":{\"returns\":{\"_0\":\"uint256  current index value\"}},\"getYieldById(uint256)\":{\"details\":\"reverts if id is out of bounds\",\"params\":{\"_id\":\"index of yield to return\"},\"returns\":{\"_0\":\"int256  yield value\"}},\"lastYield()\":{\"details\":\"If there is only 1 yield reported, the current yield is returned\",\"returns\":{\"_0\":\"int256  previous yield value\"}},\"reportYield(int256)\":{\"details\":\"reverts if called by a non-policy addressemits a ReportYield event\",\"params\":{\"_amount\":\"yield value to report\"},\"returns\":{\"_0\":\"uint256  index of the reported yield\"}}},\"title\":\"Theopetra Yield Reorter\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"currentYield()\":{\"notice\":\"returns the current yield value\"},\"decimals()\":{\"notice\":\"return the number of decimals expect in the fixed point yield representation (9)\"},\"getCurrentIndex()\":{\"notice\":\"returns the current index value\"},\"getYieldById(uint256)\":{\"notice\":\"returns the yield value for a given index\"},\"lastYield()\":{\"notice\":\"returns the previous yield value or 0 if no previous yield\"},\"reportYield(int256)\":{\"notice\":\"reports a yield value\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"src/Theopetra/TheopetraYieldReporter.sol\":\"TheopetraYieldReporter\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":2000},\"remappings\":[]},\"sources\":{\"src/Interfaces/ITheopetraAuthority.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0\\npragma solidity >=0.7.5;\\n\\ninterface ITheopetraAuthority {\\n    /* ========== EVENTS ========== */\\n\\n    event GovernorPushed(address indexed from, address indexed to, bool _effectiveImmediately);\\n    event GuardianPushed(address indexed from, address indexed to, bool _effectiveImmediately);\\n    event PolicyPushed(address indexed from, address indexed to, bool _effectiveImmediately);\\n    event ManagerPushed(address indexed from, address indexed to, bool _effectiveImmediately);\\n    event VaultPushed(address indexed from, address indexed to, bool _effectiveImmediately);\\n    event SignerPushed(address indexed from, address indexed to, bool _effectiveImmediately);\\n\\n    event GovernorPulled(address indexed from, address indexed to);\\n    event GuardianPulled(address indexed from, address indexed to);\\n    event PolicyPulled(address indexed from, address indexed to);\\n    event ManagerPulled(address indexed from, address indexed to);\\n    event VaultPulled(address indexed from, address indexed to);\\n    event SignerPulled(address indexed from, address indexed to);\\n\\n    /* ========== VIEW ========== */\\n\\n    function governor() external view returns (address);\\n\\n    function guardian() external view returns (address);\\n\\n    function policy() external view returns (address);\\n\\n    function manager() external view returns (address);\\n\\n    function vault() external view returns (address);\\n\\n    function whitelistSigner() external view returns (address);\\n}\\n\",\"keccak256\":\"0xb2878b057ac95bafe9f359c26c4e7b470dcd6d00df5797f992a576d79182b287\",\"license\":\"AGPL-3.0\"},\"src/Interfaces/IYieldReporter.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0\\npragma solidity >=0.7.5;\\n\\ninterface IYieldReporter {\\n    event ReportYield(uint256 indexed id, int256 yield);\\n\\n    function lastYield() external view returns (int256);\\n\\n    function currentYield() external view returns (int256);\\n\\n    function getYieldById(uint256 id) external view returns (int256);\\n\\n    function reportYield(int256 _amount) external returns (uint256);\\n}\\n\",\"keccak256\":\"0xbae0dd07f438ce32efaeac187f6527f4d67a8895c8f5ee8c16c037dff39c4d8f\",\"license\":\"AGPL-3.0\"},\"src/Theopetra/TheopetraYieldReporter.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0\\npragma solidity ^0.8.10;\\n\\nimport \\\"../Types/TheopetraAccessControlled.sol\\\";\\nimport \\\"../Interfaces/IYieldReporter.sol\\\";\\n\\n/**\\n * @title Theopetra Yield Reorter\\n * @notice\\n */\\n\\ncontract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {\\n    /* ======== STATE VARIABLES ======== */\\n\\n    /**\\n     * @notice Theopetra reported yields by index\\n     */\\n    mapping(uint256 => int256) private yields;\\n    /**\\n     * @notice current yield ID\\n     */\\n    uint256 private currentIndex = 0;\\n\\n    /* ======== CONSTANTS ======== */\\n\\n    string private OUT_OF_BOUNDS = \\\"OUT_OF_BOUNDS\\\";\\n\\n    /* ======== CONSTRUCTOR ======== */\\n\\n    constructor(ITheopetraAuthority _authority) TheopetraAccessControlled(_authority) {\\n        // initialize yield 0 to 0\\n        yields[currentIndex] = 0;\\n    }\\n\\n    /**\\n     * @notice return the number of decimals expect in the fixed point yield representation (9)\\n     * @return uint256  number of decimals (9)\\n     */\\n    function decimals() external pure returns (int256) {\\n        return 9;\\n    }\\n\\n    /**\\n     * @notice returns the previous yield value or 0 if no previous yield\\n     * @return int256  previous yield value\\n     * @dev If there is only 1 yield reported, the current yield is returned\\n     */\\n    function lastYield() external view returns (int256) {\\n        if (currentIndex == 0) return 0;\\n        return currentIndex == 1 ? yields[1] : yields[currentIndex - 1];\\n    }\\n\\n    /**\\n     * @notice returns the current index value\\n     * @return uint256  current index value\\n     */\\n    function getCurrentIndex() external view returns (uint256) {\\n        return currentIndex;\\n    }\\n\\n    /**\\n     * @notice returns the current yield value\\n     * @return int256  current yield value\\n     */\\n    function currentYield() external view returns (int256) {\\n        // constructor and solidity defaults allow this to return 0 before\\n        // any yields are reported\\n        return yields[currentIndex];\\n    }\\n\\n    /**\\n     * @notice returns the yield value for a given index\\n     * @param  _id  index of yield to return\\n     * @return int256  yield value\\n     * @dev reverts if id is out of bounds\\n     */\\n    function getYieldById(uint256 _id) external view returns (int256) {\\n        // don't allow requiring a yield past the current index\\n        require(_id <= currentIndex, OUT_OF_BOUNDS);\\n        return yields[_id];\\n    }\\n\\n    /**\\n     * @notice reports a yield value\\n     * @param  _amount  yield value to report\\n     * @return uint256  index of the reported yield\\n     * @dev reverts if called by a non-policy address\\n     * @dev emits a ReportYield event\\n     */\\n    function reportYield(int256 _amount) external onlyPolicy returns (uint256) {\\n        yields[++currentIndex] = _amount;\\n        emit ReportYield(currentIndex, _amount);\\n        return currentIndex;\\n    }\\n}\\n\",\"keccak256\":\"0x70f72659b057a8f7954bdcafad057ac9f4ad0ad5f2d4133dee8b37a405f57ff4\",\"license\":\"AGPL-3.0\"},\"src/Types/TheopetraAccessControlled.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0-only\\npragma solidity >=0.7.5;\\n\\nimport \\\"../Interfaces/ITheopetraAuthority.sol\\\";\\n\\nabstract contract TheopetraAccessControlled {\\n    /* ========== EVENTS ========== */\\n\\n    event AuthorityUpdated(ITheopetraAuthority indexed authority);\\n\\n    string UNAUTHORIZED = \\\"UNAUTHORIZED\\\"; // save gas\\n\\n    /* ========== STATE VARIABLES ========== */\\n\\n    ITheopetraAuthority public authority;\\n\\n    /* ========== Constructor ========== */\\n\\n    constructor(ITheopetraAuthority _authority) {\\n        authority = _authority;\\n        emit AuthorityUpdated(_authority);\\n    }\\n\\n    /* ========== MODIFIERS ========== */\\n\\n    modifier onlyGovernor() {\\n        require(msg.sender == authority.governor(), UNAUTHORIZED);\\n        _;\\n    }\\n\\n    modifier onlyGuardian() {\\n        require(msg.sender == authority.guardian(), UNAUTHORIZED);\\n        _;\\n    }\\n\\n    modifier onlyPolicy() {\\n        require(msg.sender == authority.policy(), UNAUTHORIZED);\\n        _;\\n    }\\n\\n    modifier onlyManager() {\\n        require(msg.sender == authority.manager(), UNAUTHORIZED);\\n        _;\\n    }\\n\\n    modifier onlyVault() {\\n        require(msg.sender == authority.vault(), UNAUTHORIZED);\\n        _;\\n    }\\n\\n    /* ========== GOV ONLY ========== */\\n\\n    function setAuthority(ITheopetraAuthority _newAuthority) external onlyGovernor {\\n        authority = _newAuthority;\\n        emit AuthorityUpdated(_newAuthority);\\n    }\\n}\\n\",\"keccak256\":\"0x4a1a24eaf51fcd807927a59ae694a7c752a060d278610b88c9b61d89f872a4b5\",\"license\":\"AGPL-3.0-only\"}},\"version\":1}",
+  "bytecode": "0x60c0604052600c60808190526b15539055551213d49256915160a21b60a090815261002d91600091906100f6565b50600060035560408051808201909152600d8082526c4f55545f4f465f424f554e445360981b6020909201918252610067916004916100f6565b5034801561007457600080fd5b506040516108363803806108368339810160408190526100939161018f565b600180546001600160a01b0319166001600160a01b0383169081179091556040518291907f2f658b440c35314f52658ea8a740e05b284cdc84dc9ae01e891f21b8933e7cad90600090a250506003546000908152600260205260408120556101fa565b828054610102906101bf565b90600052602060002090601f016020900481019282610124576000855561016a565b82601f1061013d57805160ff191683800117855561016a565b8280016001018555821561016a579182015b8281111561016a57825182559160200191906001019061014f565b5061017692915061017a565b5090565b5b80821115610176576000815560010161017b565b6000602082840312156101a157600080fd5b81516001600160a01b03811681146101b857600080fd5b9392505050565b600181811c908216806101d357607f821691505b602082108114156101f457634e487b7160e01b600052602260045260246000fd5b50919050565b61062d806102096000396000f3fe608060405234801561001057600080fd5b50600436106100885760003560e01c80636934b4e11161005b5780636934b4e1146100ca57806378a642f2146100dd5780637a9e5e4b146100f4578063bf7e214f1461010957600080fd5b8063015688831461008d5780630d9005ae146100a857806318148c43146100b0578063313ce567146100c3575b600080fd5b610095610134565b6040519081526020015b60405180910390f35b600354610095565b6100956100be366004610427565b6101a8565b6009610095565b6100956100d8366004610427565b6101ed565b600354600090815260026020526040902054610095565b610107610102366004610458565b610319565b005b60015461011c906001600160a01b031681565b6040516001600160a01b03909116815260200161009f565b6000600354600014156101475750600090565b6003546001146101785760026000600160035461016491906104ab565b815260200190815260200160002054905090565b50600160005260026020527fe90b7bceb6e7df5418fb78d8ee546e97c83a08bbccc01a0644d599ccd2a7c2e05490565b60006003548211156004906101d95760405162461bcd60e51b81526004016101d091906104c2565b60405180910390fd5b505060009081526002602052604090205490565b600154604080517f0505c8c900000000000000000000000000000000000000000000000000000000815290516000926001600160a01b031691630505c8c99160048083019260209291908290030181865afa158015610250573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061027491906105a1565b6001600160a01b0316336001600160a01b0316146000906102a85760405162461bcd60e51b81526004016101d091906104c2565b5081600260006003600081546102bd906105be565b9190508190558152602001908152602001600020819055506003547f5dc34c7873546ff6a080f7118747a4b9fc06182f6534d83f47fa643ae36eb45c8360405161030991815260200190565b60405180910390a2505060035490565b600160009054906101000a90046001600160a01b03166001600160a01b0316630c340a246040518163ffffffff1660e01b8152600401602060405180830381865afa15801561036c573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061039091906105a1565b6001600160a01b0316336001600160a01b0316146000906103c45760405162461bcd60e51b81526004016101d091906104c2565b50600180547fffffffffffffffffffffffff0000000000000000000000000000000000000000166001600160a01b0383169081179091556040517f2f658b440c35314f52658ea8a740e05b284cdc84dc9ae01e891f21b8933e7cad90600090a250565b60006020828403121561043957600080fd5b5035919050565b6001600160a01b038116811461045557600080fd5b50565b60006020828403121561046a57600080fd5b813561047581610440565b9392505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b6000828210156104bd576104bd61047c565b500390565b600060208083526000845481600182811c9150808316806104e457607f831692505b85831081141561051b577f4e487b710000000000000000000000000000000000000000000000000000000085526022600452602485fd5b878601838152602001818015610538576001811461056757610592565b7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00861682528782019650610592565b60008b81526020902060005b8681101561058c57815484820152908501908901610573565b83019750505b50949998505050505050505050565b6000602082840312156105b357600080fd5b815161047581610440565b60007fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff8214156105f0576105f061047c565b506001019056fea264697066735822122033354f080b5301f1a280a88a71093b845c4b1aa1a53354bac8c0e8ab557ebcc964736f6c634300080a0033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100885760003560e01c80636934b4e11161005b5780636934b4e1146100ca57806378a642f2146100dd5780637a9e5e4b146100f4578063bf7e214f1461010957600080fd5b8063015688831461008d5780630d9005ae146100a857806318148c43146100b0578063313ce567146100c3575b600080fd5b610095610134565b6040519081526020015b60405180910390f35b600354610095565b6100956100be366004610427565b6101a8565b6009610095565b6100956100d8366004610427565b6101ed565b600354600090815260026020526040902054610095565b610107610102366004610458565b610319565b005b60015461011c906001600160a01b031681565b6040516001600160a01b03909116815260200161009f565b6000600354600014156101475750600090565b6003546001146101785760026000600160035461016491906104ab565b815260200190815260200160002054905090565b50600160005260026020527fe90b7bceb6e7df5418fb78d8ee546e97c83a08bbccc01a0644d599ccd2a7c2e05490565b60006003548211156004906101d95760405162461bcd60e51b81526004016101d091906104c2565b60405180910390fd5b505060009081526002602052604090205490565b600154604080517f0505c8c900000000000000000000000000000000000000000000000000000000815290516000926001600160a01b031691630505c8c99160048083019260209291908290030181865afa158015610250573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061027491906105a1565b6001600160a01b0316336001600160a01b0316146000906102a85760405162461bcd60e51b81526004016101d091906104c2565b5081600260006003600081546102bd906105be565b9190508190558152602001908152602001600020819055506003547f5dc34c7873546ff6a080f7118747a4b9fc06182f6534d83f47fa643ae36eb45c8360405161030991815260200190565b60405180910390a2505060035490565b600160009054906101000a90046001600160a01b03166001600160a01b0316630c340a246040518163ffffffff1660e01b8152600401602060405180830381865afa15801561036c573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061039091906105a1565b6001600160a01b0316336001600160a01b0316146000906103c45760405162461bcd60e51b81526004016101d091906104c2565b50600180547fffffffffffffffffffffffff0000000000000000000000000000000000000000166001600160a01b0383169081179091556040517f2f658b440c35314f52658ea8a740e05b284cdc84dc9ae01e891f21b8933e7cad90600090a250565b60006020828403121561043957600080fd5b5035919050565b6001600160a01b038116811461045557600080fd5b50565b60006020828403121561046a57600080fd5b813561047581610440565b9392505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b6000828210156104bd576104bd61047c565b500390565b600060208083526000845481600182811c9150808316806104e457607f831692505b85831081141561051b577f4e487b710000000000000000000000000000000000000000000000000000000085526022600452602485fd5b878601838152602001818015610538576001811461056757610592565b7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00861682528782019650610592565b60008b81526020902060005b8681101561058c57815484820152908501908901610573565b83019750505b50949998505050505050505050565b6000602082840312156105b357600080fd5b815161047581610440565b60007fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff8214156105f0576105f061047c565b506001019056fea264697066735822122033354f080b5301f1a280a88a71093b845c4b1aa1a53354bac8c0e8ab557ebcc964736f6c634300080a0033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "currentYield()": {
+        "returns": {
+          "_0": "int256  current yield value"
+        }
+      },
+      "decimals()": {
+        "returns": {
+          "_0": "uint256  number of decimals (9)"
+        }
+      },
+      "getCurrentIndex()": {
+        "returns": {
+          "_0": "uint256  current index value"
+        }
+      },
+      "getYieldById(uint256)": {
+        "details": "reverts if id is out of bounds",
+        "params": {
+          "_id": "index of yield to return"
+        },
+        "returns": {
+          "_0": "int256  yield value"
+        }
+      },
+      "lastYield()": {
+        "details": "If there is only 1 yield reported, the current yield is returned",
+        "returns": {
+          "_0": "int256  previous yield value"
+        }
+      },
+      "reportYield(int256)": {
+        "details": "reverts if called by a non-policy addressemits a ReportYield event",
+        "params": {
+          "_amount": "yield value to report"
+        },
+        "returns": {
+          "_0": "uint256  index of the reported yield"
+        }
+      }
+    },
+    "title": "Theopetra Yield Reorter",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "currentYield()": {
+        "notice": "returns the current yield value"
+      },
+      "decimals()": {
+        "notice": "return the number of decimals expect in the fixed point yield representation (9)"
+      },
+      "getCurrentIndex()": {
+        "notice": "returns the current index value"
+      },
+      "getYieldById(uint256)": {
+        "notice": "returns the yield value for a given index"
+      },
+      "lastYield()": {
+        "notice": "returns the previous yield value or 0 if no previous yield"
+      },
+      "reportYield(int256)": {
+        "notice": "reports a yield value"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 12978,
+        "contract": "src/Theopetra/TheopetraYieldReporter.sol:TheopetraYieldReporter",
+        "label": "UNAUTHORIZED",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_string_storage"
+      },
+      {
+        "astId": 12981,
+        "contract": "src/Theopetra/TheopetraYieldReporter.sol:TheopetraYieldReporter",
+        "label": "authority",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_contract(ITheopetraAuthority)2802"
+      },
+      {
+        "astId": 11114,
+        "contract": "src/Theopetra/TheopetraYieldReporter.sol:TheopetraYieldReporter",
+        "label": "yields",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_mapping(t_uint256,t_int256)"
+      },
+      {
+        "astId": 11118,
+        "contract": "src/Theopetra/TheopetraYieldReporter.sol:TheopetraYieldReporter",
+        "label": "currentIndex",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 11121,
+        "contract": "src/Theopetra/TheopetraYieldReporter.sol:TheopetraYieldReporter",
+        "label": "OUT_OF_BOUNDS",
+        "offset": 0,
+        "slot": "4",
+        "type": "t_string_storage"
+      }
+    ],
+    "types": {
+      "t_contract(ITheopetraAuthority)2802": {
+        "encoding": "inplace",
+        "label": "contract ITheopetraAuthority",
+        "numberOfBytes": "20"
+      },
+      "t_int256": {
+        "encoding": "inplace",
+        "label": "int256",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint256,t_int256)": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => int256)",
+        "numberOfBytes": "32",
+        "value": "t_int256"
+      },
+      "t_string_storage": {
+        "encoding": "bytes",
+        "label": "string",
+        "numberOfBytes": "32"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}

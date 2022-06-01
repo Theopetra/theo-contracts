@@ -1,4 +1,6 @@
 import { ethers } from 'hardhat';
+import hre from 'hardhat';
+import { HardhatRuntimeEnvironment } from 'hardhat/types';
 
 import {
   TheopetraBondDepository,
@@ -21,12 +23,17 @@ import {
   YieldReporterMock,
   PTheopetra,
   TwapGetter,
+  WethHelper,
+  PublicPreListBondDepository,
 } from '../typechain-types';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTWITHMOCKS } from './constants';
 
 export async function getContracts(currentContract?: string): Promise<any> {
+  const { getChainId } = hre as HardhatRuntimeEnvironment;
+  const chainId = await getChainId();
+
   const isWithMocks = process.env.NODE_ENV === TESTWITHMOCKS;
-  return {
+  const contracts = {
     TheopetraAuthority: <TheopetraAuthority>await ethers.getContract(CONTRACTS.authority),
     YieldReporter:
       isWithMocks && currentContract !== CONTRACTS.yieldReporter
@@ -49,13 +56,8 @@ export async function getContracts(currentContract?: string): Promise<any> {
       isWithMocks && currentContract !== CONTRACTS.treasury
         ? await ethers.getContract(MOCKSWITHARGS.treasuryMock)
         : await ethers.getContract(CONTRACTS.treasury),
-    UsdcTokenMock: <UsdcERC20Mock>await ethers.getContract(MOCKS.usdcTokenMock),
-    WETH9: <WETH9>await ethers.getContract(MOCKS.WETH9),
-    BondingCalculatorMock: <BondingCalculatorMock>await ethers.getContract(MOCKSWITHARGS.bondingCalculatorMock),
     Distributor: <StakingDistributor>await ethers.getContract(CONTRACTS.distributor),
     WhitelistBondDepository: <WhitelistTheopetraBondDepository>await ethers.getContract(CONTRACTS.whitelistBondDepo),
-    AggregatorMockETH: <AggregatorMockETH>await ethers.getContract(MOCKS.aggregatorMockETH),
-    AggregatorMockUSDC: <AggregatorMockUSDC>await ethers.getContract(MOCKS.aggregatorMockUSDC),
     pTheo: <PTheopetra>await ethers.getContract(CONTRACTS.pTheo),
     FounderVesting: <TheopetraFounderVesting>await ethers.getContract(CONTRACTS.founderVesting),
     StakingLocked:
@@ -63,5 +65,17 @@ export async function getContracts(currentContract?: string): Promise<any> {
         ? <StakingMock>await ethers.getContract(MOCKSWITHARGS.stakingMock)
         : <TheopetraStaking>await ethers.getContract(CONTRACTS.stakingLocked),
     TwapGetter: <TwapGetter>await ethers.getContract(CONTRACTS.twapGetter),
+    WethHelper: <WethHelper>await ethers.getContract(CONTRACTS.WethHelper),
+    PublicPreListBondDepository: <PublicPreListBondDepository>await ethers.getContract(CONTRACTS.publicPreListBondDepo),
   };
+  return chainId !== '1337'
+    ? contracts
+    : {
+        ...contracts,
+        AggregatorMockETH: <AggregatorMockETH>await ethers.getContract(MOCKS.aggregatorMockETH),
+        AggregatorMockUSDC: <AggregatorMockUSDC>await ethers.getContract(MOCKS.aggregatorMockUSDC),
+        UsdcTokenMock: <UsdcERC20Mock>await ethers.getContract(MOCKS.usdcTokenMock),
+        WETH9: <WETH9>await ethers.getContract(MOCKS.WETH9),
+        BondingCalculatorMock: <BondingCalculatorMock>await ethers.getContract(MOCKSWITHARGS.bondingCalculatorMock),
+      };
 }

@@ -1,0 +1,1319 @@
+{
+  "address": "0x02fd7CFFaE593132036290Ed09894FA6DBf3B725",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_THEO",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_sTHEO",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_epochLength",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_firstEpochNumber",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_firstEpochTime",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_stakingTerm",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_authority",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_treasury",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "contract ITheopetraAuthority",
+          "name": "authority",
+          "type": "address"
+        }
+      ],
+      "name": "AuthorityUpdated",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "THEO",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "authority",
+      "outputs": [
+        {
+          "internalType": "contract ITheopetraAuthority",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "basis",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_recipient",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "_indexes",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "claim",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount_",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_recipient",
+          "type": "address"
+        }
+      ],
+      "name": "claimAll",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "contractBalance",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "bands",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "penalties",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "definePenalties",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "distributor",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "epoch",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "length",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "number",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "end",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "distribute",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_index",
+          "type": "uint256"
+        }
+      ],
+      "name": "forfeit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_user",
+          "type": "address"
+        }
+      ],
+      "name": "getClaimsCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "stakingTimePercentComplete",
+          "type": "uint256"
+        }
+      ],
+      "name": "getPenalty",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "giveLockBonus",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "index",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_user",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "unRetrieved",
+          "type": "bool"
+        }
+      ],
+      "name": "indexesFor",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_user",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_index",
+          "type": "uint256"
+        }
+      ],
+      "name": "isUnRedeemed",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_user",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_index",
+          "type": "uint256"
+        }
+      ],
+      "name": "isUnRetrieved",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "locker",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_from",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_index",
+          "type": "uint256"
+        }
+      ],
+      "name": "pullClaim",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "newIndex_",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_index",
+          "type": "uint256"
+        }
+      ],
+      "name": "pushClaim",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_index",
+          "type": "uint256"
+        }
+      ],
+      "name": "pushClaimForBond",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "newIndex_",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "rebase",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "returnLockBonus",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_user",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_index",
+          "type": "uint256"
+        }
+      ],
+      "name": "rewardsFor",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "currentRewards_",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "sTHEO",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract ITheopetraAuthority",
+          "name": "_newAuthority",
+          "type": "address"
+        }
+      ],
+      "name": "setAuthority",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_bondDepo",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "val",
+          "type": "bool"
+        }
+      ],
+      "name": "setBondDepo",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "enum TheopetraStaking.CONTRACTS",
+          "name": "_contract",
+          "type": "uint8"
+        },
+        {
+          "internalType": "address",
+          "name": "_address",
+          "type": "address"
+        }
+      ],
+      "name": "setContract",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_warmupPeriod",
+          "type": "uint256"
+        }
+      ],
+      "name": "setWarmup",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_recipient",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "_claim",
+          "type": "bool"
+        }
+      ],
+      "name": "stake",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_index",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "stakingInfo",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "deposit",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "gonsInWarmup",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "warmupExpiry",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "stakingExpiry",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "gonsRemaining",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "stakingTerm",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "supplyInWarmup",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "toggleLock",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalBonus",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "treasury",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "_amounts",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "bool",
+          "name": "_trigger",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "_indexes",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "unstake",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount_",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "warmupContract",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "warmupPeriod",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xd92ae842107874d8d26b7c8120b7d8226d6fcb76559f450d727946fa7c5ddc70",
+  "receipt": {
+    "to": null,
+    "from": "0x0a4B56B375aEAfB5A02ACaeEc5Ca0F6a6efb0025",
+    "contractAddress": "0x02fd7CFFaE593132036290Ed09894FA6DBf3B725",
+    "transactionIndex": 2,
+    "gasUsed": "3995585",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000080000008000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000400000000080000000000000000000000000000000000000000000000008000000000000000000000040000000000000000000",
+    "blockHash": "0x14422244d94720b8ce298c3e2ff50b0505321b43c41250678e7b7a8cbd11cab0",
+    "transactionHash": "0xd92ae842107874d8d26b7c8120b7d8226d6fcb76559f450d727946fa7c5ddc70",
+    "logs": [
+      {
+        "transactionIndex": 2,
+        "blockNumber": 10606257,
+        "transactionHash": "0xd92ae842107874d8d26b7c8120b7d8226d6fcb76559f450d727946fa7c5ddc70",
+        "address": "0x02fd7CFFaE593132036290Ed09894FA6DBf3B725",
+        "topics": [
+          "0x2f658b440c35314f52658ea8a740e05b284cdc84dc9ae01e891f21b8933e7cad",
+          "0x000000000000000000000000bcdf034ce6624a817c1bfeffbde8691443e5fdbb"
+        ],
+        "data": "0x",
+        "logIndex": 9,
+        "blockHash": "0x14422244d94720b8ce298c3e2ff50b0505321b43c41250678e7b7a8cbd11cab0"
+      }
+    ],
+    "blockNumber": 10606257,
+    "cumulativeGasUsed": "4664366",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x1A2EA28399A2e4f8f3EEfeA5f41770B4C61fE643",
+    "0x2152220456Ba96d24Ac9873B1A71ad414CA97e84",
+    28800,
+    "1",
+    1651527494,
+    31536000,
+    "0xBcdF034cE6624A817c1BfEffBDE8691443e5fDbB",
+    "0x6640C3FD53e4Cf446B4139f478A199147d663a44"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "446a1be813bfb9f78647a023efb0da17",
+  "metadata": "{\"compiler\":{\"version\":\"0.7.5+commit.eb77ed08\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_THEO\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_sTHEO\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_epochLength\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_firstEpochNumber\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_firstEpochTime\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_stakingTerm\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"_authority\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_treasury\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"contract ITheopetraAuthority\",\"name\":\"authority\",\"type\":\"address\"}],\"name\":\"AuthorityUpdated\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"THEO\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"authority\",\"outputs\":[{\"internalType\":\"contract ITheopetraAuthority\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"basis\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_recipient\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"_indexes\",\"type\":\"uint256[]\"}],\"name\":\"claim\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_recipient\",\"type\":\"address\"}],\"name\":\"claimAll\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"contractBalance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"bands\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"penalties\",\"type\":\"uint256[]\"}],\"name\":\"definePenalties\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"distributor\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"epoch\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"length\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"number\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"end\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"distribute\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"forfeit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"getClaimsCount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_amount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"stakingTimePercentComplete\",\"type\":\"uint256\"}],\"name\":\"getPenalty\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_amount\",\"type\":\"uint256\"}],\"name\":\"giveLockBonus\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"index\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_user\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"unRetrieved\",\"type\":\"bool\"}],\"name\":\"indexesFor\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"\",\"type\":\"uint256[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_user\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"isUnRedeemed\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_user\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"isUnRetrieved\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"locker\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_from\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"pullClaim\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"newIndex_\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"pushClaim\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"pushClaimForBond\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"newIndex_\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"rebase\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_amount\",\"type\":\"uint256\"}],\"name\":\"returnLockBonus\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_user\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_index\",\"type\":\"uint256\"}],\"name\":\"rewardsFor\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"currentRewards_\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"sTHEO\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract ITheopetraAuthority\",\"name\":\"_newAuthority\",\"type\":\"address\"}],\"name\":\"setAuthority\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_bondDepo\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"val\",\"type\":\"bool\"}],\"name\":\"setBondDepo\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"enum TheopetraStaking.CONTRACTS\",\"name\":\"_contract\",\"type\":\"uint8\"},{\"internalType\":\"address\",\"name\":\"_address\",\"type\":\"address\"}],\"name\":\"setContract\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_warmupPeriod\",\"type\":\"uint256\"}],\"name\":\"setWarmup\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_recipient\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_amount\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"_claim\",\"type\":\"bool\"}],\"name\":\"stake\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_index\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"stakingInfo\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"deposit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gonsInWarmup\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"warmupExpiry\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"stakingExpiry\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"gonsRemaining\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"stakingTerm\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"supplyInWarmup\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"toggleLock\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"totalBonus\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"treasury\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_to\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"_amounts\",\"type\":\"uint256[]\"},{\"internalType\":\"bool\",\"name\":\"_trigger\",\"type\":\"bool\"},{\"internalType\":\"uint256[]\",\"name\":\"_indexes\",\"type\":\"uint256[]\"}],\"name\":\"unstake\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"amount_\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"warmupContract\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"warmupPeriod\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"basis()\":{\"returns\":{\"_0\":\"address     the address of the staking token\"}},\"claim(address,uint256[])\":{\"details\":\"After a claim has been retrieved (and a subsequent call to `isUnRetrieved` returns false), the claim cannot be re-retrieved; gonsRemaining is therefore only set once by this method for each Claim\",\"params\":{\"_indexes\":\"uint256[]      indexes of the sTHEO to retrieve\",\"_recipient\":\"address\"},\"returns\":{\"amount_\":\"               The sum total amount of sTHEO sent\"}},\"claimAll(address)\":{\"details\":\"if possible, query indexesFor() off-chain and input in claim() to save gas\",\"params\":{\"_recipient\":\"address. The recipient to retrieve sTHEO from all claims for\"},\"returns\":{\"_0\":\"sum of claim amounts sent, in sTHEO\"}},\"contractBalance()\":{\"returns\":{\"_0\":\"uint\"}},\"giveLockBonus(uint256)\":{\"params\":{\"_amount\":\"uint\"}},\"index()\":{\"returns\":{\"_0\":\"uint\"}},\"indexesFor(address,bool)\":{\"params\":{\"_user\":\"the user to query claims for\",\"unRetrieved\":\"bool. If true, return indexes of all un-claimed claims from warmup, else return indexes of all claims with un-redeemed sTheo\"},\"returns\":{\"_0\":\"indexes of un-retrieved claims, or of un-redeemed claims, for the user\"}},\"isUnRedeemed(address,uint256)\":{\"params\":{\"_index\":\"the index of the claim\",\"_user\":\"the user to query claims for\"},\"returns\":{\"_0\":\"bool        true if the total sTHEO on the claim has not yet been redeemed for THEO\"}},\"isUnRetrieved(address,uint256)\":{\"params\":{\"_index\":\"the index of the claim\",\"_user\":\"the user to query claims for\"},\"returns\":{\"_0\":\"bool        true if the sTHEO has not yet been retrieved for the claim\"}},\"pullClaim(address,uint256)\":{\"params\":{\"_from\":\"the address that approved the claim transfer\",\"_index\":\"the index of the claim to transfer (in the sender's array)\"}},\"pushClaim(address,uint256)\":{\"params\":{\"_index\":\"index of claim to approve transfer for\",\"_to\":\"address to approve claim transfer for\"}},\"pushClaimForBond(address,uint256)\":{\"params\":{\"_index\":\"the index of the claim to transfer (in the sender's array)\",\"_to\":\"the address to push the claim to (must be pre-approved for transfer via `pushClaim`)\"}},\"rebase()\":{\"returns\":{\"_0\":\"uint256\"}},\"returnLockBonus(uint256)\":{\"params\":{\"_amount\":\"uint\"}},\"rewardsFor(address,uint256)\":{\"params\":{\"_index\":\"the index of the claim in the user's array\",\"_user\":\"the user that the claim belongs to\"},\"returns\":{\"currentRewards_\":\" the current total rewards expected for a claim (valid only for claims out of warmup), calculated as: (sTHEO remaining + slashedRewards) - deposit amount note that currentRewards_ does not include any potential bounty or additional sTheo balance that may be applied if rebasing when unstaking\"}},\"setBondDepo(address,bool)\":{\"details\":\"see also `pushClaimForBond`\",\"params\":{\"_bondDepo\":\"address of the bond depo\"}},\"setContract(uint8,address)\":{\"params\":{\"_contract\":\"address\"}},\"setWarmup(uint256)\":{\"params\":{\"_warmupPeriod\":\"uint\"}},\"stake(address,uint256,bool)\":{\"details\":\"if warmupPeriod is 0 and _claim is true, funds are sent immediately, and warmupExpiry is 0: this is so that the staker cannot retrieve sTHEO from warmup using the stored Claim (see also `claim`). If warmupPeriod is not 0, or if _claim is false, then funds go into warmup (sTheo is not sent)\",\"params\":{\"_amount\":\"uint\",\"_claim\":\"bool\"},\"returns\":{\"_0\":\"uint256 _amount staked\",\"_index\":\"uint256 the index of the claim added for the recipient in the recipient's stakingInfo\"}},\"unstake(address,uint256[],bool,uint256[])\":{\"details\":\"if `stakingExpiry` has not yet passed, Determine the penalty for removing early.         `percentageComplete` is the percentage of time that the stake has completed (versus the `stakingTerm`), expressed with 4 decimals.         note that For unstaking before 100% of staking term, only the principle deposit -- less a penalty -- is returned. In this case, the full claim must be redeemed         and gonsRemaining becomes zero.         note that For unstaking at or beyond 100% of the staking term, a part-redeem can be made: that is, a user may redeem less than 100% of the total amount available to redeem         (as represented by gonsRemaining), during a call to `unstake`         note that The penalty is added (after conversion to gons) to `slasheGons` and subtracted from the amount to return         gonsRemaining keeps track of the amount of sTheo (as gons) that can be redeemed for a Claim         note that When unstaking from the locked tranche (stakingTerm > 0) after the stake reaches maturity,         the Stake becomes eligible to claim against bonus pool rewards (tracked in `slashedGons`; see also `getSlashedRewards`)\",\"params\":{\"_amounts\":\"uint\",\"_indexes\":\"uint256[]\",\"_to\":\"address\",\"_trigger\":\"bool\"},\"returns\":{\"amount_\":\"uint\"}}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"basis()\":{\"notice\":\"return the staking token that the tranche is based on\"},\"claim(address,uint256[])\":{\"notice\":\"retrieve sTHEO from warmup\"},\"claimAll(address)\":{\"notice\":\"claim all retrievable (from warmup) claims for user\"},\"contractBalance()\":{\"notice\":\"returns contract THEO holdings, including bonuses provided\"},\"forfeit(uint256)\":{\"notice\":\"forfeit sTHEO in warmup and retrieve THEO\"},\"giveLockBonus(uint256)\":{\"notice\":\"provide bonus to locked staking contract\"},\"index()\":{\"notice\":\"returns the sTHEO index, which tracks rebase growth\"},\"indexesFor(address,bool)\":{\"notice\":\"all un-retrieved claims (sTHEO available to retrieve from warmup), or all un-redeemed claims (sTHEO retrieved but yet to be redeemed for THEO) for a user\"},\"isUnRedeemed(address,uint256)\":{\"notice\":\"determine whether a claim has a (non-zero) sTHEO balance remaining that can be redeemed for THEO                     if the claim is still in warmup, this method will return false (as no sTheo can yet be redeemed against the claim)\"},\"isUnRetrieved(address,uint256)\":{\"notice\":\"determine whether sTHEO has been retrieved (via `claim`) for a Claim\"},\"pullClaim(address,uint256)\":{\"notice\":\"transfer a claim that has been approved by an address\"},\"pushClaim(address,uint256)\":{\"notice\":\"approve an address to transfer a claim\"},\"pushClaimForBond(address,uint256)\":{\"notice\":\"transfer a claim that has been approved by an address\"},\"rebase()\":{\"notice\":\"trigger rebase if epoch over\"},\"returnLockBonus(uint256)\":{\"notice\":\"reclaim bonus from locked staking contract\"},\"rewardsFor(address,uint256)\":{\"notice\":\"return the current expected rewards for a claim\"},\"setBondDepo(address,bool)\":{\"notice\":\"set the address of a bond depo to allow it to push claims to users when redeeming bonds\"},\"setContract(uint8,address)\":{\"notice\":\"sets the contract address for LP staking\"},\"setWarmup(uint256)\":{\"notice\":\"set warmup period for new stakers\"},\"stake(address,uint256,bool)\":{\"notice\":\"stake THEO to enter warmup\"},\"supplyInWarmup()\":{\"notice\":\"total supply in warmup\"},\"toggleLock()\":{\"notice\":\"prevent new deposits or claims to/from external address (protection from malicious activity)\"},\"unstake(address,uint256[],bool,uint256[])\":{\"notice\":\"redeem sTHEO for THEO from un-redeemed claims\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"src/Theopetra/Staking.sol\":\"TheopetraStaking\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":2000},\"remappings\":[]},\"sources\":{\"src/Interfaces/IBondCalculator.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-1.0\\n\\npragma solidity >=0.7.5 <=0.8.10;\\n\\ninterface IBondCalculator {\\n    function valuation(address tokenIn, uint256 amount_) external view returns (uint256 amountOut);\\n}\\n\",\"keccak256\":\"0x69bc452b443bad25ea668f74c2dffcdfc4bb24147cec627294d1f7ac10170c64\",\"license\":\"AGPL-1.0\"},\"src/Interfaces/IDistributor.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0-or-later\\npragma solidity >=0.7.5 <=0.8.10;\\n\\ninterface IDistributor {\\n    function distribute() external returns (bool);\\n\\n    function bounty() external view returns (uint256);\\n\\n    function retrieveBounty() external returns (uint256);\\n\\n    function nextRewardAt(uint256 _rate, address _recipient) external view returns (uint256);\\n\\n    function nextRewardFor(address _recipient) external view returns (uint256);\\n\\n    function nextRewardRate(uint256 _index) external view returns (uint256);\\n\\n    function setBounty(uint256 _bounty) external;\\n\\n    function addRecipient(\\n        address _recipient,\\n        uint256 _startRate,\\n        int256 _drs,\\n        int256 _dys,\\n        bool _locked\\n    ) external;\\n\\n    function removeRecipient(uint256 _index) external;\\n\\n    function setDiscountRateStaking(uint256 _index, int256 _drs) external;\\n\\n    function setDiscountRateYield(uint256 _index, int256 _dys) external;\\n\\n    function setStaking(address _addr) external;\\n}\\n\",\"keccak256\":\"0x8e9f858aeba45f84955ba37b76b23ade82491992f26e352e3f4ee9a7d1174d17\",\"license\":\"AGPL-3.0-or-later\"},\"src/Interfaces/IERC20.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0\\npragma solidity >=0.7.5;\\n\\ninterface IERC20 {\\n    function totalSupply() external view returns (uint256);\\n\\n    function balanceOf(address account) external view returns (uint256);\\n\\n    function transfer(address recipient, uint256 amount) external returns (bool);\\n\\n    function allowance(address owner, address spender) external view returns (uint256);\\n\\n    function approve(address spender, uint256 amount) external returns (bool);\\n\\n    function transferFrom(\\n        address sender,\\n        address recipient,\\n        uint256 amount\\n    ) external returns (bool);\\n\\n    event Transfer(address indexed from, address indexed to, uint256 value);\\n\\n    event Approval(address indexed owner, address indexed spender, uint256 value);\\n}\\n\",\"keccak256\":\"0xc379ec1f3a741cc00948003e24687516b8fdb71914cd3b90b10589d74fe1d49f\",\"license\":\"AGPL-3.0\"},\"src/Interfaces/IStakedTHEOToken.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0\\npragma solidity >=0.7.5;\\n\\nimport \\\"./IERC20.sol\\\";\\n\\ninterface IStakedTHEOToken is IERC20 {\\n    function rebase(uint256 theoProfit_, uint256 epoch_) external returns (uint256);\\n\\n    function circulatingSupply() external view returns (uint256);\\n\\n    function balanceOf(address who) external view override returns (uint256);\\n\\n    function gonsForBalance(uint256 amount) external view returns (uint256);\\n\\n    function balanceForGons(uint256 gons) external view returns (uint256);\\n\\n    function index() external view returns (uint256);\\n}\\n\",\"keccak256\":\"0x3143d844fbf32d8dc30ab9e1ea6bcc30825a74cd5586f185be87ce88a9887ebb\",\"license\":\"AGPL-3.0\"},\"src/Interfaces/ITHEO.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0\\npragma solidity >=0.7.5;\\n\\nimport \\\"./IERC20.sol\\\";\\n\\ninterface ITHEO is IERC20 {\\n    function mint(address account_, uint256 amount_) external;\\n\\n    function burn(uint256 amount) external;\\n\\n    function burnFrom(address account_, uint256 amount_) external;\\n}\\n\",\"keccak256\":\"0x3045a1b33e73bf98e16fb64fb36e74a9cf282f89f32277826d37a8bd102f2207\",\"license\":\"AGPL-3.0\"},\"src/Interfaces/ITheopetraAuthority.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0\\npragma solidity >=0.7.5;\\n\\ninterface ITheopetraAuthority {\\n    /* ========== EVENTS ========== */\\n\\n    event GovernorPushed(address indexed from, address indexed to, bool _effectiveImmediately);\\n    event GuardianPushed(address indexed from, address indexed to, bool _effectiveImmediately);\\n    event PolicyPushed(address indexed from, address indexed to, bool _effectiveImmediately);\\n    event ManagerPushed(address indexed from, address indexed to, bool _effectiveImmediately);\\n    event VaultPushed(address indexed from, address indexed to, bool _effectiveImmediately);\\n    event SignerPushed(address indexed from, address indexed to, bool _effectiveImmediately);\\n\\n    event GovernorPulled(address indexed from, address indexed to);\\n    event GuardianPulled(address indexed from, address indexed to);\\n    event PolicyPulled(address indexed from, address indexed to);\\n    event ManagerPulled(address indexed from, address indexed to);\\n    event VaultPulled(address indexed from, address indexed to);\\n    event SignerPulled(address indexed from, address indexed to);\\n\\n    /* ========== VIEW ========== */\\n\\n    function governor() external view returns (address);\\n\\n    function guardian() external view returns (address);\\n\\n    function policy() external view returns (address);\\n\\n    function manager() external view returns (address);\\n\\n    function vault() external view returns (address);\\n\\n    function whitelistSigner() external view returns (address);\\n}\\n\",\"keccak256\":\"0xb2878b057ac95bafe9f359c26c4e7b470dcd6d00df5797f992a576d79182b287\",\"license\":\"AGPL-3.0\"},\"src/Interfaces/ITreasury.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0\\npragma solidity >=0.7.5;\\n\\nimport \\\"./IBondCalculator.sol\\\";\\n\\ninterface ITreasury {\\n    function deposit(\\n        uint256 _amount,\\n        address _token,\\n        uint256 _profit\\n    ) external returns (uint256);\\n\\n    function withdraw(uint256 _amount, address _token) external;\\n\\n    function tokenValue(address _token, uint256 _amount) external view returns (uint256 value_);\\n\\n    function mint(address _recipient, uint256 _amount) external;\\n\\n    function manage(address _token, uint256 _amount) external;\\n\\n    function incurDebt(uint256 amount_, address token_) external;\\n\\n    function repayDebtWithReserve(uint256 amount_, address token_) external;\\n\\n    function tokenPerformanceUpdate() external;\\n\\n    function baseSupply() external view returns (uint256);\\n\\n    function deltaTokenPrice() external view returns (int256);\\n\\n    function deltaTreasuryYield() external view returns (int256);\\n\\n    function getTheoBondingCalculator() external view returns (IBondCalculator);\\n\\n    function setTheoBondingCalculator(address _theoBondingCalculator) external;\\n}\\n\",\"keccak256\":\"0x10a5c7e77b1e79eb7cf341bbbaf772b1f64f452cbf525d9cb7cf9ef44c04f71f\",\"license\":\"AGPL-3.0\"},\"src/Libraries/SafeERC20.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0-only\\npragma solidity >=0.7.5;\\n\\nimport { IERC20 } from \\\"../Interfaces/IERC20.sol\\\";\\n\\n/// @notice Safe IERC20 and ETH transfer library that safely handles missing return values.\\n/// @author Modified from Uniswap (https://github.com/Uniswap/uniswap-v3-periphery/blob/main/contracts/libraries/TransferHelper.sol)\\n/// Taken from Solmate\\nlibrary SafeERC20 {\\n    function safeTransferFrom(\\n        IERC20 token,\\n        address from,\\n        address to,\\n        uint256 amount\\n    ) internal {\\n        (bool success, bytes memory data) = address(token).call(\\n            abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, amount)\\n        );\\n\\n        require(success && (data.length == 0 || abi.decode(data, (bool))), \\\"TRANSFER_FROM_FAILED\\\");\\n    }\\n\\n    function safeTransfer(\\n        IERC20 token,\\n        address to,\\n        uint256 amount\\n    ) internal {\\n        (bool success, bytes memory data) = address(token).call(\\n            abi.encodeWithSelector(IERC20.transfer.selector, to, amount)\\n        );\\n\\n        require(success && (data.length == 0 || abi.decode(data, (bool))), \\\"TRANSFER_FAILED\\\");\\n    }\\n\\n    function safeApprove(\\n        IERC20 token,\\n        address to,\\n        uint256 amount\\n    ) internal {\\n        (bool success, bytes memory data) = address(token).call(\\n            abi.encodeWithSelector(IERC20.approve.selector, to, amount)\\n        );\\n\\n        require(success && (data.length == 0 || abi.decode(data, (bool))), \\\"APPROVE_FAILED\\\");\\n    }\\n\\n    function safeTransferETH(address to, uint256 amount) internal {\\n        (bool success, ) = to.call{ value: amount }(new bytes(0));\\n\\n        require(success, \\\"ETH_TRANSFER_FAILED\\\");\\n    }\\n}\\n\",\"keccak256\":\"0xbba364b239a1a473ccd351490d3aff53f31369c461512837274a476027b35784\",\"license\":\"AGPL-3.0-only\"},\"src/Libraries/SafeMath.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0-or-later\\npragma solidity 0.7.5;\\n\\n/**\\n * @dev Wrappers over Solidity's arithmetic operations with added overflow\\n * checks.\\n *\\n * Arithmetic operations in Solidity wrap on overflow. This can easily result\\n * in bugs, because programmers usually assume that an overflow raises an\\n * error, which is the standard behavior in high level programming languages.\\n * `SafeMath` restores this intuition by reverting the transaction when an\\n * operation overflows.\\n *\\n * Using this library instead of the unchecked operations eliminates an entire\\n * class of bugs, so it's recommended to use it always.\\n */\\nlibrary SafeMath {\\n    /**\\n     * @dev Returns the addition of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `+` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Addition cannot overflow.\\n     */\\n    function add(uint256 a, uint256 b) internal pure returns (uint256) {\\n        uint256 c = a + b;\\n        require(c >= a, \\\"SafeMath: addition overflow\\\");\\n\\n        return c;\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting on\\n     * overflow (when the result is negative).\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return sub(a, b, \\\"SafeMath: subtraction overflow\\\");\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on\\n     * overflow (when the result is negative).\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        require(b <= a, errorMessage);\\n        uint256 c = a - b;\\n\\n        return c;\\n    }\\n\\n    /**\\n     * @dev Returns the multiplication of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `*` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Multiplication cannot overflow.\\n     */\\n    function mul(uint256 a, uint256 b) internal pure returns (uint256) {\\n        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the\\n        // benefit is lost if 'b' is also tested.\\n        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522\\n        if (a == 0) {\\n            return 0;\\n        }\\n\\n        uint256 c = a * b;\\n        require(c / a == b, \\\"SafeMath: multiplication overflow\\\");\\n\\n        return c;\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers. Reverts on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator. Note: this function uses a\\n     * `revert` opcode (which leaves remaining gas untouched) while Solidity\\n     * uses an invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function div(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return div(a, b, \\\"SafeMath: division by zero\\\");\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers. Reverts with custom message on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator. Note: this function uses a\\n     * `revert` opcode (which leaves remaining gas untouched) while Solidity\\n     * uses an invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function div(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        require(b > 0, errorMessage);\\n        uint256 c = a / b;\\n        // assert(a == b * c + a % b); // There is no case in which this doesn't hold\\n\\n        return c;\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * Reverts when dividing by zero.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return mod(a, b, \\\"SafeMath: modulo by zero\\\");\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * Reverts with custom message when dividing by zero.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        require(b != 0, errorMessage);\\n        return a % b;\\n    }\\n\\n    // babylonian method (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method)\\n    function sqrrt(uint256 a) internal pure returns (uint256 c) {\\n        if (a > 3) {\\n            c = a;\\n            uint256 b = add(div(a, 2), 1);\\n            while (b < c) {\\n                c = b;\\n                b = div(add(div(a, b), b), 2);\\n            }\\n        } else if (a != 0) {\\n            c = 1;\\n        }\\n    }\\n\\n    /*\\n     * Expects percentage to be trailed by 00,\\n     */\\n    function percentageAmount(uint256 total_, uint8 percentage_) internal pure returns (uint256 percentAmount_) {\\n        return div(mul(total_, percentage_), 1000);\\n    }\\n\\n    /*\\n     * Expects percentage to be trailed by 00,\\n     */\\n    function substractPercentage(uint256 total_, uint8 percentageToSub_) internal pure returns (uint256 result_) {\\n        return sub(total_, div(mul(total_, percentageToSub_), 1000));\\n    }\\n\\n    function percentageOfTotal(uint256 part_, uint256 total_) internal pure returns (uint256 percent_) {\\n        return div(mul(part_, 100), total_);\\n    }\\n\\n    /**\\n     * Taken from Hypersonic https://github.com/M2629/HyperSonic/blob/main/Math.sol\\n     * @dev Returns the average of two numbers. The result is rounded towards\\n     * zero.\\n     */\\n    function average(uint256 a, uint256 b) internal pure returns (uint256) {\\n        // (a + b) / 2 can overflow, so we distribute\\n        return (a / 2) + (b / 2) + (((a % 2) + (b % 2)) / 2);\\n    }\\n\\n    function quadraticPricing(uint256 payment_, uint256 multiplier_) internal pure returns (uint256) {\\n        return sqrrt(mul(multiplier_, payment_));\\n    }\\n\\n    function bondingCurve(uint256 supply_, uint256 multiplier_) internal pure returns (uint256) {\\n        return mul(multiplier_, supply_);\\n    }\\n}\\n\",\"keccak256\":\"0xc6ed927b09d3135cf05c030db1f6ff0816a8aa7d303c52c34e43a5ba03a19e78\",\"license\":\"AGPL-3.0-or-later\"},\"src/Theopetra/Staking.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0\\npragma solidity 0.7.5;\\nimport \\\"../Types/TheopetraAccessControlled.sol\\\";\\nimport \\\"../Libraries/SafeMath.sol\\\";\\nimport \\\"../Libraries/SafeERC20.sol\\\";\\n\\nimport \\\"../Interfaces/IDistributor.sol\\\";\\nimport \\\"../Interfaces/IStakedTHEOToken.sol\\\";\\nimport \\\"../Interfaces/ITHEO.sol\\\";\\nimport \\\"../Interfaces/ITreasury.sol\\\";\\n\\ncontract TheopetraStaking is TheopetraAccessControlled {\\n    using SafeMath for *;\\n    using SafeERC20 for IERC20;\\n    using SafeERC20 for IStakedTHEOToken;\\n    using SafeERC20 for ITHEO;\\n\\n    /* ====== VARIABLES ====== */\\n\\n    Epoch public epoch;\\n\\n    address public immutable THEO;\\n    address public immutable sTHEO;\\n    address public immutable treasury;\\n    uint256 public immutable stakingTerm;\\n\\n    address public distributor;\\n\\n    address public locker;\\n    uint256 public totalBonus;\\n\\n    address public warmupContract;\\n    uint256 public warmupPeriod;\\n\\n    uint256 private gonsInWarmup;\\n    uint256 private slashedGons;\\n\\n    mapping(address => Claim[]) public stakingInfo;\\n    mapping(address => bool) private isExternalLocked;\\n    mapping(address => mapping(uint256 => address)) private claimTransfers; // change claim ownership\\n    mapping(uint256 => uint256) penaltyBands;\\n    mapping(address => bool) private bondDepos;\\n\\n    /* ====== STRUCTS ====== */\\n\\n    struct Epoch {\\n        uint256 length;\\n        uint256 number;\\n        uint256 end;\\n        uint256 distribute;\\n    }\\n\\n    struct Claim {\\n        uint256 deposit;\\n        uint256 gonsInWarmup;\\n        uint256 warmupExpiry;\\n        uint256 stakingExpiry;\\n        uint256 gonsRemaining;\\n    }\\n\\n    struct UnstakeAmounts {\\n        uint256 _amountSingle;\\n        uint256 _gonsRemaining;\\n    }\\n\\n    constructor(\\n        address _THEO,\\n        address _sTHEO,\\n        uint256 _epochLength,\\n        uint256 _firstEpochNumber,\\n        uint256 _firstEpochTime,\\n        uint256 _stakingTerm,\\n        address _authority,\\n        address _treasury\\n    ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {\\n        uint256[] memory bands = new uint256[](20);\\n        uint256[] memory penalties = new uint256[](20);\\n\\n        for (uint256 i = 1; i < 21; i++) {\\n            bands[i - 1] = i;\\n            penalties[i - 1] = 21 - i;\\n        }\\n\\n        _definePenalties(bands, penalties);\\n\\n        require(_THEO != address(0), \\\"Invalid address\\\");\\n        THEO = _THEO;\\n        require(_sTHEO != address(0), \\\"Invalid address\\\");\\n        sTHEO = _sTHEO;\\n        stakingTerm = _stakingTerm;\\n        require(_treasury != address(0), \\\"Invalid address\\\");\\n        treasury = _treasury;\\n\\n        epoch = Epoch({ length: _epochLength, number: _firstEpochNumber, end: _firstEpochTime, distribute: 0 });\\n    }\\n\\n    /**\\n        @notice stake THEO to enter warmup\\n        @dev    if warmupPeriod is 0 and _claim is true, funds are sent immediately, and warmupExpiry is 0:\\n                this is so that the staker cannot retrieve sTHEO from warmup using the stored\\n                Claim (see also `claim`). If warmupPeriod is not 0, or if _claim is false, then funds go into warmup (sTheo is not sent)\\n        @param _amount uint\\n        @param _claim bool\\n        @return uint256 _amount staked\\n        @return _index uint256 the index of the claim added for the recipient in the recipient's stakingInfo\\n     */\\n    function stake(\\n        address _recipient,\\n        uint256 _amount,\\n        bool _claim\\n    ) external returns (uint256, uint256 _index) {\\n        rebase();\\n        IERC20(THEO).safeTransferFrom(msg.sender, address(this), _amount);\\n\\n        if (!isExternalLocked[_recipient]) {\\n            require(_recipient == msg.sender, \\\"External deposits for account are locked\\\");\\n        }\\n\\n        uint256 _index = stakingInfo[_recipient].length;\\n\\n        if (warmupPeriod == 0 && _claim) {\\n            stakingInfo[_recipient].push(\\n                Claim({\\n                    deposit: _amount,\\n                    gonsInWarmup: 0,\\n                    warmupExpiry: 0,\\n                    stakingExpiry: block.timestamp.add(stakingTerm),\\n                    gonsRemaining: IStakedTHEOToken(sTHEO).gonsForBalance(_amount)\\n                })\\n            );\\n            _send(_recipient, _amount);\\n        } else {\\n            gonsInWarmup = gonsInWarmup.add(IStakedTHEOToken(sTHEO).gonsForBalance(_amount));\\n            stakingInfo[_recipient].push(\\n                Claim({\\n                    deposit: _amount,\\n                    gonsInWarmup: IStakedTHEOToken(sTHEO).gonsForBalance(_amount),\\n                    warmupExpiry: block.timestamp.add(warmupPeriod),\\n                    stakingExpiry: block.timestamp.add(stakingTerm),\\n                    gonsRemaining: 0\\n                })\\n            );\\n        }\\n\\n        return (_amount, _index);\\n    }\\n\\n    /**\\n        @notice retrieve sTHEO from warmup\\n        @dev    After a claim has been retrieved (and a subsequent call to `isUnRetrieved` returns false),\\n                the claim cannot be re-retrieved; gonsRemaining is therefore only set once by this method for each Claim\\n        @param _recipient address\\n        @param _indexes uint256[]      indexes of the sTHEO to retrieve\\n        @return amount_                The sum total amount of sTHEO sent\\n     */\\n    function claim(address _recipient, uint256[] memory _indexes) public returns (uint256 amount_) {\\n        if (!isExternalLocked[_recipient]) {\\n            require(_recipient == msg.sender, \\\"External claims for account are locked\\\");\\n        }\\n\\n        uint256 amount_ = 0;\\n        for (uint256 i = 0; i < _indexes.length; i++) {\\n            if (isUnRetrieved(_recipient, i)) {\\n                Claim memory info = stakingInfo[_recipient][_indexes[i]];\\n\\n                if (block.timestamp >= info.warmupExpiry && info.warmupExpiry != 0) {\\n                    stakingInfo[_recipient][_indexes[i]].gonsInWarmup = 0;\\n\\n                    gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);\\n                    uint256 balanceForGons = IStakedTHEOToken(sTHEO).balanceForGons(info.gonsInWarmup);\\n                    stakingInfo[_recipient][_indexes[i]].gonsRemaining = info.gonsInWarmup;\\n                    amount_ = amount_.add(balanceForGons);\\n                }\\n            }\\n        }\\n\\n        return _send(_recipient, amount_);\\n    }\\n\\n    /**\\n     * @notice             claim all retrievable (from warmup) claims for user\\n     * @dev                if possible, query indexesFor() off-chain and input in claim() to save gas\\n     * @param _recipient   address. The recipient to retrieve sTHEO from all claims for\\n     * @return             sum of claim amounts sent, in sTHEO\\n     */\\n    function claimAll(address _recipient) external returns (uint256) {\\n        return claim(_recipient, indexesFor(_recipient, true));\\n    }\\n\\n    /**\\n        @notice forfeit sTHEO in warmup and retrieve THEO\\n     */\\n    function forfeit(uint256 _index) external {\\n        Claim memory info = stakingInfo[msg.sender][_index];\\n        delete stakingInfo[msg.sender][_index];\\n\\n        gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);\\n\\n        IERC20(THEO).safeTransfer(msg.sender, info.deposit);\\n    }\\n\\n    /**\\n        @notice prevent new deposits or claims to/from external address (protection from malicious activity)\\n     */\\n    function toggleLock() external {\\n        isExternalLocked[msg.sender] = !isExternalLocked[msg.sender];\\n    }\\n\\n    /**\\n     * @notice redeem sTHEO for THEO from un-redeemed claims\\n     * @dev    if `stakingExpiry` has not yet passed, Determine the penalty for removing early.\\n     *         `percentageComplete` is the percentage of time that the stake has completed (versus the `stakingTerm`), expressed with 4 decimals.\\n     *         note that For unstaking before 100% of staking term, only the principle deposit -- less a penalty -- is returned. In this case, the full claim must be redeemed\\n     *         and gonsRemaining becomes zero.\\n     *         note that For unstaking at or beyond 100% of the staking term, a part-redeem can be made: that is, a user may redeem less than 100% of the total amount available to redeem\\n     *         (as represented by gonsRemaining), during a call to `unstake`\\n     *         note that The penalty is added (after conversion to gons) to `slasheGons` and subtracted from the amount to return\\n     *         gonsRemaining keeps track of the amount of sTheo (as gons) that can be redeemed for a Claim\\n     *         note that When unstaking from the locked tranche (stakingTerm > 0) after the stake reaches maturity,\\n     *         the Stake becomes eligible to claim against bonus pool rewards (tracked in `slashedGons`; see also `getSlashedRewards`)\\n     * @param _to address\\n     * @param _amounts uint\\n     * @param _trigger bool\\n     * @param _indexes uint256[]\\n     * @return amount_ uint\\n     */\\n    function unstake(\\n        address _to,\\n        uint256[] memory _amounts,\\n        bool _trigger,\\n        uint256[] memory _indexes\\n    ) external returns (uint256 amount_) {\\n        if (!isExternalLocked[_to]) {\\n            require(_to == msg.sender, \\\"External unstaking for account is locked\\\");\\n        }\\n        require(_amounts.length == _indexes.length, \\\"Amounts and indexes lengths do not match\\\");\\n\\n        amount_ = 0;\\n        uint256 bounty;\\n\\n        uint256[] memory amountsAsGons = new uint256[](_indexes.length);\\n        for (uint256 i = 0; i < _indexes.length; i++) {\\n            amountsAsGons[i] = IStakedTHEOToken(sTHEO).gonsForBalance(_amounts[i]);\\n        }\\n\\n        if (_trigger) {\\n            bounty = rebase();\\n        }\\n\\n        for (uint256 i = 0; i < _indexes.length; i++) {\\n            Claim memory info = stakingInfo[_to][_indexes[i]];\\n            UnstakeAmounts memory unstakeAmounts;\\n            unstakeAmounts._amountSingle = IStakedTHEOToken(sTHEO).balanceForGons(amountsAsGons[i]);\\n\\n            if (isUnRedeemed(_to, _indexes[i])) {\\n                unstakeAmounts._gonsRemaining = IStakedTHEOToken(sTHEO).gonsForBalance(\\n                    IStakedTHEOToken(sTHEO).balanceForGons(info.gonsRemaining)\\n                );\\n\\n                stakingInfo[_to][_indexes[i]].gonsRemaining = (unstakeAmounts._gonsRemaining).sub(\\n                    IStakedTHEOToken(sTHEO).gonsForBalance(unstakeAmounts._amountSingle)\\n                );\\n\\n                IStakedTHEOToken(sTHEO).safeTransferFrom(msg.sender, address(this), unstakeAmounts._amountSingle);\\n\\n                if (block.timestamp >= info.stakingExpiry) {\\n                    uint256 slashedRewards = 0;\\n                    if (stakingTerm > 0) {\\n                        slashedRewards = getSlashedRewards(unstakeAmounts._amountSingle);\\n                    }\\n\\n                    amount_ = amount_.add(bounty).add(unstakeAmounts._amountSingle).add(slashedRewards);\\n                } else if (block.timestamp < info.stakingExpiry) {\\n                    require(\\n                        stakingInfo[_to][_indexes[i]].gonsRemaining == 0,\\n                        \\\"Amount does not match available remaining to redeem\\\"\\n                    );\\n\\n                    uint256 penalty = getPenalty(\\n                        stakingInfo[_to][_indexes[i]].deposit,\\n                        (1000000.sub(((info.stakingExpiry.sub(block.timestamp)).mul(1000000)).div(stakingTerm))).div(\\n                            10000\\n                        )\\n                    );\\n\\n                    slashedGons = slashedGons.add(IStakedTHEOToken(sTHEO).gonsForBalance(penalty));\\n\\n                    amount_ = amount_.add(stakingInfo[_to][_indexes[i]].deposit).sub(penalty);\\n                }\\n            }\\n        }\\n\\n        require(amount_ <= ITHEO(THEO).balanceOf(address(this)), \\\"Insufficient THEO balance in contract\\\");\\n        ITHEO(THEO).safeTransfer(_to, amount_);\\n    }\\n\\n    /**\\n        @dev slashedRewards is calculated as: (StakerTokens/totalStakedTokens) * totalSlashedTokens\\n     */\\n    function getSlashedRewards(uint256 amount) private view returns (uint256) {\\n        uint256 circulatingSupply = IStakedTHEOToken(sTHEO).circulatingSupply();\\n        uint256 baseDecimals = 10**9;\\n\\n        return\\n            circulatingSupply > 0\\n                ? ((amount.add(circulatingSupply)).mul(baseDecimals).div(circulatingSupply).sub(baseDecimals))\\n                    .mul(IStakedTHEOToken(sTHEO).balanceForGons(slashedGons))\\n                    .div(baseDecimals)\\n                : 0;\\n    }\\n\\n    function _definePenalties(uint256[] memory bands, uint256[] memory penalties) private {\\n        require(bands.length == penalties.length, \\\"Arrays must be the same length\\\");\\n        for (uint256 i = 0; i < bands.length; i++) {\\n            _definePenalty(bands[i], penalties[i]);\\n        }\\n    }\\n\\n    function definePenalties(uint256[] memory bands, uint256[] memory penalties) public onlyPolicy {\\n        _definePenalties(bands, penalties);\\n    }\\n\\n    function _definePenalty(uint256 _percentBandMax, uint256 _penalty) private {\\n        penaltyBands[_percentBandMax] = _penalty;\\n    }\\n\\n    function ceil(uint256 a, uint256 m) private view returns (uint256) {\\n        return a == 0 ? m : ((a.add(m).sub(1)).div(m)).mul(m);\\n    }\\n\\n    function getPenalty(uint256 _amount, uint256 stakingTimePercentComplete) public view returns (uint256) {\\n        if (stakingTimePercentComplete == 100) {\\n            return 0;\\n        }\\n\\n        uint256 penaltyBand = ceil(stakingTimePercentComplete, 5).div(5);\\n        uint256 penaltyPercent = penaltyBands[penaltyBand];\\n\\n        return _amount.mul(penaltyPercent).div(100);\\n    }\\n\\n    /**\\n        @notice trigger rebase if epoch over\\n        @return uint256\\n     */\\n    function rebase() public returns (uint256) {\\n        uint256 bounty;\\n        if (epoch.end <= block.timestamp) {\\n            ITreasury(treasury).tokenPerformanceUpdate();\\n\\n            IStakedTHEOToken(sTHEO).rebase(epoch.distribute, epoch.number);\\n\\n            epoch.end = epoch.end.add(epoch.length);\\n            epoch.number++;\\n\\n            if (distributor != address(0)) {\\n                IDistributor(distributor).distribute();\\n                bounty = IDistributor(distributor).retrieveBounty(); // Will mint THEO for this contract if there exists a bounty\\n            }\\n\\n            uint256 balance = contractBalance();\\n            uint256 staked = IStakedTHEOToken(sTHEO).circulatingSupply();\\n\\n            if (balance <= staked.add(bounty)) {\\n                epoch.distribute = 0;\\n            } else {\\n                epoch.distribute = balance.sub(staked).sub(bounty);\\n            }\\n        }\\n        return bounty;\\n    }\\n\\n    /**\\n        @notice returns contract THEO holdings, including bonuses provided\\n        @return uint\\n     */\\n    function contractBalance() public view returns (uint256) {\\n        return IERC20(THEO).balanceOf(address(this)).add(totalBonus);\\n    }\\n\\n    /**\\n        @notice provide bonus to locked staking contract\\n        @param _amount uint\\n     */\\n    function giveLockBonus(uint256 _amount) external {\\n        require(msg.sender == locker);\\n        totalBonus = totalBonus.add(_amount);\\n        IERC20(sTHEO).safeTransfer(locker, _amount);\\n    }\\n\\n    /**\\n        @notice reclaim bonus from locked staking contract\\n        @param _amount uint\\n     */\\n    function returnLockBonus(uint256 _amount) external {\\n        require(msg.sender == locker);\\n        totalBonus = totalBonus.sub(_amount);\\n        IERC20(sTHEO).safeTransferFrom(locker, address(this), _amount);\\n    }\\n\\n    enum CONTRACTS {\\n        DISTRIBUTOR,\\n        WARMUP,\\n        LOCKER\\n    }\\n\\n    /**\\n        @notice sets the contract address for LP staking\\n        @param _contract address\\n     */\\n    function setContract(CONTRACTS _contract, address _address) external onlyManager {\\n        if (_contract == CONTRACTS.DISTRIBUTOR) {\\n            // 0\\n            distributor = _address;\\n        } else if (_contract == CONTRACTS.WARMUP) {\\n            // 1\\n            require(warmupContract == address(0), \\\"Warmup cannot be set more than once\\\");\\n            warmupContract = _address;\\n        } else if (_contract == CONTRACTS.LOCKER) {\\n            // 2\\n            require(locker == address(0), \\\"Locker cannot be set more than once\\\");\\n            locker = _address;\\n        }\\n    }\\n\\n    /**\\n     * @notice set warmup period for new stakers\\n     * @param _warmupPeriod uint\\n     */\\n    function setWarmup(uint256 _warmupPeriod) external onlyManager {\\n        warmupPeriod = _warmupPeriod;\\n    }\\n\\n    /**\\n     * @notice set the address of a bond depo to allow it to push claims to users when redeeming bonds\\n     * @dev    see also `pushClaimForBond`\\n     * @param _bondDepo address of the bond depo\\n     */\\n    function setBondDepo(address _bondDepo, bool val) external onlyGovernor {\\n        bondDepos[_bondDepo] = val;\\n    }\\n\\n    /* ========== INTERNAL FUNCTIONS ========== */\\n\\n    /**\\n     * @notice send staker their amount as sTHEO (equal unit as THEO)\\n     * @param _recipient address\\n     * @param _amount uint\\n     */\\n    function _send(address _recipient, uint256 _amount) internal returns (uint256) {\\n        IStakedTHEOToken(sTHEO).safeTransfer(_recipient, _amount);\\n        return _amount;\\n    }\\n\\n    /* ========== TRANSFER ========== */\\n\\n    /**\\n     * @notice             approve an address to transfer a claim\\n     * @param _to          address to approve claim transfer for\\n     * @param _index       index of claim to approve transfer for\\n     */\\n    function pushClaim(address _to, uint256 _index) external {\\n        require(stakingInfo[msg.sender][_index].stakingExpiry != 0, \\\"Staking: claim not found\\\");\\n        claimTransfers[msg.sender][_index] = _to;\\n    }\\n\\n    /**\\n     * @notice             transfer a claim that has been approved by an address\\n     * @param _from        the address that approved the claim transfer\\n     * @param _index       the index of the claim to transfer (in the sender's array)\\n     */\\n    function pullClaim(address _from, uint256 _index) external returns (uint256 newIndex_) {\\n        require(claimTransfers[_from][_index] == msg.sender, \\\"Staking: claim not found\\\");\\n        require(\\n            stakingInfo[_from][_index].gonsInWarmup > 0 || stakingInfo[_from][_index].gonsRemaining > 0,\\n            \\\"Staking: claim redeemed\\\"\\n        );\\n\\n        newIndex_ = stakingInfo[msg.sender].length;\\n        stakingInfo[msg.sender].push(stakingInfo[_from][_index]);\\n\\n        delete stakingInfo[_from][_index];\\n    }\\n\\n    /**\\n     * @notice             transfer a claim that has been approved by an address\\n     * @param _to          the address to push the claim to (must be pre-approved for transfer via `pushClaim`)\\n     * @param _index       the index of the claim to transfer (in the sender's array)\\n     */\\n    function pushClaimForBond(address _to, uint256 _index) external returns (uint256 newIndex_) {\\n        require(bondDepos[msg.sender], \\\"Caller is not a bond depository\\\");\\n        require(claimTransfers[msg.sender][_index] == _to, \\\"Staking: claim not found\\\");\\n        require(\\n            stakingInfo[msg.sender][_index].gonsInWarmup > 0 || stakingInfo[msg.sender][_index].gonsRemaining > 0,\\n            \\\"Staking: claim redeemed\\\"\\n        );\\n\\n        newIndex_ = stakingInfo[_to].length;\\n        stakingInfo[_to].push(stakingInfo[msg.sender][_index]);\\n\\n        delete stakingInfo[msg.sender][_index];\\n    }\\n\\n    /* ========== VIEW FUNCTIONS ========== */\\n\\n    /**\\n        @notice returns the sTHEO index, which tracks rebase growth\\n        @return uint\\n     */\\n    function index() public view returns (uint256) {\\n        return IStakedTHEOToken(sTHEO).index();\\n    }\\n\\n    /**\\n     * @notice total supply in warmup\\n     */\\n    function supplyInWarmup() public view returns (uint256) {\\n        return IStakedTHEOToken(sTHEO).balanceForGons(gonsInWarmup);\\n    }\\n\\n    /**\\n     * @notice                all un-retrieved claims (sTHEO available to retrieve from warmup), or all un-redeemed claims (sTHEO retrieved but yet to be redeemed for THEO) for a user\\n     * @param _user           the user to query claims for\\n     * @param unRetrieved   bool. If true, return indexes of all un-claimed claims from warmup, else return indexes of all claims with un-redeemed sTheo\\n     * @return                indexes of un-retrieved claims, or of un-redeemed claims, for the user\\n     */\\n    function indexesFor(address _user, bool unRetrieved) public view returns (uint256[] memory) {\\n        Claim[] memory claims = stakingInfo[_user];\\n\\n        uint256 length;\\n        for (uint256 i = 0; i < claims.length; i++) {\\n            if (unRetrieved ? isUnRetrieved(_user, i) : isUnRedeemed(_user, i)) length++;\\n        }\\n\\n        uint256[] memory indexes = new uint256[](length);\\n        uint256 position;\\n\\n        for (uint256 i = 0; i < claims.length; i++) {\\n            if (unRetrieved ? isUnRetrieved(_user, i) : isUnRedeemed(_user, i)) {\\n                indexes[position] = i;\\n                position++;\\n            }\\n        }\\n\\n        return indexes;\\n    }\\n\\n    /**\\n     * @notice             determine whether sTHEO has been retrieved (via `claim`) for a Claim\\n     * @param _user        the user to query claims for\\n     * @param _index       the index of the claim\\n     * @return bool        true if the sTHEO has not yet been retrieved for the claim\\n     */\\n    function isUnRetrieved(address _user, uint256 _index) public view returns (bool) {\\n        Claim memory claim = stakingInfo[_user][_index];\\n        return claim.gonsInWarmup > 0;\\n    }\\n\\n    /**\\n     * @notice             determine whether a claim has a (non-zero) sTHEO balance remaining that can be redeemed for THEO\\n     *                     if the claim is still in warmup, this method will return false (as no sTheo can yet be redeemed against the claim)\\n     * @param _user        the user to query claims for\\n     * @param _index       the index of the claim\\n     * @return bool        true if the total sTHEO on the claim has not yet been redeemed for THEO\\n     */\\n    function isUnRedeemed(address _user, uint256 _index) public view returns (bool) {\\n        Claim memory claim = stakingInfo[_user][_index];\\n        return claim.gonsInWarmup == 0 && claim.gonsRemaining > 0;\\n    }\\n\\n    function getClaimsCount(address _user) public view returns (uint256) {\\n        return stakingInfo[_user].length;\\n    }\\n\\n    /**\\n     * @notice                  return the current expected rewards for a claim\\n     * @param _user             the user that the claim belongs to\\n     * @param _index            the index of the claim in the user's array\\n     * @return currentRewards_  the current total rewards expected for a claim (valid only for claims out of warmup),\\n                                calculated as: (sTHEO remaining + slashedRewards) - deposit amount\\n                                note that currentRewards_ does not include any potential bounty or additional sTheo balance that\\n                                may be applied if rebasing when unstaking\\n     */\\n    function rewardsFor(address _user, uint256 _index) public view returns (uint256 currentRewards_) {\\n        Claim memory claim = stakingInfo[_user][_index];\\n        uint256 _amountRemaining = IStakedTHEOToken(sTHEO).balanceForGons(claim.gonsRemaining);\\n        currentRewards_ = 0;\\n        if (isUnRedeemed(_user, _index)) {\\n            currentRewards_ = (_amountRemaining.add(getSlashedRewards(_amountRemaining))).sub(claim.deposit);\\n        }\\n        return currentRewards_;\\n    }\\n\\n    /**\\n     * @notice             return the staking token that the tranche is based on\\n     *\\n     * @return address     the address of the staking token\\n     */\\n    function basis() public view returns (address) {\\n        return sTHEO;\\n    }\\n}\\n\",\"keccak256\":\"0xbdf419e71d06b61e18962ac091897364666f19a82d36da40efd0ecea3d166f0c\",\"license\":\"AGPL-3.0\"},\"src/Types/TheopetraAccessControlled.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0-only\\npragma solidity >=0.7.5;\\n\\nimport \\\"../Interfaces/ITheopetraAuthority.sol\\\";\\n\\nabstract contract TheopetraAccessControlled {\\n    /* ========== EVENTS ========== */\\n\\n    event AuthorityUpdated(ITheopetraAuthority indexed authority);\\n\\n    string UNAUTHORIZED = \\\"UNAUTHORIZED\\\"; // save gas\\n\\n    /* ========== STATE VARIABLES ========== */\\n\\n    ITheopetraAuthority public authority;\\n\\n    /* ========== Constructor ========== */\\n\\n    constructor(ITheopetraAuthority _authority) {\\n        authority = _authority;\\n        emit AuthorityUpdated(_authority);\\n    }\\n\\n    /* ========== MODIFIERS ========== */\\n\\n    modifier onlyGovernor() {\\n        require(msg.sender == authority.governor(), UNAUTHORIZED);\\n        _;\\n    }\\n\\n    modifier onlyGuardian() {\\n        require(msg.sender == authority.guardian(), UNAUTHORIZED);\\n        _;\\n    }\\n\\n    modifier onlyPolicy() {\\n        require(msg.sender == authority.policy(), UNAUTHORIZED);\\n        _;\\n    }\\n\\n    modifier onlyManager() {\\n        require(msg.sender == authority.manager(), UNAUTHORIZED);\\n        _;\\n    }\\n\\n    modifier onlyVault() {\\n        require(msg.sender == authority.vault(), UNAUTHORIZED);\\n        _;\\n    }\\n\\n    /* ========== GOV ONLY ========== */\\n\\n    function setAuthority(ITheopetraAuthority _newAuthority) external onlyGovernor {\\n        authority = _newAuthority;\\n        emit AuthorityUpdated(_newAuthority);\\n    }\\n}\\n\",\"keccak256\":\"0x4a1a24eaf51fcd807927a59ae694a7c752a060d278610b88c9b61d89f872a4b5\",\"license\":\"AGPL-3.0-only\"}},\"version\":1}",
+  "bytecode": "0x610140604052600c6101008190526b15539055551213d49256915160a21b610120908152620000329160009190620003b5565b503480156200004057600080fd5b506040516200423a3803806200423a83398181016040526101008110156200006757600080fd5b50805160208201516040808401516060850151608086015160a087015160c088015160e090980151600180546001600160a01b0319166001600160a01b038b1690811790915595519798969794969395929491939290918391907f2f658b440c35314f52658ea8a740e05b284cdc84dc9ae01e891f21b8933e7cad90600090a2506040805160148082526102a08201909252606091602082016102808036833750506040805160148082526102a082019092529293506060929150602082016102808036833701905050905060015b60158110156200018557808360018303815181106200015157fe5b602002602001018181525050806015038260018303815181106200017157fe5b602090810291909101015260010162000136565b50620001928282620002f7565b6001600160a01b038a16620001e0576040805162461bcd60e51b815260206004820152600f60248201526e496e76616c6964206164647265737360881b604482015290519081900360640190fd5b6001600160601b031960608b901b166080526001600160a01b03891662000240576040805162461bcd60e51b815260206004820152600f60248201526e496e76616c6964206164647265737360881b604482015290519081900360640190fd5b6001600160601b031960608a901b1660a05260e08590526001600160a01b038316620002a5576040805162461bcd60e51b815260206004820152600f60248201526e496e76616c6964206164647265737360881b604482015290519081900360640190fd5b50506001600160601b0319606091821b1660c052604080516080810182528781526020810187905290810185905260009101819052600295909555505060039190915560045560055550620004619050565b80518251146200034e576040805162461bcd60e51b815260206004820152601e60248201527f417272617973206d757374206265207468652073616d65206c656e6774680000604482015290519081900360640190fd5b60005b82518110156200039e57620003958382815181106200036c57fe5b60200260200101518383815181106200038157fe5b6020026020010151620003a360201b60201c565b60010162000351565b505050565b60009182526010602052604090912055565b828054600181600116156101000203166002900490600052602060002090601f016020900481019282620003ed576000855562000438565b82601f106200040857805160ff191683800117855562000438565b8280016001018555821562000438579182015b82811115620004385782518255916020019190600101906200041b565b50620004469291506200044a565b5090565b5b808211156200044657600081556001016200044b565b60805160601c60a05160601c60c05160601c60e051613cfa6200054060003980611551528061169652806124d6528061277252806130e4525080611c535280612807525080610a875280610ab75280610b505280610e81528061107652806111ed52806112b852806112e75280611443528061151852806116f552806123a4528061250152806125ee52806126c3528061287a5280612a6352806131fd52806132a552806132ff528061359452806137675280613806525080610c7d528061183852806118f5528061226d52806123df52806131175250613cfa6000f3fe608060405234801561001057600080fd5b50600436106102ad5760003560e01c806394ead1191161017b578063d081f1cd116100d8578063ed4acaa81161008c578063f385cecb11610071578063f385cecb14610a22578063f62ae76a14610a2a578063ff9413d814610a47576102ad565b8063ed4acaa8146109ee578063ed82da7a146109f6576102ad565b8063d7b96d4e116100bd578063d7b96d4e146109d6578063d9edbc1d146109de578063deac361a146109e6576102ad565b8063d081f1cd146109a2578063d71e9a40146109ce576102ad565b8063bf7e214f1161012f578063c06fcba011610114578063c06fcba014610908578063c0ecb4fd1461095f578063c9f464ff14610985576102ad565b8063bf7e214f146108f8578063bfe1092814610900576102ad565b8063a8dd07dc11610160578063a8dd07dc146108bc578063af14052c146108c4578063b3e50409146108cc576102ad565b806394ead11914610867578063995846bd1461086f576102ad565b806361d027b311610229578063865e6fd3116101dd5780638b7afe2e116101c25780638b7afe2e14610805578063900cf0cf1461080d57806390231e311461083b576102ad565b8063865e6fd31461079657806386a222fc146107c5576102ad565b806378f1f7781161020e57806378f1f7781461061d5780637a9e5e4b146106495780637c6db9251461066f576102ad565b806361d027b3146105d357806377329f35146105f7576102ad565b806345718278116102805780635334bb12116102655780635334bb121461050457806358225dc2146105325780635a740fe414610555576102ad565b80634571827814610310578063468e2f26146103c3576102ad565b806303c23670146102b257806320138641146102d15780632986c0e5146102eb5780633ed546ab146102f3575b600080fd5b6102cf600480360360208110156102c857600080fd5b5035610a4f565b005b6102d9610ab3565b60408051918252519081900360200190f35b6102d9610b4c565b6102cf6004803603602081101561030957600080fd5b5035610ba7565b6102d96004803603604081101561032657600080fd5b6001600160a01b03823516919081019060408101602082013564010000000081111561035157600080fd5b82018360208201111561036357600080fd5b8035906020019184602083028401116401000000008311171561038557600080fd5b919080806020026020016040519081016040528093929190818152602001838360200280828437600092019190915250929550610ca9945050505050565b6102d9600480360360808110156103d957600080fd5b6001600160a01b03823516919081019060408101602082013564010000000081111561040457600080fd5b82018360208201111561041657600080fd5b8035906020019184602083028401116401000000008311171561043857600080fd5b91908080602002602001604051908101604052809392919081815260200183836020028082843760009201919091525092958435151595909490935060408101925060200135905064010000000081111561049257600080fd5b8201836020820111156104a457600080fd5b803590602001918460208302840111640100000000831117156104c657600080fd5b919080806020026020016040519081016040528093929190818152602001838360200280828437600092019190915250929550610f74945050505050565b6102cf6004803603604081101561051a57600080fd5b506001600160a01b0381351690602001351515611926565b6102d96004803603604081101561054857600080fd5b5080359060200135611a77565b6105836004803603604081101561056b57600080fd5b506001600160a01b0381351690602001351515611ac6565b60408051602080825283518183015283519192839290830191858101910280838360005b838110156105bf5781810151838201526020016105a7565b505050509050019250505060405180910390f35b6105db611c51565b604080516001600160a01b039092168252519081900360200190f35b6102d96004803603602081101561060d57600080fd5b50356001600160a01b0316611c75565b6102cf6004803603604081101561063357600080fd5b506001600160a01b038135169060200135611c8b565b6102cf6004803603602081101561065f57600080fd5b50356001600160a01b0316611d53565b6102cf6004803603604081101561068557600080fd5b8101906020810181356401000000008111156106a057600080fd5b8201836020820111156106b257600080fd5b803590602001918460208302840111640100000000831117156106d457600080fd5b919080806020026020016040519081016040528093929190818152602001838360200280828437600092019190915250929594936020810193503591505064010000000081111561072457600080fd5b82018360208201111561073657600080fd5b8035906020019184602083028401116401000000008311171561075857600080fd5b919080806020026020016040519081016040528093929190818152602001838360200280828437600092019190915250929550611e96945050505050565b6102cf600480360360408110156107ac57600080fd5b50803560ff1690602001356001600160a01b0316611f8c565b6107f1600480360360408110156107db57600080fd5b506001600160a01b0381351690602001356121cc565b604080519115158252519081900360200190f35b6102d9612263565b61081561230f565b604080519485526020850193909352838301919091526060830152519081900360800190f35b6107f16004803603604081101561085157600080fd5b506001600160a01b03813516906020013561231e565b6105db6123a2565b6108a36004803603606081101561088557600080fd5b506001600160a01b03813516906020810135906040013515156123c6565b6040805192835260208301919091528051918290030190f35b6102d96127f1565b6102d96127f7565b6102d9600480360360408110156108e257600080fd5b506001600160a01b038135169060200135612b1b565b6105db612d7f565b6105db612d8e565b6109346004803603604081101561091e57600080fd5b506001600160a01b038135169060200135612d9d565b6040805195865260208601949094528484019290925260608401526080830152519081900360a00190f35b6102d96004803603602081101561097557600080fd5b50356001600160a01b0316612deb565b6102cf6004803603602081101561099b57600080fd5b5035612e06565b6102d9600480360360408110156109b857600080fd5b506001600160a01b038135169060200135612ef7565b6102d96130e2565b6105db613106565b6105db613115565b6102d9613139565b6105db61313f565b6102d960048036036040811015610a0c57600080fd5b506001600160a01b03813516906020013561314e565b6105db6132a3565b6102cf60048036036020811015610a4057600080fd5b50356132c7565b6102cf613329565b6007546001600160a01b03163314610a6657600080fd5b600854610a73908261334a565b600855600754610ab0906001600160a01b037f000000000000000000000000000000000000000000000000000000000000000081169116836133ab565b50565b60007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316637965d56d600b546040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b158015610b1b57600080fd5b505afa158015610b2f573d6000803e3d6000fd5b505050506040513d6020811015610b4557600080fd5b5051905090565b60007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316632986c0e56040518163ffffffff1660e01b815260040160206040518083038186803b158015610b1b57600080fd5b610baf613b1e565b336000908152600d60205260409020805483908110610bca57fe5b600091825260208083206040805160a08101825260059094029091018054845260018101548484015260028101548483015260038101546060850152600401546080840152338452600d90915290912080549192509083908110610c2a57fe5b60009182526020808320600590920290910182815560018101839055600281018390556003810183905560040191909155810151600b54610c6a91613543565b600b558051610ca5906001600160a01b037f0000000000000000000000000000000000000000000000000000000000000000169033906133ab565b5050565b6001600160a01b0382166000908152600e602052604081205460ff16610d10576001600160a01b0383163314610d105760405162461bcd60e51b8152600401808060200182810382526026815260200180613bfe6026913960400191505060405180910390fd5b6000805b8351811015610f5f57610d27858261231e565b15610f5757610d34613b1e565b6001600160a01b0386166000908152600d602052604090208551869084908110610d5a57fe5b602002602001015181548110610d6c57fe5b90600052602060002090600502016040518060a001604052908160008201548152602001600182015481526020016002820154815260200160038201548152602001600482015481525050905080604001514210158015610dd05750604081015115155b15610f55576001600160a01b0386166000908152600d602052604081208651879085908110610dfb57fe5b602002602001015181548110610e0d57fe5b906000526020600020906005020160010181905550610e3b8160200151600b5461354390919063ffffffff16565b600b55602080820151604080517f7965d56d0000000000000000000000000000000000000000000000000000000081526004810192909252516000926001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001692637965d56d9260248083019392829003018186803b158015610ec357600080fd5b505afa158015610ed7573d6000803e3d6000fd5b505050506040513d6020811015610eed57600080fd5b50516020838101516001600160a01b038a166000908152600d909252604090912088519293509091889086908110610f2157fe5b602002602001015181548110610f3357fe5b6000918252602090912060046005909202010155610f51848261334a565b9350505b505b600101610d14565b50610f6a8482613585565b9150505b92915050565b6001600160a01b0384166000908152600e602052604081205460ff16610fdb576001600160a01b0385163314610fdb5760405162461bcd60e51b8152600401808060200182810382526028815260200180613c9d6028913960400191505060405180910390fd5b815184511461101b5760405162461bcd60e51b8152600401808060200182810382526028815260200180613b686028913960400191505060405180910390fd5b6000905060006060835167ffffffffffffffff8111801561103b57600080fd5b50604051908082528060200260200182016040528015611065578160200160208202803683370190505b50905060005b8451811015611138577f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316631bd396748883815181106110af57fe5b60200260200101516040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b1580156110eb57600080fd5b505afa1580156110ff573d6000803e3d6000fd5b505050506040513d602081101561111557600080fd5b5051825183908390811061112557fe5b602090810291909101015260010161106b565b50841561114a576111476127f7565b91505b60005b84518110156117fe5761115e613b1e565b6001600160a01b0389166000908152600d60205260409020865187908490811061118457fe5b60200260200101518154811061119657fe5b90600052602060002090600502016040518060a00160405290816000820154815260200160018201548152602001600282015481526020016003820154815260200160048201548152505090506111eb613b4d565b7f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316637965d56d85858151811061122657fe5b60200260200101516040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561126257600080fd5b505afa158015611276573d6000803e3d6000fd5b505050506040513d602081101561128c57600080fd5b5051815286516112b1908b908990869081106112a457fe5b60200260200101516121cc565b156117f4577f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316631bd396747f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316637965d56d85608001516040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561134d57600080fd5b505afa158015611361573d6000803e3d6000fd5b505050506040513d602081101561137757600080fd5b5051604080517fffffffff0000000000000000000000000000000000000000000000000000000060e085901b1681526004810192909252516024808301926020929190829003018186803b1580156113ce57600080fd5b505afa1580156113e2573d6000803e3d6000fd5b505050506040513d60208110156113f857600080fd5b50516020828101919091528151604080517f1bd396740000000000000000000000000000000000000000000000000000000081526004810192909252516114bc926001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001692631bd396749260248083019392829003018186803b15801561148557600080fd5b505afa158015611499573d6000803e3d6000fd5b505050506040513d60208110156114af57600080fd5b5051602083015190613543565b6001600160a01b038b166000908152600d6020526040902088518990869081106114e257fe5b6020026020010151815481106114f457fe5b60009182526020909120600460059092020101558051611542906001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001690339030906135c1565b816060015142106115a55760007f00000000000000000000000000000000000000000000000000000000000000001561158357815161158090613762565b90505b815161159d90829061159790818b8b61334a565b9061334a565b9650506117f4565b81606001514210156117f4576001600160a01b038a166000908152600d6020526040902087518890859081106115d757fe5b6020026020010151815481106115e957fe5b9060005260206000209060050201600401546000146116395760405162461bcd60e51b8152600401808060200182810382526033815260200180613c6a6033913960400191505060405180910390fd5b6001600160a01b038a166000908152600d6020526040812088516116ee91908a908790811061166457fe5b60200260200101518154811061167657fe5b9060005260206000209060050201600001546116e96127106116d96116df7f00000000000000000000000000000000000000000000000000000000000000006116d9620f42406116d3428d6060015161354390919063ffffffff16565b906138b2565b9061390b565b620f424090613543565b611a77565b905061178c7f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316631bd39674836040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561175757600080fd5b505afa15801561176b573d6000803e3d6000fd5b505050506040513d602081101561178157600080fd5b5051600c549061334a565b600c556001600160a01b038b166000908152600d6020526040902088516117f09183916117ea91908c90899081106117c057fe5b6020026020010151815481106117d257fe5b60009182526020909120600590910201548a9061334a565b90613543565b9650505b505060010161114d565b50604080517f70a0823100000000000000000000000000000000000000000000000000000000815230600482015290516001600160a01b037f000000000000000000000000000000000000000000000000000000000000000016916370a08231916024808301926020929190829003018186803b15801561187e57600080fd5b505afa158015611892573d6000803e3d6000fd5b505050506040513d60208110156118a857600080fd5b50518311156118e85760405162461bcd60e51b8152600401808060200182810382526025815260200180613c246025913960400191505060405180910390fd5b61191c6001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001688856133ab565b5050949350505050565b600160009054906101000a90046001600160a01b03166001600160a01b0316630c340a246040518163ffffffff1660e01b815260040160206040518083038186803b15801561197457600080fd5b505afa158015611988573d6000803e3d6000fd5b505050506040513d602081101561199e57600080fd5b50516000906001600160a01b03163314611a4b5760405162461bcd60e51b8152602060048201908152825460026000196101006001841615020190911604602483018190529091829160449091019084908015611a3c5780601f10611a1157610100808354040283529160200191611a3c565b820191906000526020600020905b815481529060010190602001808311611a1f57829003601f168201915b50509250505060405180910390fd5b506001600160a01b03919091166000908152601160205260409020805460ff1916911515919091179055565b60008160641415611a8a57506000610f6e565b6000611a9c60056116d985600561394d565b600081815260106020526040902054909150611abd60646116d987846138b2565b95945050505050565b6001600160a01b0382166000908152600d602090815260408083208054825181850281018501909352808352606094859484015b82821015611b5e57838290600052602060002090600502016040518060a00160405290816000820154815260200160018201548152602001600282015481526020016003820154815260200160048201548152505081526020019060010190611afa565b505050509050600080600090505b8251811015611ba75784611b8957611b8486826121cc565b611b93565b611b93868261231e565b15611b9f576001909101905b600101611b6c565b5060608167ffffffffffffffff81118015611bc157600080fd5b50604051908082528060200260200182016040528015611beb578160200160208202803683370190505b5090506000805b8451811015611c455786611c0f57611c0a88826121cc565b611c19565b611c19888261231e565b15611c3d5780838381518110611c2b57fe5b60209081029190910101526001909101905b600101611bf2565b50909695505050505050565b7f000000000000000000000000000000000000000000000000000000000000000081565b6000610f6e82611c86846001611ac6565b610ca9565b336000908152600d60205260409020805482908110611ca657fe5b90600052602060002090600502016003015460001415611d0d576040805162461bcd60e51b815260206004820152601860248201527f5374616b696e673a20636c61696d206e6f7420666f756e640000000000000000604482015290519081900360640190fd5b336000908152600f6020908152604080832093835292905220805473ffffffffffffffffffffffffffffffffffffffff19166001600160a01b0392909216919091179055565b600160009054906101000a90046001600160a01b03166001600160a01b0316630c340a246040518163ffffffff1660e01b815260040160206040518083038186803b158015611da157600080fd5b505afa158015611db5573d6000803e3d6000fd5b505050506040513d6020811015611dcb57600080fd5b50516000906001600160a01b03163314611e3e5760405162461bcd60e51b8152602060048201908152825460026000196101006001841615020190911604602483018190529091829160449091019084908015611a3c5780601f10611a1157610100808354040283529160200191611a3c565b506001805473ffffffffffffffffffffffffffffffffffffffff19166001600160a01b0383169081179091556040517f2f658b440c35314f52658ea8a740e05b284cdc84dc9ae01e891f21b8933e7cad90600090a250565b600160009054906101000a90046001600160a01b03166001600160a01b0316630505c8c96040518163ffffffff1660e01b815260040160206040518083038186803b158015611ee457600080fd5b505afa158015611ef8573d6000803e3d6000fd5b505050506040513d6020811015611f0e57600080fd5b50516000906001600160a01b03163314611f815760405162461bcd60e51b8152602060048201908152825460026000196101006001841615020190911604602483018190529091829160449091019084908015611a3c5780601f10611a1157610100808354040283529160200191611a3c565b50610ca58282613971565b600160009054906101000a90046001600160a01b03166001600160a01b031663481c6a756040518163ffffffff1660e01b815260040160206040518083038186803b158015611fda57600080fd5b505afa158015611fee573d6000803e3d6000fd5b505050506040513d602081101561200457600080fd5b50516000906001600160a01b031633146120775760405162461bcd60e51b8152602060048201908152825460026000196101006001841615020190911604602483018190529091829160449091019084908015611a3c5780601f10611a1157610100808354040283529160200191611a3c565b50600082600281111561208657fe5b14156120b9576006805473ffffffffffffffffffffffffffffffffffffffff19166001600160a01b038316179055610ca5565b60018260028111156120c757fe5b1415612142576009546001600160a01b0316156121155760405162461bcd60e51b8152600401808060200182810382526023815260200180613bb36023913960400191505060405180910390fd5b6009805473ffffffffffffffffffffffffffffffffffffffff19166001600160a01b038316179055610ca5565b600282600281111561215057fe5b1415610ca5576007546001600160a01b03161561219e5760405162461bcd60e51b8152600401808060200182810382526023815260200180613b906023913960400191505060405180910390fd5b600780546001600160a01b03831673ffffffffffffffffffffffffffffffffffffffff199091161790555050565b60006121d6613b1e565b6001600160a01b0384166000908152600d602052604090208054849081106121fa57fe5b90600052602060002090600502016040518060a001604052908160008201548152602001600182015481526020016002820154815260200160038201548152602001600482015481525050905080602001516000148015610f6a57506080015115159392505050565b600061230a6008547f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03166370a08231306040518263ffffffff1660e01b815260040180826001600160a01b0316815260200191505060206040518083038186803b1580156122d857600080fd5b505afa1580156122ec573d6000803e3d6000fd5b505050506040513d602081101561230257600080fd5b50519061334a565b905090565b60025460035460045460055484565b6000612328613b1e565b6001600160a01b0384166000908152600d6020526040902080548490811061234c57fe5b60009182526020918290206040805160a081018252600590930290910180548352600181015493830184905260028101549183019190915260038101546060830152600401546080909101521515949350505050565b7f000000000000000000000000000000000000000000000000000000000000000081565b6000806123d16127f7565b506124076001600160a01b037f0000000000000000000000000000000000000000000000000000000000000000163330876135c1565b6001600160a01b0385166000908152600e602052604090205460ff1661246e576001600160a01b038516331461246e5760405162461bcd60e51b8152600401808060200182810382526028815260200180613bd66028913960400191505060405180910390fd5b6001600160a01b0385166000908152600d6020526040902054600a541580156124945750835b156125e9576001600160a01b0386166000908152600d60209081526040808320815160a08101835289815292830184905290820192909252606081016124fa427f000000000000000000000000000000000000000000000000000000000000000061334a565b81526020017f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316631bd39674896040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561256357600080fd5b505afa158015612577573d6000803e3d6000fd5b505050506040513d602081101561258d57600080fd5b505190528154600181810184556000938452602093849020835160059093020191825592820151928101929092556040810151600283015560608101516003830155608001516004909101556125e38686613585565b506127e7565b6126857f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316631bd39674876040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561265057600080fd5b505afa158015612664573d6000803e3d6000fd5b505050506040513d602081101561267a57600080fd5b5051600b549061334a565b600b81905550600d6000876001600160a01b03166001600160a01b031681526020019081526020016000206040518060a001604052808781526020017f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316631bd39674896040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561272557600080fd5b505afa158015612739573d6000803e3d6000fd5b505050506040513d602081101561274f57600080fd5b50518152600a5460209091019061276790429061334a565b8152602001612796427f000000000000000000000000000000000000000000000000000000000000000061334a565b81526000602091820181905283546001818101865594825290829020835160059092020190815590820151928101929092556040810151600283015560608101516003830155608001516004909101555b9395939450505050565b60085481565b6000804260028001541161230a577f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03166389ee68a96040518163ffffffff1660e01b8152600401600060405180830381600087803b15801561286057600080fd5b505af1158015612874573d6000803e3d6000fd5b505050507f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031663058ecdb46002600301546002600101546040518363ffffffff1660e01b81526004018083815260200182815260200192505050602060405180830381600087803b1580156128f057600080fd5b505af1158015612904573d6000803e3d6000fd5b505050506040513d602081101561291a57600080fd5b505060025460045461292b9161334a565b6004556003805460010190556006546001600160a01b031615612a5357600660009054906101000a90046001600160a01b03166001600160a01b031663e4fc6b6d6040518163ffffffff1660e01b8152600401602060405180830381600087803b15801561299857600080fd5b505af11580156129ac573d6000803e3d6000fd5b505050506040513d60208110156129c257600080fd5b5050600654604080517fe7187e8a00000000000000000000000000000000000000000000000000000000815290516001600160a01b039092169163e7187e8a916004808201926020929091908290030181600087803b158015612a2457600080fd5b505af1158015612a38573d6000803e3d6000fd5b505050506040513d6020811015612a4e57600080fd5b505190505b6000612a5d612263565b905060007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316639358928b6040518163ffffffff1660e01b815260040160206040518083038186803b158015612aba57600080fd5b505afa158015612ace573d6000803e3d6000fd5b505050506040513d6020811015612ae457600080fd5b50519050612af2818461334a565b8211612b02576000600555612b14565b612b10836117ea8484613543565b6005555b5050905090565b3360009081526011602052604081205460ff16612b7f576040805162461bcd60e51b815260206004820152601f60248201527f43616c6c6572206973206e6f74206120626f6e64206465706f7369746f727900604482015290519081900360640190fd5b336000908152600f602090815260408083208584529091529020546001600160a01b03848116911614612bf9576040805162461bcd60e51b815260206004820152601860248201527f5374616b696e673a20636c61696d206e6f7420666f756e640000000000000000604482015290519081900360640190fd5b336000908152600d60205260408120805484908110612c1457fe5b9060005260206000209060050201600101541180612c5c5750336000908152600d60205260408120805484908110612c4857fe5b906000526020600020906005020160040154115b612cad576040805162461bcd60e51b815260206004820152601760248201527f5374616b696e673a20636c61696d2072656465656d6564000000000000000000604482015290519081900360640190fd5b506001600160a01b0382166000908152600d6020526040808220805433845291909220805491929184908110612cdf57fe5b600091825260208083208454600181810187559585528285206005948502909201805491909402909101908155848301549481019490945560028083015490850155600380830154908501556004918201549190930155338152600d90915260409020805483908110612d4e57fe5b6000918252602082206005909102018181556001810182905560028101829055600381018290556004015592915050565b6001546001600160a01b031681565b6006546001600160a01b031681565b600d6020528160005260406000208181548110612db957600080fd5b600091825260209091206005909102018054600182015460028301546003840154600490940154929550909350919085565b6001600160a01b03166000908152600d602052604090205490565b600160009054906101000a90046001600160a01b03166001600160a01b031663481c6a756040518163ffffffff1660e01b815260040160206040518083038186803b158015612e5457600080fd5b505afa158015612e68573d6000803e3d6000fd5b505050506040513d6020811015612e7e57600080fd5b50516000906001600160a01b03163314612ef15760405162461bcd60e51b8152602060048201908152825460026000196101006001841615020190911604602483018190529091829160449091019084908015611a3c5780601f10611a1157610100808354040283529160200191611a3c565b50600a55565b6001600160a01b038281166000908152600f602090815260408083208584529091528120549091163314612f72576040805162461bcd60e51b815260206004820152601860248201527f5374616b696e673a20636c61696d206e6f7420666f756e640000000000000000604482015290519081900360640190fd5b6001600160a01b0383166000908152600d60205260408120805484908110612f9657fe5b9060005260206000209060050201600101541180612fe757506001600160a01b0383166000908152600d60205260408120805484908110612fd357fe5b906000526020600020906005020160040154115b613038576040805162461bcd60e51b815260206004820152601760248201527f5374616b696e673a20636c61696d2072656465656d6564000000000000000000604482015290519081900360640190fd5b50336000908152600d602052604080822080546001600160a01b03861684529190922080549192918490811061306a57fe5b6000918252602080832084546001818101875595855282852060059485029092018054919094029091019081558483015494810194909455600280830154908501556003808301549085015560049182015491909301556001600160a01b0385168152600d90915260409020805483908110612d4e57fe5b7f000000000000000000000000000000000000000000000000000000000000000081565b6007546001600160a01b031681565b7f000000000000000000000000000000000000000000000000000000000000000081565b600a5481565b6009546001600160a01b031681565b6000613158613b1e565b6001600160a01b0384166000908152600d6020526040902080548490811061317c57fe5b600091825260208083206040805160a081018252600590940290910180548452600181015484840152600281015484830152600381015460608501526004908101546080850181905282517f7965d56d0000000000000000000000000000000000000000000000000000000081529182015290519294506001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001692637965d56d92602480840193919291829003018186803b15801561324157600080fd5b505afa158015613255573d6000803e3d6000fd5b505050506040513d602081101561326b57600080fd5b505160009350905061327d85856121cc565b1561329b578151611abd906117ea61329484613762565b849061334a565b505092915050565b7f000000000000000000000000000000000000000000000000000000000000000090565b6007546001600160a01b031633146132de57600080fd5b6008546132eb9082613543565b600855600754610ab0906001600160a01b037f00000000000000000000000000000000000000000000000000000000000000008116911630846135c1565b336000908152600e60205260409020805460ff19811660ff90911615179055565b6000828201838110156133a4576040805162461bcd60e51b815260206004820152601b60248201527f536166654d6174683a206164646974696f6e206f766572666c6f770000000000604482015290519081900360640190fd5b9392505050565b604080516001600160a01b038481166024830152604480830185905283518084039091018152606490920183526020820180517bffffffffffffffffffffffffffffffffffffffffffffffffffffffff167fa9059cbb00000000000000000000000000000000000000000000000000000000178152925182516000946060949389169392918291908083835b602083106134565780518252601f199092019160209182019101613437565b6001836020036101000a0380198251168184511680821785525050505050509050019150506000604051808303816000865af19150503d80600081146134b8576040519150601f19603f3d011682016040523d82523d6000602084013e6134bd565b606091505b50915091508180156134eb5750805115806134eb57508080602001905160208110156134e857600080fd5b50515b61353c576040805162461bcd60e51b815260206004820152600f60248201527f5452414e534645525f4641494c45440000000000000000000000000000000000604482015290519081900360640190fd5b5050505050565b60006133a483836040518060400160405280601e81526020017f536166654d6174683a207375627472616374696f6e206f766572666c6f770000815250613a10565b60006135bb6001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001684846133ab565b50919050565b604080516001600160a01b0385811660248301528481166044830152606480830185905283518084039091018152608490920183526020820180517bffffffffffffffffffffffffffffffffffffffffffffffffffffffff167f23b872dd0000000000000000000000000000000000000000000000000000000017815292518251600094606094938a169392918291908083835b602083106136745780518252601f199092019160209182019101613655565b6001836020036101000a0380198251168184511680821785525050505050509050019150506000604051808303816000865af19150503d80600081146136d6576040519150601f19603f3d011682016040523d82523d6000602084013e6136db565b606091505b5091509150818015613709575080511580613709575080806020019051602081101561370657600080fd5b50515b61375a576040805162461bcd60e51b815260206004820152601460248201527f5452414e534645525f46524f4d5f4641494c4544000000000000000000000000604482015290519081900360640190fd5b505050505050565b6000807f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316639358928b6040518163ffffffff1660e01b815260040160206040518083038186803b1580156137be57600080fd5b505afa1580156137d2573d6000803e3d6000fd5b505050506040513d60208110156137e857600080fd5b50519050633b9aca00816137fd5760006138aa565b6138aa816116d97f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316637965d56d600c546040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561386a57600080fd5b505afa15801561387e573d6000803e3d6000fd5b505050506040513d602081101561389457600080fd5b50516116d3856117ea886116d983858e8461334a565b949350505050565b6000826138c157506000610f6e565b828202828482816138ce57fe5b04146133a45760405162461bcd60e51b8152600401808060200182810382526021815260200180613c496021913960400191505060405180910390fd5b60006133a483836040518060400160405280601a81526020017f536166654d6174683a206469766973696f6e206279207a65726f000000000000815250613aa7565b600082156135bb5761396c826116d3816116d960016117ea898461334a565b6133a4565b80518251146139c7576040805162461bcd60e51b815260206004820152601e60248201527f417272617973206d757374206265207468652073616d65206c656e6774680000604482015290519081900360640190fd5b60005b8251811015613a0b57613a038382815181106139e257fe5b60200260200101518383815181106139f657fe5b6020026020010151613b0c565b6001016139ca565b505050565b60008184841115613a9f5760405162461bcd60e51b81526004018080602001828103825283818151815260200191508051906020019080838360005b83811015613a64578181015183820152602001613a4c565b50505050905090810190601f168015613a915780820380516001836020036101000a031916815260200191505b509250505060405180910390fd5b505050900390565b60008183613af65760405162461bcd60e51b8152602060048201818152835160248401528351909283926044909101919085019080838360008315613a64578181015183820152602001613a4c565b506000838581613b0257fe5b0495945050505050565b60009182526010602052604090912055565b6040518060a0016040528060008152602001600081526020016000815260200160008152602001600081525090565b60405180604001604052806000815260200160008152509056fe416d6f756e747320616e6420696e6465786573206c656e6774687320646f206e6f74206d617463684c6f636b65722063616e6e6f7420626520736574206d6f7265207468616e206f6e63655761726d75702063616e6e6f7420626520736574206d6f7265207468616e206f6e636545787465726e616c206465706f7369747320666f72206163636f756e7420617265206c6f636b656445787465726e616c20636c61696d7320666f72206163636f756e7420617265206c6f636b6564496e73756666696369656e74205448454f2062616c616e636520696e20636f6e7472616374536166654d6174683a206d756c7469706c69636174696f6e206f766572666c6f77416d6f756e7420646f6573206e6f74206d6174636820617661696c61626c652072656d61696e696e6720746f2072656465656d45787465726e616c20756e7374616b696e6720666f72206163636f756e74206973206c6f636b6564a264697066735822122097879d976ae68be750cdf07720293e05e517b9abb2b28b14dba935d7462def7364736f6c63430007050033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106102ad5760003560e01c806394ead1191161017b578063d081f1cd116100d8578063ed4acaa81161008c578063f385cecb11610071578063f385cecb14610a22578063f62ae76a14610a2a578063ff9413d814610a47576102ad565b8063ed4acaa8146109ee578063ed82da7a146109f6576102ad565b8063d7b96d4e116100bd578063d7b96d4e146109d6578063d9edbc1d146109de578063deac361a146109e6576102ad565b8063d081f1cd146109a2578063d71e9a40146109ce576102ad565b8063bf7e214f1161012f578063c06fcba011610114578063c06fcba014610908578063c0ecb4fd1461095f578063c9f464ff14610985576102ad565b8063bf7e214f146108f8578063bfe1092814610900576102ad565b8063a8dd07dc11610160578063a8dd07dc146108bc578063af14052c146108c4578063b3e50409146108cc576102ad565b806394ead11914610867578063995846bd1461086f576102ad565b806361d027b311610229578063865e6fd3116101dd5780638b7afe2e116101c25780638b7afe2e14610805578063900cf0cf1461080d57806390231e311461083b576102ad565b8063865e6fd31461079657806386a222fc146107c5576102ad565b806378f1f7781161020e57806378f1f7781461061d5780637a9e5e4b146106495780637c6db9251461066f576102ad565b806361d027b3146105d357806377329f35146105f7576102ad565b806345718278116102805780635334bb12116102655780635334bb121461050457806358225dc2146105325780635a740fe414610555576102ad565b80634571827814610310578063468e2f26146103c3576102ad565b806303c23670146102b257806320138641146102d15780632986c0e5146102eb5780633ed546ab146102f3575b600080fd5b6102cf600480360360208110156102c857600080fd5b5035610a4f565b005b6102d9610ab3565b60408051918252519081900360200190f35b6102d9610b4c565b6102cf6004803603602081101561030957600080fd5b5035610ba7565b6102d96004803603604081101561032657600080fd5b6001600160a01b03823516919081019060408101602082013564010000000081111561035157600080fd5b82018360208201111561036357600080fd5b8035906020019184602083028401116401000000008311171561038557600080fd5b919080806020026020016040519081016040528093929190818152602001838360200280828437600092019190915250929550610ca9945050505050565b6102d9600480360360808110156103d957600080fd5b6001600160a01b03823516919081019060408101602082013564010000000081111561040457600080fd5b82018360208201111561041657600080fd5b8035906020019184602083028401116401000000008311171561043857600080fd5b91908080602002602001604051908101604052809392919081815260200183836020028082843760009201919091525092958435151595909490935060408101925060200135905064010000000081111561049257600080fd5b8201836020820111156104a457600080fd5b803590602001918460208302840111640100000000831117156104c657600080fd5b919080806020026020016040519081016040528093929190818152602001838360200280828437600092019190915250929550610f74945050505050565b6102cf6004803603604081101561051a57600080fd5b506001600160a01b0381351690602001351515611926565b6102d96004803603604081101561054857600080fd5b5080359060200135611a77565b6105836004803603604081101561056b57600080fd5b506001600160a01b0381351690602001351515611ac6565b60408051602080825283518183015283519192839290830191858101910280838360005b838110156105bf5781810151838201526020016105a7565b505050509050019250505060405180910390f35b6105db611c51565b604080516001600160a01b039092168252519081900360200190f35b6102d96004803603602081101561060d57600080fd5b50356001600160a01b0316611c75565b6102cf6004803603604081101561063357600080fd5b506001600160a01b038135169060200135611c8b565b6102cf6004803603602081101561065f57600080fd5b50356001600160a01b0316611d53565b6102cf6004803603604081101561068557600080fd5b8101906020810181356401000000008111156106a057600080fd5b8201836020820111156106b257600080fd5b803590602001918460208302840111640100000000831117156106d457600080fd5b919080806020026020016040519081016040528093929190818152602001838360200280828437600092019190915250929594936020810193503591505064010000000081111561072457600080fd5b82018360208201111561073657600080fd5b8035906020019184602083028401116401000000008311171561075857600080fd5b919080806020026020016040519081016040528093929190818152602001838360200280828437600092019190915250929550611e96945050505050565b6102cf600480360360408110156107ac57600080fd5b50803560ff1690602001356001600160a01b0316611f8c565b6107f1600480360360408110156107db57600080fd5b506001600160a01b0381351690602001356121cc565b604080519115158252519081900360200190f35b6102d9612263565b61081561230f565b604080519485526020850193909352838301919091526060830152519081900360800190f35b6107f16004803603604081101561085157600080fd5b506001600160a01b03813516906020013561231e565b6105db6123a2565b6108a36004803603606081101561088557600080fd5b506001600160a01b03813516906020810135906040013515156123c6565b6040805192835260208301919091528051918290030190f35b6102d96127f1565b6102d96127f7565b6102d9600480360360408110156108e257600080fd5b506001600160a01b038135169060200135612b1b565b6105db612d7f565b6105db612d8e565b6109346004803603604081101561091e57600080fd5b506001600160a01b038135169060200135612d9d565b6040805195865260208601949094528484019290925260608401526080830152519081900360a00190f35b6102d96004803603602081101561097557600080fd5b50356001600160a01b0316612deb565b6102cf6004803603602081101561099b57600080fd5b5035612e06565b6102d9600480360360408110156109b857600080fd5b506001600160a01b038135169060200135612ef7565b6102d96130e2565b6105db613106565b6105db613115565b6102d9613139565b6105db61313f565b6102d960048036036040811015610a0c57600080fd5b506001600160a01b03813516906020013561314e565b6105db6132a3565b6102cf60048036036020811015610a4057600080fd5b50356132c7565b6102cf613329565b6007546001600160a01b03163314610a6657600080fd5b600854610a73908261334a565b600855600754610ab0906001600160a01b037f000000000000000000000000000000000000000000000000000000000000000081169116836133ab565b50565b60007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316637965d56d600b546040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b158015610b1b57600080fd5b505afa158015610b2f573d6000803e3d6000fd5b505050506040513d6020811015610b4557600080fd5b5051905090565b60007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316632986c0e56040518163ffffffff1660e01b815260040160206040518083038186803b158015610b1b57600080fd5b610baf613b1e565b336000908152600d60205260409020805483908110610bca57fe5b600091825260208083206040805160a08101825260059094029091018054845260018101548484015260028101548483015260038101546060850152600401546080840152338452600d90915290912080549192509083908110610c2a57fe5b60009182526020808320600590920290910182815560018101839055600281018390556003810183905560040191909155810151600b54610c6a91613543565b600b558051610ca5906001600160a01b037f0000000000000000000000000000000000000000000000000000000000000000169033906133ab565b5050565b6001600160a01b0382166000908152600e602052604081205460ff16610d10576001600160a01b0383163314610d105760405162461bcd60e51b8152600401808060200182810382526026815260200180613bfe6026913960400191505060405180910390fd5b6000805b8351811015610f5f57610d27858261231e565b15610f5757610d34613b1e565b6001600160a01b0386166000908152600d602052604090208551869084908110610d5a57fe5b602002602001015181548110610d6c57fe5b90600052602060002090600502016040518060a001604052908160008201548152602001600182015481526020016002820154815260200160038201548152602001600482015481525050905080604001514210158015610dd05750604081015115155b15610f55576001600160a01b0386166000908152600d602052604081208651879085908110610dfb57fe5b602002602001015181548110610e0d57fe5b906000526020600020906005020160010181905550610e3b8160200151600b5461354390919063ffffffff16565b600b55602080820151604080517f7965d56d0000000000000000000000000000000000000000000000000000000081526004810192909252516000926001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001692637965d56d9260248083019392829003018186803b158015610ec357600080fd5b505afa158015610ed7573d6000803e3d6000fd5b505050506040513d6020811015610eed57600080fd5b50516020838101516001600160a01b038a166000908152600d909252604090912088519293509091889086908110610f2157fe5b602002602001015181548110610f3357fe5b6000918252602090912060046005909202010155610f51848261334a565b9350505b505b600101610d14565b50610f6a8482613585565b9150505b92915050565b6001600160a01b0384166000908152600e602052604081205460ff16610fdb576001600160a01b0385163314610fdb5760405162461bcd60e51b8152600401808060200182810382526028815260200180613c9d6028913960400191505060405180910390fd5b815184511461101b5760405162461bcd60e51b8152600401808060200182810382526028815260200180613b686028913960400191505060405180910390fd5b6000905060006060835167ffffffffffffffff8111801561103b57600080fd5b50604051908082528060200260200182016040528015611065578160200160208202803683370190505b50905060005b8451811015611138577f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316631bd396748883815181106110af57fe5b60200260200101516040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b1580156110eb57600080fd5b505afa1580156110ff573d6000803e3d6000fd5b505050506040513d602081101561111557600080fd5b5051825183908390811061112557fe5b602090810291909101015260010161106b565b50841561114a576111476127f7565b91505b60005b84518110156117fe5761115e613b1e565b6001600160a01b0389166000908152600d60205260409020865187908490811061118457fe5b60200260200101518154811061119657fe5b90600052602060002090600502016040518060a00160405290816000820154815260200160018201548152602001600282015481526020016003820154815260200160048201548152505090506111eb613b4d565b7f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316637965d56d85858151811061122657fe5b60200260200101516040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561126257600080fd5b505afa158015611276573d6000803e3d6000fd5b505050506040513d602081101561128c57600080fd5b5051815286516112b1908b908990869081106112a457fe5b60200260200101516121cc565b156117f4577f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316631bd396747f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316637965d56d85608001516040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561134d57600080fd5b505afa158015611361573d6000803e3d6000fd5b505050506040513d602081101561137757600080fd5b5051604080517fffffffff0000000000000000000000000000000000000000000000000000000060e085901b1681526004810192909252516024808301926020929190829003018186803b1580156113ce57600080fd5b505afa1580156113e2573d6000803e3d6000fd5b505050506040513d60208110156113f857600080fd5b50516020828101919091528151604080517f1bd396740000000000000000000000000000000000000000000000000000000081526004810192909252516114bc926001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001692631bd396749260248083019392829003018186803b15801561148557600080fd5b505afa158015611499573d6000803e3d6000fd5b505050506040513d60208110156114af57600080fd5b5051602083015190613543565b6001600160a01b038b166000908152600d6020526040902088518990869081106114e257fe5b6020026020010151815481106114f457fe5b60009182526020909120600460059092020101558051611542906001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001690339030906135c1565b816060015142106115a55760007f00000000000000000000000000000000000000000000000000000000000000001561158357815161158090613762565b90505b815161159d90829061159790818b8b61334a565b9061334a565b9650506117f4565b81606001514210156117f4576001600160a01b038a166000908152600d6020526040902087518890859081106115d757fe5b6020026020010151815481106115e957fe5b9060005260206000209060050201600401546000146116395760405162461bcd60e51b8152600401808060200182810382526033815260200180613c6a6033913960400191505060405180910390fd5b6001600160a01b038a166000908152600d6020526040812088516116ee91908a908790811061166457fe5b60200260200101518154811061167657fe5b9060005260206000209060050201600001546116e96127106116d96116df7f00000000000000000000000000000000000000000000000000000000000000006116d9620f42406116d3428d6060015161354390919063ffffffff16565b906138b2565b9061390b565b620f424090613543565b611a77565b905061178c7f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316631bd39674836040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561175757600080fd5b505afa15801561176b573d6000803e3d6000fd5b505050506040513d602081101561178157600080fd5b5051600c549061334a565b600c556001600160a01b038b166000908152600d6020526040902088516117f09183916117ea91908c90899081106117c057fe5b6020026020010151815481106117d257fe5b60009182526020909120600590910201548a9061334a565b90613543565b9650505b505060010161114d565b50604080517f70a0823100000000000000000000000000000000000000000000000000000000815230600482015290516001600160a01b037f000000000000000000000000000000000000000000000000000000000000000016916370a08231916024808301926020929190829003018186803b15801561187e57600080fd5b505afa158015611892573d6000803e3d6000fd5b505050506040513d60208110156118a857600080fd5b50518311156118e85760405162461bcd60e51b8152600401808060200182810382526025815260200180613c246025913960400191505060405180910390fd5b61191c6001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001688856133ab565b5050949350505050565b600160009054906101000a90046001600160a01b03166001600160a01b0316630c340a246040518163ffffffff1660e01b815260040160206040518083038186803b15801561197457600080fd5b505afa158015611988573d6000803e3d6000fd5b505050506040513d602081101561199e57600080fd5b50516000906001600160a01b03163314611a4b5760405162461bcd60e51b8152602060048201908152825460026000196101006001841615020190911604602483018190529091829160449091019084908015611a3c5780601f10611a1157610100808354040283529160200191611a3c565b820191906000526020600020905b815481529060010190602001808311611a1f57829003601f168201915b50509250505060405180910390fd5b506001600160a01b03919091166000908152601160205260409020805460ff1916911515919091179055565b60008160641415611a8a57506000610f6e565b6000611a9c60056116d985600561394d565b600081815260106020526040902054909150611abd60646116d987846138b2565b95945050505050565b6001600160a01b0382166000908152600d602090815260408083208054825181850281018501909352808352606094859484015b82821015611b5e57838290600052602060002090600502016040518060a00160405290816000820154815260200160018201548152602001600282015481526020016003820154815260200160048201548152505081526020019060010190611afa565b505050509050600080600090505b8251811015611ba75784611b8957611b8486826121cc565b611b93565b611b93868261231e565b15611b9f576001909101905b600101611b6c565b5060608167ffffffffffffffff81118015611bc157600080fd5b50604051908082528060200260200182016040528015611beb578160200160208202803683370190505b5090506000805b8451811015611c455786611c0f57611c0a88826121cc565b611c19565b611c19888261231e565b15611c3d5780838381518110611c2b57fe5b60209081029190910101526001909101905b600101611bf2565b50909695505050505050565b7f000000000000000000000000000000000000000000000000000000000000000081565b6000610f6e82611c86846001611ac6565b610ca9565b336000908152600d60205260409020805482908110611ca657fe5b90600052602060002090600502016003015460001415611d0d576040805162461bcd60e51b815260206004820152601860248201527f5374616b696e673a20636c61696d206e6f7420666f756e640000000000000000604482015290519081900360640190fd5b336000908152600f6020908152604080832093835292905220805473ffffffffffffffffffffffffffffffffffffffff19166001600160a01b0392909216919091179055565b600160009054906101000a90046001600160a01b03166001600160a01b0316630c340a246040518163ffffffff1660e01b815260040160206040518083038186803b158015611da157600080fd5b505afa158015611db5573d6000803e3d6000fd5b505050506040513d6020811015611dcb57600080fd5b50516000906001600160a01b03163314611e3e5760405162461bcd60e51b8152602060048201908152825460026000196101006001841615020190911604602483018190529091829160449091019084908015611a3c5780601f10611a1157610100808354040283529160200191611a3c565b506001805473ffffffffffffffffffffffffffffffffffffffff19166001600160a01b0383169081179091556040517f2f658b440c35314f52658ea8a740e05b284cdc84dc9ae01e891f21b8933e7cad90600090a250565b600160009054906101000a90046001600160a01b03166001600160a01b0316630505c8c96040518163ffffffff1660e01b815260040160206040518083038186803b158015611ee457600080fd5b505afa158015611ef8573d6000803e3d6000fd5b505050506040513d6020811015611f0e57600080fd5b50516000906001600160a01b03163314611f815760405162461bcd60e51b8152602060048201908152825460026000196101006001841615020190911604602483018190529091829160449091019084908015611a3c5780601f10611a1157610100808354040283529160200191611a3c565b50610ca58282613971565b600160009054906101000a90046001600160a01b03166001600160a01b031663481c6a756040518163ffffffff1660e01b815260040160206040518083038186803b158015611fda57600080fd5b505afa158015611fee573d6000803e3d6000fd5b505050506040513d602081101561200457600080fd5b50516000906001600160a01b031633146120775760405162461bcd60e51b8152602060048201908152825460026000196101006001841615020190911604602483018190529091829160449091019084908015611a3c5780601f10611a1157610100808354040283529160200191611a3c565b50600082600281111561208657fe5b14156120b9576006805473ffffffffffffffffffffffffffffffffffffffff19166001600160a01b038316179055610ca5565b60018260028111156120c757fe5b1415612142576009546001600160a01b0316156121155760405162461bcd60e51b8152600401808060200182810382526023815260200180613bb36023913960400191505060405180910390fd5b6009805473ffffffffffffffffffffffffffffffffffffffff19166001600160a01b038316179055610ca5565b600282600281111561215057fe5b1415610ca5576007546001600160a01b03161561219e5760405162461bcd60e51b8152600401808060200182810382526023815260200180613b906023913960400191505060405180910390fd5b600780546001600160a01b03831673ffffffffffffffffffffffffffffffffffffffff199091161790555050565b60006121d6613b1e565b6001600160a01b0384166000908152600d602052604090208054849081106121fa57fe5b90600052602060002090600502016040518060a001604052908160008201548152602001600182015481526020016002820154815260200160038201548152602001600482015481525050905080602001516000148015610f6a57506080015115159392505050565b600061230a6008547f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03166370a08231306040518263ffffffff1660e01b815260040180826001600160a01b0316815260200191505060206040518083038186803b1580156122d857600080fd5b505afa1580156122ec573d6000803e3d6000fd5b505050506040513d602081101561230257600080fd5b50519061334a565b905090565b60025460035460045460055484565b6000612328613b1e565b6001600160a01b0384166000908152600d6020526040902080548490811061234c57fe5b60009182526020918290206040805160a081018252600590930290910180548352600181015493830184905260028101549183019190915260038101546060830152600401546080909101521515949350505050565b7f000000000000000000000000000000000000000000000000000000000000000081565b6000806123d16127f7565b506124076001600160a01b037f0000000000000000000000000000000000000000000000000000000000000000163330876135c1565b6001600160a01b0385166000908152600e602052604090205460ff1661246e576001600160a01b038516331461246e5760405162461bcd60e51b8152600401808060200182810382526028815260200180613bd66028913960400191505060405180910390fd5b6001600160a01b0385166000908152600d6020526040902054600a541580156124945750835b156125e9576001600160a01b0386166000908152600d60209081526040808320815160a08101835289815292830184905290820192909252606081016124fa427f000000000000000000000000000000000000000000000000000000000000000061334a565b81526020017f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316631bd39674896040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561256357600080fd5b505afa158015612577573d6000803e3d6000fd5b505050506040513d602081101561258d57600080fd5b505190528154600181810184556000938452602093849020835160059093020191825592820151928101929092556040810151600283015560608101516003830155608001516004909101556125e38686613585565b506127e7565b6126857f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316631bd39674876040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561265057600080fd5b505afa158015612664573d6000803e3d6000fd5b505050506040513d602081101561267a57600080fd5b5051600b549061334a565b600b81905550600d6000876001600160a01b03166001600160a01b031681526020019081526020016000206040518060a001604052808781526020017f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316631bd39674896040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561272557600080fd5b505afa158015612739573d6000803e3d6000fd5b505050506040513d602081101561274f57600080fd5b50518152600a5460209091019061276790429061334a565b8152602001612796427f000000000000000000000000000000000000000000000000000000000000000061334a565b81526000602091820181905283546001818101865594825290829020835160059092020190815590820151928101929092556040810151600283015560608101516003830155608001516004909101555b9395939450505050565b60085481565b6000804260028001541161230a577f00000000000000000000000000000000000000000000000000000000000000006001600160a01b03166389ee68a96040518163ffffffff1660e01b8152600401600060405180830381600087803b15801561286057600080fd5b505af1158015612874573d6000803e3d6000fd5b505050507f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031663058ecdb46002600301546002600101546040518363ffffffff1660e01b81526004018083815260200182815260200192505050602060405180830381600087803b1580156128f057600080fd5b505af1158015612904573d6000803e3d6000fd5b505050506040513d602081101561291a57600080fd5b505060025460045461292b9161334a565b6004556003805460010190556006546001600160a01b031615612a5357600660009054906101000a90046001600160a01b03166001600160a01b031663e4fc6b6d6040518163ffffffff1660e01b8152600401602060405180830381600087803b15801561299857600080fd5b505af11580156129ac573d6000803e3d6000fd5b505050506040513d60208110156129c257600080fd5b5050600654604080517fe7187e8a00000000000000000000000000000000000000000000000000000000815290516001600160a01b039092169163e7187e8a916004808201926020929091908290030181600087803b158015612a2457600080fd5b505af1158015612a38573d6000803e3d6000fd5b505050506040513d6020811015612a4e57600080fd5b505190505b6000612a5d612263565b905060007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316639358928b6040518163ffffffff1660e01b815260040160206040518083038186803b158015612aba57600080fd5b505afa158015612ace573d6000803e3d6000fd5b505050506040513d6020811015612ae457600080fd5b50519050612af2818461334a565b8211612b02576000600555612b14565b612b10836117ea8484613543565b6005555b5050905090565b3360009081526011602052604081205460ff16612b7f576040805162461bcd60e51b815260206004820152601f60248201527f43616c6c6572206973206e6f74206120626f6e64206465706f7369746f727900604482015290519081900360640190fd5b336000908152600f602090815260408083208584529091529020546001600160a01b03848116911614612bf9576040805162461bcd60e51b815260206004820152601860248201527f5374616b696e673a20636c61696d206e6f7420666f756e640000000000000000604482015290519081900360640190fd5b336000908152600d60205260408120805484908110612c1457fe5b9060005260206000209060050201600101541180612c5c5750336000908152600d60205260408120805484908110612c4857fe5b906000526020600020906005020160040154115b612cad576040805162461bcd60e51b815260206004820152601760248201527f5374616b696e673a20636c61696d2072656465656d6564000000000000000000604482015290519081900360640190fd5b506001600160a01b0382166000908152600d6020526040808220805433845291909220805491929184908110612cdf57fe5b600091825260208083208454600181810187559585528285206005948502909201805491909402909101908155848301549481019490945560028083015490850155600380830154908501556004918201549190930155338152600d90915260409020805483908110612d4e57fe5b6000918252602082206005909102018181556001810182905560028101829055600381018290556004015592915050565b6001546001600160a01b031681565b6006546001600160a01b031681565b600d6020528160005260406000208181548110612db957600080fd5b600091825260209091206005909102018054600182015460028301546003840154600490940154929550909350919085565b6001600160a01b03166000908152600d602052604090205490565b600160009054906101000a90046001600160a01b03166001600160a01b031663481c6a756040518163ffffffff1660e01b815260040160206040518083038186803b158015612e5457600080fd5b505afa158015612e68573d6000803e3d6000fd5b505050506040513d6020811015612e7e57600080fd5b50516000906001600160a01b03163314612ef15760405162461bcd60e51b8152602060048201908152825460026000196101006001841615020190911604602483018190529091829160449091019084908015611a3c5780601f10611a1157610100808354040283529160200191611a3c565b50600a55565b6001600160a01b038281166000908152600f602090815260408083208584529091528120549091163314612f72576040805162461bcd60e51b815260206004820152601860248201527f5374616b696e673a20636c61696d206e6f7420666f756e640000000000000000604482015290519081900360640190fd5b6001600160a01b0383166000908152600d60205260408120805484908110612f9657fe5b9060005260206000209060050201600101541180612fe757506001600160a01b0383166000908152600d60205260408120805484908110612fd357fe5b906000526020600020906005020160040154115b613038576040805162461bcd60e51b815260206004820152601760248201527f5374616b696e673a20636c61696d2072656465656d6564000000000000000000604482015290519081900360640190fd5b50336000908152600d602052604080822080546001600160a01b03861684529190922080549192918490811061306a57fe5b6000918252602080832084546001818101875595855282852060059485029092018054919094029091019081558483015494810194909455600280830154908501556003808301549085015560049182015491909301556001600160a01b0385168152600d90915260409020805483908110612d4e57fe5b7f000000000000000000000000000000000000000000000000000000000000000081565b6007546001600160a01b031681565b7f000000000000000000000000000000000000000000000000000000000000000081565b600a5481565b6009546001600160a01b031681565b6000613158613b1e565b6001600160a01b0384166000908152600d6020526040902080548490811061317c57fe5b600091825260208083206040805160a081018252600590940290910180548452600181015484840152600281015484830152600381015460608501526004908101546080850181905282517f7965d56d0000000000000000000000000000000000000000000000000000000081529182015290519294506001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001692637965d56d92602480840193919291829003018186803b15801561324157600080fd5b505afa158015613255573d6000803e3d6000fd5b505050506040513d602081101561326b57600080fd5b505160009350905061327d85856121cc565b1561329b578151611abd906117ea61329484613762565b849061334a565b505092915050565b7f000000000000000000000000000000000000000000000000000000000000000090565b6007546001600160a01b031633146132de57600080fd5b6008546132eb9082613543565b600855600754610ab0906001600160a01b037f00000000000000000000000000000000000000000000000000000000000000008116911630846135c1565b336000908152600e60205260409020805460ff19811660ff90911615179055565b6000828201838110156133a4576040805162461bcd60e51b815260206004820152601b60248201527f536166654d6174683a206164646974696f6e206f766572666c6f770000000000604482015290519081900360640190fd5b9392505050565b604080516001600160a01b038481166024830152604480830185905283518084039091018152606490920183526020820180517bffffffffffffffffffffffffffffffffffffffffffffffffffffffff167fa9059cbb00000000000000000000000000000000000000000000000000000000178152925182516000946060949389169392918291908083835b602083106134565780518252601f199092019160209182019101613437565b6001836020036101000a0380198251168184511680821785525050505050509050019150506000604051808303816000865af19150503d80600081146134b8576040519150601f19603f3d011682016040523d82523d6000602084013e6134bd565b606091505b50915091508180156134eb5750805115806134eb57508080602001905160208110156134e857600080fd5b50515b61353c576040805162461bcd60e51b815260206004820152600f60248201527f5452414e534645525f4641494c45440000000000000000000000000000000000604482015290519081900360640190fd5b5050505050565b60006133a483836040518060400160405280601e81526020017f536166654d6174683a207375627472616374696f6e206f766572666c6f770000815250613a10565b60006135bb6001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001684846133ab565b50919050565b604080516001600160a01b0385811660248301528481166044830152606480830185905283518084039091018152608490920183526020820180517bffffffffffffffffffffffffffffffffffffffffffffffffffffffff167f23b872dd0000000000000000000000000000000000000000000000000000000017815292518251600094606094938a169392918291908083835b602083106136745780518252601f199092019160209182019101613655565b6001836020036101000a0380198251168184511680821785525050505050509050019150506000604051808303816000865af19150503d80600081146136d6576040519150601f19603f3d011682016040523d82523d6000602084013e6136db565b606091505b5091509150818015613709575080511580613709575080806020019051602081101561370657600080fd5b50515b61375a576040805162461bcd60e51b815260206004820152601460248201527f5452414e534645525f46524f4d5f4641494c4544000000000000000000000000604482015290519081900360640190fd5b505050505050565b6000807f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316639358928b6040518163ffffffff1660e01b815260040160206040518083038186803b1580156137be57600080fd5b505afa1580156137d2573d6000803e3d6000fd5b505050506040513d60208110156137e857600080fd5b50519050633b9aca00816137fd5760006138aa565b6138aa816116d97f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316637965d56d600c546040518263ffffffff1660e01b81526004018082815260200191505060206040518083038186803b15801561386a57600080fd5b505afa15801561387e573d6000803e3d6000fd5b505050506040513d602081101561389457600080fd5b50516116d3856117ea886116d983858e8461334a565b949350505050565b6000826138c157506000610f6e565b828202828482816138ce57fe5b04146133a45760405162461bcd60e51b8152600401808060200182810382526021815260200180613c496021913960400191505060405180910390fd5b60006133a483836040518060400160405280601a81526020017f536166654d6174683a206469766973696f6e206279207a65726f000000000000815250613aa7565b600082156135bb5761396c826116d3816116d960016117ea898461334a565b6133a4565b80518251146139c7576040805162461bcd60e51b815260206004820152601e60248201527f417272617973206d757374206265207468652073616d65206c656e6774680000604482015290519081900360640190fd5b60005b8251811015613a0b57613a038382815181106139e257fe5b60200260200101518383815181106139f657fe5b6020026020010151613b0c565b6001016139ca565b505050565b60008184841115613a9f5760405162461bcd60e51b81526004018080602001828103825283818151815260200191508051906020019080838360005b83811015613a64578181015183820152602001613a4c565b50505050905090810190601f168015613a915780820380516001836020036101000a031916815260200191505b509250505060405180910390fd5b505050900390565b60008183613af65760405162461bcd60e51b8152602060048201818152835160248401528351909283926044909101919085019080838360008315613a64578181015183820152602001613a4c565b506000838581613b0257fe5b0495945050505050565b60009182526010602052604090912055565b6040518060a0016040528060008152602001600081526020016000815260200160008152602001600081525090565b60405180604001604052806000815260200160008152509056fe416d6f756e747320616e6420696e6465786573206c656e6774687320646f206e6f74206d617463684c6f636b65722063616e6e6f7420626520736574206d6f7265207468616e206f6e63655761726d75702063616e6e6f7420626520736574206d6f7265207468616e206f6e636545787465726e616c206465706f7369747320666f72206163636f756e7420617265206c6f636b656445787465726e616c20636c61696d7320666f72206163636f756e7420617265206c6f636b6564496e73756666696369656e74205448454f2062616c616e636520696e20636f6e7472616374536166654d6174683a206d756c7469706c69636174696f6e206f766572666c6f77416d6f756e7420646f6573206e6f74206d6174636820617661696c61626c652072656d61696e696e6720746f2072656465656d45787465726e616c20756e7374616b696e6720666f72206163636f756e74206973206c6f636b6564a264697066735822122097879d976ae68be750cdf07720293e05e517b9abb2b28b14dba935d7462def7364736f6c63430007050033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "basis()": {
+        "returns": {
+          "_0": "address     the address of the staking token"
+        }
+      },
+      "claim(address,uint256[])": {
+        "details": "After a claim has been retrieved (and a subsequent call to `isUnRetrieved` returns false), the claim cannot be re-retrieved; gonsRemaining is therefore only set once by this method for each Claim",
+        "params": {
+          "_indexes": "uint256[]      indexes of the sTHEO to retrieve",
+          "_recipient": "address"
+        },
+        "returns": {
+          "amount_": "               The sum total amount of sTHEO sent"
+        }
+      },
+      "claimAll(address)": {
+        "details": "if possible, query indexesFor() off-chain and input in claim() to save gas",
+        "params": {
+          "_recipient": "address. The recipient to retrieve sTHEO from all claims for"
+        },
+        "returns": {
+          "_0": "sum of claim amounts sent, in sTHEO"
+        }
+      },
+      "contractBalance()": {
+        "returns": {
+          "_0": "uint"
+        }
+      },
+      "giveLockBonus(uint256)": {
+        "params": {
+          "_amount": "uint"
+        }
+      },
+      "index()": {
+        "returns": {
+          "_0": "uint"
+        }
+      },
+      "indexesFor(address,bool)": {
+        "params": {
+          "_user": "the user to query claims for",
+          "unRetrieved": "bool. If true, return indexes of all un-claimed claims from warmup, else return indexes of all claims with un-redeemed sTheo"
+        },
+        "returns": {
+          "_0": "indexes of un-retrieved claims, or of un-redeemed claims, for the user"
+        }
+      },
+      "isUnRedeemed(address,uint256)": {
+        "params": {
+          "_index": "the index of the claim",
+          "_user": "the user to query claims for"
+        },
+        "returns": {
+          "_0": "bool        true if the total sTHEO on the claim has not yet been redeemed for THEO"
+        }
+      },
+      "isUnRetrieved(address,uint256)": {
+        "params": {
+          "_index": "the index of the claim",
+          "_user": "the user to query claims for"
+        },
+        "returns": {
+          "_0": "bool        true if the sTHEO has not yet been retrieved for the claim"
+        }
+      },
+      "pullClaim(address,uint256)": {
+        "params": {
+          "_from": "the address that approved the claim transfer",
+          "_index": "the index of the claim to transfer (in the sender's array)"
+        }
+      },
+      "pushClaim(address,uint256)": {
+        "params": {
+          "_index": "index of claim to approve transfer for",
+          "_to": "address to approve claim transfer for"
+        }
+      },
+      "pushClaimForBond(address,uint256)": {
+        "params": {
+          "_index": "the index of the claim to transfer (in the sender's array)",
+          "_to": "the address to push the claim to (must be pre-approved for transfer via `pushClaim`)"
+        }
+      },
+      "rebase()": {
+        "returns": {
+          "_0": "uint256"
+        }
+      },
+      "returnLockBonus(uint256)": {
+        "params": {
+          "_amount": "uint"
+        }
+      },
+      "rewardsFor(address,uint256)": {
+        "params": {
+          "_index": "the index of the claim in the user's array",
+          "_user": "the user that the claim belongs to"
+        },
+        "returns": {
+          "currentRewards_": " the current total rewards expected for a claim (valid only for claims out of warmup), calculated as: (sTHEO remaining + slashedRewards) - deposit amount note that currentRewards_ does not include any potential bounty or additional sTheo balance that may be applied if rebasing when unstaking"
+        }
+      },
+      "setBondDepo(address,bool)": {
+        "details": "see also `pushClaimForBond`",
+        "params": {
+          "_bondDepo": "address of the bond depo"
+        }
+      },
+      "setContract(uint8,address)": {
+        "params": {
+          "_contract": "address"
+        }
+      },
+      "setWarmup(uint256)": {
+        "params": {
+          "_warmupPeriod": "uint"
+        }
+      },
+      "stake(address,uint256,bool)": {
+        "details": "if warmupPeriod is 0 and _claim is true, funds are sent immediately, and warmupExpiry is 0: this is so that the staker cannot retrieve sTHEO from warmup using the stored Claim (see also `claim`). If warmupPeriod is not 0, or if _claim is false, then funds go into warmup (sTheo is not sent)",
+        "params": {
+          "_amount": "uint",
+          "_claim": "bool"
+        },
+        "returns": {
+          "_0": "uint256 _amount staked",
+          "_index": "uint256 the index of the claim added for the recipient in the recipient's stakingInfo"
+        }
+      },
+      "unstake(address,uint256[],bool,uint256[])": {
+        "details": "if `stakingExpiry` has not yet passed, Determine the penalty for removing early.         `percentageComplete` is the percentage of time that the stake has completed (versus the `stakingTerm`), expressed with 4 decimals.         note that For unstaking before 100% of staking term, only the principle deposit -- less a penalty -- is returned. In this case, the full claim must be redeemed         and gonsRemaining becomes zero.         note that For unstaking at or beyond 100% of the staking term, a part-redeem can be made: that is, a user may redeem less than 100% of the total amount available to redeem         (as represented by gonsRemaining), during a call to `unstake`         note that The penalty is added (after conversion to gons) to `slasheGons` and subtracted from the amount to return         gonsRemaining keeps track of the amount of sTheo (as gons) that can be redeemed for a Claim         note that When unstaking from the locked tranche (stakingTerm > 0) after the stake reaches maturity,         the Stake becomes eligible to claim against bonus pool rewards (tracked in `slashedGons`; see also `getSlashedRewards`)",
+        "params": {
+          "_amounts": "uint",
+          "_indexes": "uint256[]",
+          "_to": "address",
+          "_trigger": "bool"
+        },
+        "returns": {
+          "amount_": "uint"
+        }
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "basis()": {
+        "notice": "return the staking token that the tranche is based on"
+      },
+      "claim(address,uint256[])": {
+        "notice": "retrieve sTHEO from warmup"
+      },
+      "claimAll(address)": {
+        "notice": "claim all retrievable (from warmup) claims for user"
+      },
+      "contractBalance()": {
+        "notice": "returns contract THEO holdings, including bonuses provided"
+      },
+      "forfeit(uint256)": {
+        "notice": "forfeit sTHEO in warmup and retrieve THEO"
+      },
+      "giveLockBonus(uint256)": {
+        "notice": "provide bonus to locked staking contract"
+      },
+      "index()": {
+        "notice": "returns the sTHEO index, which tracks rebase growth"
+      },
+      "indexesFor(address,bool)": {
+        "notice": "all un-retrieved claims (sTHEO available to retrieve from warmup), or all un-redeemed claims (sTHEO retrieved but yet to be redeemed for THEO) for a user"
+      },
+      "isUnRedeemed(address,uint256)": {
+        "notice": "determine whether a claim has a (non-zero) sTHEO balance remaining that can be redeemed for THEO                     if the claim is still in warmup, this method will return false (as no sTheo can yet be redeemed against the claim)"
+      },
+      "isUnRetrieved(address,uint256)": {
+        "notice": "determine whether sTHEO has been retrieved (via `claim`) for a Claim"
+      },
+      "pullClaim(address,uint256)": {
+        "notice": "transfer a claim that has been approved by an address"
+      },
+      "pushClaim(address,uint256)": {
+        "notice": "approve an address to transfer a claim"
+      },
+      "pushClaimForBond(address,uint256)": {
+        "notice": "transfer a claim that has been approved by an address"
+      },
+      "rebase()": {
+        "notice": "trigger rebase if epoch over"
+      },
+      "returnLockBonus(uint256)": {
+        "notice": "reclaim bonus from locked staking contract"
+      },
+      "rewardsFor(address,uint256)": {
+        "notice": "return the current expected rewards for a claim"
+      },
+      "setBondDepo(address,bool)": {
+        "notice": "set the address of a bond depo to allow it to push claims to users when redeeming bonds"
+      },
+      "setContract(uint8,address)": {
+        "notice": "sets the contract address for LP staking"
+      },
+      "setWarmup(uint256)": {
+        "notice": "set warmup period for new stakers"
+      },
+      "stake(address,uint256,bool)": {
+        "notice": "stake THEO to enter warmup"
+      },
+      "supplyInWarmup()": {
+        "notice": "total supply in warmup"
+      },
+      "toggleLock()": {
+        "notice": "prevent new deposits or claims to/from external address (protection from malicious activity)"
+      },
+      "unstake(address,uint256[],bool,uint256[])": {
+        "notice": "redeem sTHEO for THEO from un-redeemed claims"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 11008,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "UNAUTHORIZED",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_string_storage"
+      },
+      {
+        "astId": 11010,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "authority",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_contract(ITheopetraAuthority)2485"
+      },
+      {
+        "astId": 4178,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "epoch",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_struct(Epoch)4232_storage"
+      },
+      {
+        "astId": 4188,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "distributor",
+        "offset": 0,
+        "slot": "6",
+        "type": "t_address"
+      },
+      {
+        "astId": 4190,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "locker",
+        "offset": 0,
+        "slot": "7",
+        "type": "t_address"
+      },
+      {
+        "astId": 4192,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "totalBonus",
+        "offset": 0,
+        "slot": "8",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 4194,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "warmupContract",
+        "offset": 0,
+        "slot": "9",
+        "type": "t_address"
+      },
+      {
+        "astId": 4196,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "warmupPeriod",
+        "offset": 0,
+        "slot": "10",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 4198,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "gonsInWarmup",
+        "offset": 0,
+        "slot": "11",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 4200,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "slashedGons",
+        "offset": 0,
+        "slot": "12",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 4205,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "stakingInfo",
+        "offset": 0,
+        "slot": "13",
+        "type": "t_mapping(t_address,t_array(t_struct(Claim)4243_storage)dyn_storage)"
+      },
+      {
+        "astId": 4209,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "isExternalLocked",
+        "offset": 0,
+        "slot": "14",
+        "type": "t_mapping(t_address,t_bool)"
+      },
+      {
+        "astId": 4215,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "claimTransfers",
+        "offset": 0,
+        "slot": "15",
+        "type": "t_mapping(t_address,t_mapping(t_uint256,t_address))"
+      },
+      {
+        "astId": 4219,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "penaltyBands",
+        "offset": 0,
+        "slot": "16",
+        "type": "t_mapping(t_uint256,t_uint256)"
+      },
+      {
+        "astId": 4223,
+        "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+        "label": "bondDepos",
+        "offset": 0,
+        "slot": "17",
+        "type": "t_mapping(t_address,t_bool)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_array(t_struct(Claim)4243_storage)dyn_storage": {
+        "base": "t_struct(Claim)4243_storage",
+        "encoding": "dynamic_array",
+        "label": "struct TheopetraStaking.Claim[]",
+        "numberOfBytes": "32"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_contract(ITheopetraAuthority)2485": {
+        "encoding": "inplace",
+        "label": "contract ITheopetraAuthority",
+        "numberOfBytes": "20"
+      },
+      "t_mapping(t_address,t_array(t_struct(Claim)4243_storage)dyn_storage)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => struct TheopetraStaking.Claim[])",
+        "numberOfBytes": "32",
+        "value": "t_array(t_struct(Claim)4243_storage)dyn_storage"
+      },
+      "t_mapping(t_address,t_bool)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => bool)",
+        "numberOfBytes": "32",
+        "value": "t_bool"
+      },
+      "t_mapping(t_address,t_mapping(t_uint256,t_address))": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => mapping(uint256 => address))",
+        "numberOfBytes": "32",
+        "value": "t_mapping(t_uint256,t_address)"
+      },
+      "t_mapping(t_uint256,t_address)": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => address)",
+        "numberOfBytes": "32",
+        "value": "t_address"
+      },
+      "t_mapping(t_uint256,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_string_storage": {
+        "encoding": "bytes",
+        "label": "string",
+        "numberOfBytes": "32"
+      },
+      "t_struct(Claim)4243_storage": {
+        "encoding": "inplace",
+        "label": "struct TheopetraStaking.Claim",
+        "members": [
+          {
+            "astId": 4234,
+            "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+            "label": "deposit",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 4236,
+            "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+            "label": "gonsInWarmup",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 4238,
+            "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+            "label": "warmupExpiry",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 4240,
+            "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+            "label": "stakingExpiry",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 4242,
+            "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+            "label": "gonsRemaining",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_uint256"
+          }
+        ],
+        "numberOfBytes": "160"
+      },
+      "t_struct(Epoch)4232_storage": {
+        "encoding": "inplace",
+        "label": "struct TheopetraStaking.Epoch",
+        "members": [
+          {
+            "astId": 4225,
+            "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+            "label": "length",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 4227,
+            "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+            "label": "number",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 4229,
+            "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+            "label": "end",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 4231,
+            "contract": "src/Theopetra/Staking.sol:TheopetraStaking",
+            "label": "distribute",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256"
+          }
+        ],
+        "numberOfBytes": "128"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}
