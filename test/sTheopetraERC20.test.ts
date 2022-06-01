@@ -58,14 +58,14 @@ describe('sTheopetra', function () {
   });
 
   describe('Access control', function () {
-    it('allows the manager (currently set as the deployer) to set the index', async function () {
+    it('allows the guardian (currently set as the deployer) to set the index', async function () {
       const { sTheo } = await setup();
 
       await sTheo.setIndex(10);
       expect(await sTheo.index()).to.equal(10);
     });
 
-    it('reverts if a user other than the manager makes a call to set the index', async function () {
+    it('reverts if a user other than the guardian makes a call to set the index', async function () {
       const { users } = await setup();
       const [, alice] = users;
 
