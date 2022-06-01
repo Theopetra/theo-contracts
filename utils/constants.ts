@@ -13,6 +13,8 @@ export const CONTRACTS: Record<string, string> = {
   pTheo: 'pTheopetra',
   founderVesting: 'TheopetraFounderVesting',
   stakingLocked: 'TheopetraStakingLocked',
+  WethHelper: 'WethHelper',
+  publicPreListBondDepo: 'PublicPreListBondDepository',
 };
 
 export const MOCKS: Record<string, string> = {
