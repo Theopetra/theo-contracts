@@ -53,7 +53,6 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     bool private founderRebalanceLocked = false;
     bool private initialized = false;
 
-
     /**
      * @notice return the decimals in the percentage values and
      * thus the number of shares per percentage point (1% = 10_000_000 shares)
@@ -81,7 +80,10 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     ) TheopetraAccessControlled(_authority) {
         require(_payees.length == _shares.length, "TheopetraFounderVesting: payees and shares length mismatch");
         require(_payees.length > 0, "TheopetraFounderVesting: no payees");
-        require(_unlockTimes.length == _unlockAmounts.length, "TheopetraFounderVesting: unlock times and amounts length mismatch");
+        require(
+            _unlockTimes.length == _unlockAmounts.length,
+            "TheopetraFounderVesting: unlock times and amounts length mismatch"
+        );
         require(_unlockTimes.length > 0, "TheopetraFounderVesting: no unlock schedule");
 
         fdvTarget = _fdvTarget;
@@ -96,12 +98,11 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     }
 
     function initialMint() public onlyGovernor {
-        require( !initialized, "TheopetraFounderVesting: initialMint can only be run once");
+        require(!initialized, "TheopetraFounderVesting: initialMint can only be run once");
         initialized = true;
 
         // mint tokens for the initial shares
-        uint256 tokensToMint = totalShares.mul(THEO.totalSupply())
-            .div(10**decimals() - totalShares);
+        uint256 tokensToMint = totalShares.mul(THEO.totalSupply()).div(10**decimals() - totalShares);
         treasury.mint(address(this), tokensToMint);
     }
 
@@ -140,9 +141,9 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
      */
     function getUnlockedMultiplier() public view returns (uint256) {
         uint256 timeSinceDeploy = block.timestamp - deployTime;
-        for(uint256 i = unlockTimes.length; i > 0; i--) {
-            if(timeSinceDeploy >= unlockTimes[i-1]) {
-                return unlockAmounts[i-1];
+        for (uint256 i = unlockTimes.length; i > 0; i--) {
+            if (timeSinceDeploy >= unlockTimes[i - 1]) {
+                return unlockAmounts[i - 1];
             }
         }
         return 0;
@@ -163,7 +164,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         uint256 currentPrice = IBondCalculator(theoBondingCalculator).valuation(address(THEO), 1);
         uint256 calculatedFdv = currentPrice.mul(THEO.totalSupply());
 
-        if(calculatedFdv >= fdvTarget.mul(10**decimals())) {
+        if (calculatedFdv >= fdvTarget.mul(10**decimals())) {
             return 10**decimals();
         }
 
@@ -181,10 +182,12 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         uint256 totalReleased = erc20TotalReleased[THEO];
 
         // Checks if rebalance has been locked
-        if(founderRebalanceLocked) return;
+        if (founderRebalanceLocked) return;
 
-        uint256 founderAmount = totalShares.mul(totalSupply - (contractBalance + totalReleased))
-            .mul(getFdvFactor()).div(10**decimals())
+        uint256 founderAmount = totalShares
+            .mul(totalSupply - (contractBalance + totalReleased))
+            .mul(getFdvFactor())
+            .div(10**decimals())
             .div(10**decimals() - totalShares);
 
         if (founderAmount > (contractBalance + totalReleased)) {
@@ -195,7 +198,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
 
         // locks the rebalance to not occur again after it is called once after unlock schedule
         uint256 timeSinceDeploy = block.timestamp - deployTime;
-        if(timeSinceDeploy > unlockTimes[unlockTimes.length - 1]) {
+        if (timeSinceDeploy > unlockTimes[unlockTimes.length - 1]) {
             founderRebalanceLocked = true;
         }
     }
@@ -251,7 +254,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     /**
      * @dev Returns the amount of tokens that could be paid to `account` at the current time.
      */
-    function getReleasable(IERC20 token, address account) external override view returns (uint256) {
+    function getReleasable(IERC20 token, address account) external view override returns (uint256) {
         require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
 
         uint256 totalReceived = token.balanceOf(address(this)) + getTotalReleased(token);
@@ -269,7 +272,10 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         uint256 totalReceived,
         uint256 alreadyReleased
     ) private view returns (uint256) {
-        return (totalReceived * shares[account] * getUnlockedMultiplier()) / (totalShares * 10**decimals()) - alreadyReleased;
+        return
+            (totalReceived * shares[account] * getUnlockedMultiplier()) /
+            (totalShares * 10**decimals()) -
+            alreadyReleased;
     }
 
     /**
@@ -287,5 +293,4 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         totalShares = totalShares + shares_;
         emit PayeeAdded(account, shares_);
     }
-
 }
