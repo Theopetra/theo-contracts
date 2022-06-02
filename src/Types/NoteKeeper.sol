@@ -154,6 +154,11 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
 
     /**
      * @notice             transfer a note that has been approved by an address
+     * @dev                if the note being pulled is autostaked then update noteForClaim as follows:
+     *                     get the relevant `claimIndex` associated with the note that is being pulled.
+     *                     Then add the claimIndex to the recipient's noteForClaim.
+     *                     After updating noteForClaim, the staking claim is pushed to the recipient, in order to
+     *                     update `claimTransfers` in the Staking contract and thereby change claim ownership (from the note's pusher to the note's recipient)
      * @param _from        the address that approved the note transfer
      * @param _index       the index of the note to transfer (in the sender's array)
      */
@@ -162,6 +167,12 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         require(notes[_from][_index].redeemed == 0, "Depository: note redeemed");
 
         newIndex_ = notes[msg.sender].length;
+
+        if (notes[_from][_index].autoStake) {
+            uint256 claimIndex = noteForClaim[_from][_index];
+            noteForClaim[msg.sender][newIndex_] = claimIndex;
+            staking.pushClaim(msg.sender, claimIndex);
+        }
         notes[msg.sender].push(notes[_from][_index]);
 
         delete notes[_from][_index];
