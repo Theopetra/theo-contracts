@@ -126,8 +126,8 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
                 }
             }
         }
-        if (theoPayout > 0) theo.transfer(_user, payout_);
-        if (sTheoPayout > 0) sTHEO.transfer(_user, payout_);
+        if (theoPayout > 0) theo.transfer(_user, theoPayout);
+        if (sTheoPayout > 0) sTHEO.transfer(_user, sTheoPayout);
     }
 
     /**
