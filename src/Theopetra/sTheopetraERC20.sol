@@ -129,7 +129,7 @@ contract sTheopetra is IStakedTHEOToken, ITokenDebt, ERC20Permit, TheopetraAcces
         uint256 profit_,
         uint256 epoch_
     ) internal returns (bool) {
-        uint256 rebasePercent = profit_.mul(1e18).div(previousCirculating_);
+        uint256 rebasePercent = previousCirculating_ > 0 ? profit_.mul(1e18).div(previousCirculating_) : 0;
 
         rebases.push(
             Rebase({
