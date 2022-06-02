@@ -109,7 +109,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
                 Locked tranches wind-down by 1.5% per epoch (that is, per year) to a minimum of 6% (60_000_000 -- see also `rateDenominator`)
                 Unlocked tranches wind-down by 0.5% per epoch (that is, per year) to a minimum of 2% (20_000_000)
      */
-    function distribute() external override onlyStaking returns (bool) {
+    function distribute() external override onlyStaking {
         for (uint256 i = 0; i < info.length; i++) {
             uint256 _rate = nextRewardRate(i);
             if (_rate > 0) {
