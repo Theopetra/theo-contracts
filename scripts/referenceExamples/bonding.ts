@@ -1,13 +1,8 @@
 import * as dotenv from 'dotenv';
 import { ethers, getUnnamedAccounts } from 'hardhat';
 import { TheopetraBondDepository__factory, IERC20, IERC20__factory } from '../../typechain-types';
+import { waitFor } from '../../test/utils';
 dotenv.config();
-
-// Note re whitelist bond depo:
-// Whitelist bond depo market creation requires a `_priceFeed` argument, which is the address of the price consumer
-// Note that no deployment is done within this repo for the PriceConsumer
-// For the time being, this has simply been deployed to Rinkeby via Remix, at the address below
-// const priceConsumerRinkebyAddress = "0x4a6057191E56647a10433A732611A4B45D9169D0";
 
 // Non-whitelisted bond depo:
 const createMarket = async () => {
@@ -16,7 +11,9 @@ const createMarket = async () => {
 
   // USDC Token address Rinkeby
   const usdcTokenRinkebyAddress = '0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b';
+  const wethTokenRinkebyAddress = '0xc778417E063141139Fce010982780140Aa0cD5Ab';
   const USDCToken = IERC20__factory.connect(usdcTokenRinkebyAddress, provider);
+  const WETHToken = IERC20__factory.connect(wethTokenRinkebyAddress, provider);
   // Check Bob's USDC balance
   // USDC has 6 Decimals
   const bobBalance = await USDCToken.balanceOf(bob.address);
@@ -34,17 +31,25 @@ const createMarket = async () => {
   const buffer = 2e5;
   const capacityInQuote = false;
   const fixedTerm = true;
-  const timeToConclusion = 60 * 60 * 24 * 180; // seconds in 180 days
+  const timeToConclusion = 60 * 60 * 24 * 365; // seconds in 365 days
   const vesting = 60 * 60 * 24 * 14; // seconds in 14 days
   const bondRateFixed = 10_000_000; // 1% in decimal form (i.e. 0.01 with 9 decimals)
   const maxBondRateVariable = 40_000_000; // 4% in decimal form (i.e. 0.04 with 9 decimals)
-  const discountRateBond = 10_000_000; // 1% in decimal form (i.e. 0.01 with 9 decimals)
-  const discountRateYield = 20_000_000; // 2% in decimal form (i.e. 0.02 with 9 decimals)
+  const discountRateBond = 1_000_000; // 0.1% in decimal form
+  const discountRateYield = 500_000; // 0.05% in decimal form
   const depositInterval = 60 * 60 * 24 * 30;
   const tuneInterval = 60 * 60;
   const block = await ethers.provider.getBlock('latest');
   const conclusion = block.timestamp + timeToConclusion;
-
+  const sixMonthVesting = (60 * 60 * 24 * 182) + (60 * 60 * 12) // seconds in 182.5 days
+  const sixMonthBondRatefixed = 50_000_000; // 5% in decimal form (i.e. 0.05 with 9 decimals)
+  const sixMonthMaxBRV = 100_000_000; // 10% in decimal form (i.e. 0.1 with 9 decimals)
+  const twelveMonthVesting = 60 * 60 * 24 * 365; // seconds in 365 days
+  const twelveMonthBondRateFixed = 100_000_000; // 10% in decimal form
+  const twelveMonthMaxBRV = 150_000_000; // 15% in decimal form
+  const eighteenMonthVesting = twelveMonthVesting + sixMonthVesting;
+  const eighteenMonthBondRateFixed = 150_000_000; // 15% in decimal form
+  const eighteenMonthhMaxBRV = 200_000_000; // 20% in decimal form
   // Created a new market using now commented-out code below
   // Owner is current policy holder and therefore used as signer
   // await BondDepository.connect(owner).create(
@@ -57,15 +62,74 @@ const createMarket = async () => {
   // );
 
   // Market was created above and now exists at index 0;
-  const isBondMarketLive = await BondDepository.isLive(0);
-  console.log('Is the Bond Market Live? >>>>>>', isBondMarketLive);
-  const [, vestingLength, , bondRateFixedValue, maxBondRateVariableValue] = await BondDepository.terms(0);
-  console.log(
-    'Vesting Length and Bond Rate Fixed >>>',
-    vestingLength,
-    bondRateFixedValue.toNumber(),
-    maxBondRateVariableValue.toNumber()
-  );
+  // Closed market at id 0 (as not needed)
+  // await waitFor(BondDepository.connect(owner).close(0));
+
+  // Market ID 1: Created USDC 6-month testing market
+  //   await waitFor(BondDepository.connect(owner).create(
+  //   USDCToken.address,
+  //   [capacity, initialPrice, buffer],
+  //   [capacityInQuote, fixedTerm],
+  //   [sixMonthVesting, conclusion],
+  //   [sixMonthBondRatefixed, sixMonthMaxBRV, discountRateBond, discountRateYield],
+  //   [depositInterval, tuneInterval]
+  // ));
+
+  // Market ID 2: Created WETH 6-month testing market
+  //   await waitFor(BondDepository.connect(owner).create(
+  //   WETHToken.address,
+  //   [capacity, initialPrice, buffer],
+  //   [capacityInQuote, fixedTerm],
+  //   [sixMonthVesting, conclusion],
+  //   [sixMonthBondRatefixed, sixMonthMaxBRV, discountRateBond, discountRateYield],
+  //   [depositInterval, tuneInterval]
+  // ));
+
+  // Market ID 3: Created USDC 12-month testing market
+  //   await waitFor(BondDepository.connect(owner).create(
+  //   USDCToken.address,
+  //   [capacity, initialPrice, buffer],
+  //   [capacityInQuote, fixedTerm],
+  //   [twelveMonthVesting, conclusion],
+  //   [twelveMonthBondRateFixed, twelveMonthMaxBRV, discountRateBond, discountRateYield],
+  //   [depositInterval, tuneInterval]
+  // ));
+
+  // Market ID 4: Created WETH 12-month testing market
+  //   await waitFor(BondDepository.connect(owner).create(
+  //   WETHToken.address,
+  //   [capacity, initialPrice, buffer],
+  //   [capacityInQuote, fixedTerm],
+  //   [twelveMonthVesting, conclusion],
+  //   [twelveMonthBondRateFixed, twelveMonthMaxBRV, discountRateBond, discountRateYield],
+  //   [depositInterval, tuneInterval]
+  // ));
+
+  // Market ID 5: Created USDC 18-month testing market
+  //   await waitFor(BondDepository.connect(owner).create(
+  //   USDCToken.address,
+  //   [capacity, initialPrice, buffer],
+  //   [capacityInQuote, fixedTerm],
+  //   [eighteenMonthVesting, conclusion],
+  //   [eighteenMonthBondRateFixed, eighteenMonthhMaxBRV, discountRateBond, discountRateYield],
+  //   [depositInterval, tuneInterval]
+  // ));
+
+  // Market ID 6: Created WETH 18-month testing market
+  // await waitFor(BondDepository.connect(owner).create(
+  //   WETHToken.address,
+  //   [capacity, initialPrice, buffer],
+  //   [capacityInQuote, fixedTerm],
+  //   [eighteenMonthVesting, conclusion],
+  //   [eighteenMonthBondRateFixed, eighteenMonthhMaxBRV, discountRateBond, discountRateYield],
+  //   [depositInterval, tuneInterval]
+  // ));
+
+  const liveMarkets = await BondDepository.liveMarkets();
+  const liveMarketIds = liveMarkets.map(market => {
+    return market.toNumber();
+  })
+  console.log('These are live market Ids:', liveMarketIds);
 };
 
 const bonding = async () => {

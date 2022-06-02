@@ -31,8 +31,10 @@ export const MOCKS: Record<string, string> = {
 export const MOCKSWITHARGS: Record<string, string> = {
   treasuryMock: 'TreasuryMock',
   stakingMock: 'StakingMock',
-  bondingCalculatorMock: 'BondingCalculatorMock',
+  bondingCalculatorMock: 'BondingCalculatorMock'
 };
+
+export const NEWBONDINGCALCULATORMOCK = 'NewBondingCalculatorMock';
 
 export const TESTWITHMOCKS = 'test-with-mocks';
 
