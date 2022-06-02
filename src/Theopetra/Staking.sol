@@ -408,7 +408,9 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @notice sets the contract address for LP staking
         @param _contract address
      */
-    function setContract(CONTRACTS _contract, address _address) external onlyGuardian {
+
+    function setContract(CONTRACTS _contract, address _address) external onlyManager {
+        require(_address != address(0), "must supply a valid address");
         if (_contract == CONTRACTS.DISTRIBUTOR) {
             // 0
             distributor = _address;
