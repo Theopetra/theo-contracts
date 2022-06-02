@@ -133,22 +133,22 @@ const createWhitelistBondingMarket = async () => {
   // ));
 
   // Market ID 10: Created USDC 18-month testing market
-  await waitFor(WhitelistBondDepository.connect(owner).create(
-    USDCToken.address,
-    usdcUsdRinkebyPriceFeedAddress,
-    [capacity, eighteenMonthFixedBondPrice],
-    [capacityInQuote, fixedTerm],
-    [eighteenMonthVesting, conclusion]
-  ));
+  // await waitFor(WhitelistBondDepository.connect(owner).create(
+  //   USDCToken.address,
+  //   usdcUsdRinkebyPriceFeedAddress,
+  //   [capacity, eighteenMonthFixedBondPrice],
+  //   [capacityInQuote, fixedTerm],
+  //   [eighteenMonthVesting, conclusion]
+  // ));
 
   // // Market ID 11: Created WETH 18-month testing market
-  await waitFor(WhitelistBondDepository.connect(owner).create(
-    WETHToken.address,
-    ethUsdRinkebyPriceFeedAddress,
-    [capacity, eighteenMonthFixedBondPrice],
-    [capacityInQuote, fixedTerm],
-    [eighteenMonthVesting, conclusion]
-  ));
+  // await waitFor(WhitelistBondDepository.connect(owner).create(
+  //   WETHToken.address,
+  //   ethUsdRinkebyPriceFeedAddress,
+  //   [capacity, eighteenMonthFixedBondPrice],
+  //   [capacityInQuote, fixedTerm],
+  //   [eighteenMonthVesting, conclusion]
+  // ));
 
 
   const liveMarkets = await WhitelistBondDepository.liveMarkets();
