@@ -225,7 +225,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         payout_ = note.payout;
         created_ = note.created;
         expiry_ = note.matured;
-        timeRemaining_ = note.matured - note.created;
+        timeRemaining_ = note.matured > block.timestamp ? uint48(note.matured - block.timestamp) : 0;
         matured_ = note.redeemed == 0 && note.matured <= block.timestamp && note.payout != 0;
         discount_ = note.discount;
     }
