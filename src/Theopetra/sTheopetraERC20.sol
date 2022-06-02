@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.7.5;
 
 import "../Interfaces/IStakedTHEOToken.sol";
@@ -79,7 +79,7 @@ contract sTheopetra is IStakedTHEOToken, ITokenDebt, ERC20Permit, TheopetraAcces
         return true;
     }
 
-    function setIndex(uint256 _INDEX) external onlyManager returns (bool) {
+    function setIndex(uint256 _INDEX) external onlyGuardian returns (bool) {
         require(INDEX == 0);
         INDEX = gonsForBalance(_INDEX);
         return true;
@@ -129,7 +129,7 @@ contract sTheopetra is IStakedTHEOToken, ITokenDebt, ERC20Permit, TheopetraAcces
         uint256 profit_,
         uint256 epoch_
     ) internal returns (bool) {
-        uint256 rebasePercent = profit_.mul(1e18).div(previousCirculating_);
+        uint256 rebasePercent = previousCirculating_ > 0 ? profit_.mul(1e18).div(previousCirculating_) : 0;
 
         rebases.push(
             Rebase({

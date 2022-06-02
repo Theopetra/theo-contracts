@@ -457,6 +457,8 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         if (info.managing == STATUS.STHEO) {
             // 9
             sTHEO = ITokenDebt(info.toPermit);
+        } else if (info.managing == STATUS.YIELDREPORTER) {
+            yieldReporter = IYieldReporter(info.toPermit);
         } else {
             permissions[info.managing][info.toPermit] = true;
 

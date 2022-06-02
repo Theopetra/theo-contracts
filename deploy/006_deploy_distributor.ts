@@ -17,12 +17,8 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
     const Staking = await deployments.get(CONTRACTS.staking);
 
-    let epochLength;
+    const epochLength = 60 * 60 * 24 * 365;
     let args: any = [];
-
-    if (chainId === '1337') {
-      epochLength = 60 * 60 * 24 * 365;
-    }
 
     args = [
       TheopetraTreasury.address,

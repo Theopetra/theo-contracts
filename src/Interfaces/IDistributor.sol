@@ -2,7 +2,7 @@
 pragma solidity >=0.7.5 <=0.8.10;
 
 interface IDistributor {
-    function distribute() external returns (bool);
+    function distribute() external;
 
     function bounty() external view returns (uint256);
 

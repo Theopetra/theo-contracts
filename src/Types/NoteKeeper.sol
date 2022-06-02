@@ -126,8 +126,8 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
                 }
             }
         }
-        if (theoPayout > 0) theo.transfer(_user, payout_);
-        if (sTheoPayout > 0) sTHEO.transfer(_user, payout_);
+        if (theoPayout > 0) theo.transfer(_user, theoPayout);
+        if (sTheoPayout > 0) sTHEO.transfer(_user, sTheoPayout);
     }
 
     /**
@@ -225,7 +225,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         payout_ = note.payout;
         created_ = note.created;
         expiry_ = note.matured;
-        timeRemaining_ = note.matured - note.created;
+        timeRemaining_ = note.matured > block.timestamp ? uint48(note.matured - block.timestamp) : 0;
         matured_ = note.redeemed == 0 && note.matured <= block.timestamp && note.payout != 0;
         discount_ = note.discount;
     }

@@ -9,7 +9,7 @@ import {
   BondingCalculatorMock,
   TheopetraYieldReporter,
 } from '../typechain-types';
-import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
+import { CONTRACTS, NEWBONDINGCALCULATORMOCK, TESTWITHMOCKS } from '../utils/constants';
 import { setupUsers, moveTimeForward, waitFor, randomIntFromInterval } from './utils';
 import { getContracts } from '../utils/helpers';
 
@@ -18,6 +18,7 @@ const setup = deployments.createFixture(async () => {
   const addressZero = '0x0000000000000000000000000000000000000000';
   const { deployer: owner } = await getNamedAccounts();
   const contracts = await getContracts(CONTRACTS.treasury);
+  const NewBondingCalculatorMock = { NewBondingCalculatorMock: await ethers.getContract(NEWBONDINGCALCULATORMOCK) };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 
@@ -32,6 +33,7 @@ const setup = deployments.createFixture(async () => {
 
   return {
     ...contracts,
+    ...NewBondingCalculatorMock,
     owner,
     users,
     addressZero,
@@ -44,13 +46,23 @@ describe('TheopetraTreasury', () => {
   let BondingCalculatorMock: BondingCalculatorMock;
   let YieldReporter: TheopetraYieldReporter | YieldReporterMock;
   let TheopetraAuthority: TheopetraAuthority;
+  let NewBondingCalculatorMock: any;
   let users: any;
   let owner: any;
   let addressZero: any;
 
   beforeEach(async function () {
-    ({ Treasury, UsdcTokenMock, BondingCalculatorMock, YieldReporter, TheopetraAuthority, addressZero, users, owner } =
-      await setup());
+    ({
+      Treasury,
+      UsdcTokenMock,
+      BondingCalculatorMock,
+      YieldReporter,
+      TheopetraAuthority,
+      NewBondingCalculatorMock,
+      addressZero,
+      users,
+      owner,
+    } = await setup());
   });
 
   describe('Deployment', () => {
@@ -94,6 +106,48 @@ describe('TheopetraTreasury', () => {
 
     it('can set the address of the yield reporter', async function () {
       await expect(Treasury.enable(11, YieldReporter.address, addressZero)).to.not.be.reverted;
+    });
+  });
+
+  describe('queueTimelock', function () {
+    it('reverts if a call is made by an address that is not the Governor', async function () {
+      // enable the rewards manager
+      await expect(users[1].Treasury.queueTimelock(11, addressZero, addressZero)).to.be.revertedWith('UNAUTHORIZED');
+    });
+
+    it('succeeds if a call is made by an address that is the Governor', async function () {
+      // enable the rewards manager
+      await expect(Treasury.initialize()).to.not.be.reverted;
+      await expect(Treasury.queueTimelock(11, YieldReporter.address, addressZero)).to.not.be.reverted;
+    });
+
+    it('can\'t be called before the timelock period is up', async function () {
+      // enable the rewards manager
+      await expect(Treasury.initialize()).to.not.be.reverted;
+      await expect(Treasury.queueTimelock(11, YieldReporter.address, addressZero)).to.not.be.reverted;
+      await expect(Treasury.execute(0)).to.be.revertedWith('Timelock not complete');
+    });
+
+    it('can be called by anyone after timelock period is up, but only once', async function () {
+      // enable the rewards manager
+      await expect(Treasury.initialize()).to.not.be.reverted;
+      await expect(Treasury.queueTimelock(11, YieldReporter.address, addressZero)).to.not.be.reverted;
+
+      for (let i = 0; i < 5760*2 + 1; i++) {
+        await ethers.provider.send('evm_mine', []);
+      }
+
+      await expect(users[1].Treasury.execute(0)).to.not.be.reverted;
+      await expect(users[1].Treasury.execute(0)).to.be.revertedWith('Action has already been executed');
+    });
+
+    it('can be nullified by the governor', async function () {
+      // enable the rewards manager
+      await expect(Treasury.initialize()).to.not.be.reverted;
+      await expect(Treasury.queueTimelock(11, YieldReporter.address, addressZero)).to.not.be.reverted;
+      await expect(users[1].Treasury.nullify(0)).to.be.reverted;
+      await expect(Treasury.nullify(0)).to.not.be.reverted;
+      await expect(Treasury.execute(0)).to.be.revertedWith('Action has been nullified');
     });
   });
 
@@ -241,6 +295,37 @@ describe('TheopetraTreasury', () => {
 
       await expect(bob.Treasury.setTheoBondingCalculator(BondingCalculatorMock.address)).to.not.be.reverted;
       expect(await Treasury.getTheoBondingCalculator()).to.equal(BondingCalculatorMock.address);
+    });
+
+    describe('NewBondingCalculatorMock', async function () {
+      beforeEach(async function () {
+        // set the address of the mock bonding calculator
+        await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
+      });
+
+      it('updates a stored value for `performanceTokenAmount`, via a call to `updatePerformanceTokenAmount`, to allow deltaTokenPrice to be updated', async function () {
+        // Set initial value for performance token
+        const initialPerformanceTokenAmount = 1000000000;
+        await NewBondingCalculatorMock.setPerformanceTokenAmount(initialPerformanceTokenAmount);
+
+        await moveTimeForward(60 * 60 * 8);
+        await Treasury.tokenPerformanceUpdate();
+        // Need to call tokenPerformanceUpdate twice initially, before `lastTokenPrice` becomes non-zero (otherwise `deltaTokenPrice will revert`)
+        await moveTimeForward(60 * 60 * 8);
+        await NewBondingCalculatorMock.updatePerformanceTokenAmount(125);
+        // tokenPerformanceUpdate needs to be called after `updatePerformanceTokenAmount`. This will subsequently change `deltaTokenPrice`
+        await Treasury.tokenPerformanceUpdate();
+
+        const deltaTokenPrice = await Treasury.deltaTokenPrice();
+        expect((deltaTokenPrice.toNumber() / 10 ** 9) * 100).to.equal(125);
+
+        await moveTimeForward(60 * 60 * 8);
+        await NewBondingCalculatorMock.updatePerformanceTokenAmount(125);
+        await Treasury.tokenPerformanceUpdate();
+
+        const deltaTokenPriceSecond = await Treasury.deltaTokenPrice();
+        expect((deltaTokenPriceSecond.toNumber() / 10 ** 9) * 100).to.equal(125);
+      });
     });
   });
 });

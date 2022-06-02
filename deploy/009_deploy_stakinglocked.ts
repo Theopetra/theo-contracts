@@ -20,21 +20,12 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     // staking term is seconds in a year
     const stakingTerm = 31536000;
 
-    let epochLength;
-    let firstEpochNumber;
-    let firstEpochTime;
+    const epochLength = 8 * 60 * 60;
+    const firstEpochNumber = '1';
+    const currentBlock = await ethers.provider.send('eth_blockNumber', []);
+    const blockTimestamp = (await ethers.provider.getBlock(currentBlock)).timestamp;
+    let firstEpochTime = blockTimestamp + epochLength;
     let args: any = [];
-
-    if (chainId === '1337') {
-      epochLength = 8 * 60 * 60;
-      firstEpochNumber = '1';
-      const currentBlock = await ethers.provider.send('eth_blockNumber', []);
-      const blockTimestamp = (await ethers.provider.getBlock(currentBlock)).timestamp;
-
-      // If using mocks, then set the rebase far enough in the future to not hit it in tests
-      firstEpochTime =
-        process.env.NODE_ENV === TESTWITHMOCKS ? blockTimestamp + 60 * 60 * 24 * 30 : blockTimestamp + epochLength;
-    }
 
     args = [
       TheopetraERC20Token.address,
@@ -48,6 +39,8 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     ];
 
     if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
+      // If using mocks, then set the rebase far enough in the future to not hit it in tests
+      firstEpochTime = blockTimestamp + 60 * 60 * 24 * 30;
       // Update args with addresses of already-deployed mocks
       const namedMockAddresses: Record<any, any> = {};
       for (const key in MOCKS) {

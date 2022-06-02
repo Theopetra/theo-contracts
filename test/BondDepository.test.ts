@@ -2,7 +2,7 @@ import { expect } from './chai-setup';
 import { deployments, ethers, getNamedAccounts, getUnnamedAccounts, network } from 'hardhat';
 import { setupUsers, performanceUpdate, waitFor, moveTimeForward } from './utils';
 import { getContracts } from '../utils/helpers';
-import { CONTRACTS, TESTWITHMOCKS } from '../utils/constants';
+import { CONTRACTS, TESTWITHMOCKS, NEWBONDINGCALCULATORMOCK } from '../utils/constants';
 import {
   BondingCalculatorMock,
   StakingMock,
@@ -20,10 +20,12 @@ const setup = deployments.createFixture(async function () {
   const { deployer: owner } = await getNamedAccounts();
 
   const contracts = await getContracts(CONTRACTS.bondDepo);
+  const NewBondingCalculatorMock = { NewBondingCalculatorMock: await ethers.getContract(NEWBONDINGCALCULATORMOCK) };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
   return {
     ...contracts,
+    ...NewBondingCalculatorMock,
     users,
     owner,
   };
@@ -62,6 +64,7 @@ describe('Bond depository', function () {
   let users: any;
   let WETH9: WETH9;
   let YieldReporter: TheopetraYieldReporter | YieldReporterMock;
+  let NewBondingCalculatorMock: any;
   const autoStake = true;
 
   async function expectedBondRateVariable(marketId: number) {
@@ -89,6 +92,7 @@ describe('Bond depository', function () {
       users,
       WETH9,
       YieldReporter,
+      NewBondingCalculatorMock,
     } = await setup());
 
     const [, , bob] = users;
@@ -1306,16 +1310,15 @@ describe('Bond depository', function () {
           bobNotesIndexes[i]
         );
 
-        expect(payout).to.equal(expectedPayout);
+        expect(Number(payout)).to.be.lessThanOrEqual(expectedPayout + 1).and.to.be.greaterThanOrEqual(expectedPayout - 1);
 
         const currentTimestampLowerbound = currentTimestamp * 0.993;
         const currentTimestampUpperbound = currentTimestamp * 1.01;
-
         expect(createdAt).to.be.greaterThan(currentTimestampLowerbound).and.to.be.lessThan(currentTimestampUpperbound);
         expect(expiresAt)
           .to.be.greaterThan(currentTimestampLowerbound + vesting)
           .and.to.be.lessThan(currentTimestampUpperbound + vesting);
-        expect(timeRemaining).to.equal(expiresAt - createdAt);
+        expect(timeRemaining).to.be.lessThanOrEqual((expiresAt - createdAt) + 1).and.to.be.greaterThanOrEqual((expiresAt - createdAt) - 1);
 
         const expectedBrv = await expectedBondRateVariable(bid);
         expect(discount).to.equal(expectedBrv);
@@ -1330,6 +1333,64 @@ describe('Bond depository', function () {
       const notesCount = await BondDepository.getNotesCount(bob.address);
 
       expect(notesCount).to.equal(3);
+    });
+  });
+
+  describe('with new mock bonding calculator', function () {
+    beforeEach(async function () {
+      // Set initial value for performance token
+      const initialPerformanceTokenAmount = 1000000000;
+      await NewBondingCalculatorMock.setPerformanceTokenAmount(initialPerformanceTokenAmount);
+
+      // Set Weth address on mock bonding calculator
+      await NewBondingCalculatorMock.setWethAddress(WETH9.address);
+
+      // Set Usdc address on mock bonding calculator
+      await NewBondingCalculatorMock.setUsdcAddress(UsdcTokenMock.address);
+
+      await performanceUpdate(Treasury, YieldReporter, NewBondingCalculatorMock.address);
+      // (re-)set the address of the bonding calculator
+      await Treasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
+    });
+
+    it('returns the correct Bond Rate Variable and Market Price', async function () {
+      // create a second market, so multiple markets are live
+      await BondDepository.create(
+        WETH9.address,
+        [capacity, initialPrice, buffer],
+        [capacityInQuote, fixedTerm],
+        [vesting, conclusion],
+        [bondRateFixed, maxBondRateVariable, discountRateBond, discountRateYield],
+        [depositInterval, tuneInterval]
+      );
+
+      const initialDeltaTokenPrice = await Treasury.deltaTokenPrice();
+      expect(initialDeltaTokenPrice.toNumber()).to.equal(0); // `updatePerformanceTokenAmount` has not yet been called on the mock bonding calculator
+
+      // Update the performance token amount in mock bonding calculator, and subsequently call `tokenPerformanceUpdate`, to result in a deltaTokenPrice of 125%
+      await NewBondingCalculatorMock.updatePerformanceTokenAmount(125);
+      await moveTimeForward(60 * 60 * 8);
+      await Treasury.tokenPerformanceUpdate();
+      const newDeltaTokenPrice = await Treasury.deltaTokenPrice();
+      expect((newDeltaTokenPrice.toNumber() / 10 ** 9) * 100).to.equal(125);
+
+      // Test Bond Market ID 1 (WETH-THEO market)
+      const marketPrice = await BondDepository.marketPrice(1);
+      const expectedWethPerTheo = 10 ** 18 / ((10 ** 18 * (200000 * 10 ** 9)) / 10 ** 18);
+      const brv = await BondDepository.bondRateVariable(1);
+      const expectedBrv = await expectedBondRateVariable(1);
+      expect(brv.toNumber()).to.equal(expectedBrv);
+      const expectedMarketPrice = Math.floor((expectedWethPerTheo * (10 ** 9 - expectedBrv)) / 10 ** 9);
+      expect(marketPrice.toString()).to.equal(expectedMarketPrice.toString());
+
+      // Test Bond Market ID 0 (USDC-THEO market)
+      const marketPriceTwo = await BondDepository.marketPrice(0);
+      const expectedUsdcPerTheo = 10 ** 18 / ((10 ** 6 * (100 * 10 ** 9)) / 10 ** 6);
+      const brvTwo = await BondDepository.bondRateVariable(0);
+      const expectedBrvTwo = await expectedBondRateVariable(0);
+      expect(brvTwo.toNumber()).to.equal(expectedBrvTwo);
+      const expectedMarketPriceTwo = Math.floor((expectedUsdcPerTheo * (10 ** 9 - expectedBrvTwo)) / 10 ** 9);
+      expect(marketPriceTwo.toString()).to.equal(expectedMarketPriceTwo.toString());
     });
   });
 });

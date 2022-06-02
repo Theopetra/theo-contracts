@@ -13,11 +13,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
   const Theo = await deployments.get(CONTRACTS.theoToken);
 
-  let args = [Theo.address, 0, TheopetraAuthority.address];
+  let args = [Theo.address, 5760*2, TheopetraAuthority.address];
 
   if (chainId === '1337' && process.env.NODE_ENV === TESTWITHMOCKS) {
     const TheopetraERC20Mock = await deployments.get(MOCKS.theoTokenMock);
-    args = [TheopetraERC20Mock.address, 0, TheopetraAuthority.address];
+    args = [TheopetraERC20Mock.address, 5760*2, TheopetraAuthority.address];
   }
 
   await deploy(CONTRACTS.treasury, {

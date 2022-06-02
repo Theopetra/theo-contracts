@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.7.5;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
@@ -17,6 +17,13 @@ contract TwapGetter is IBondCalculator {
     uint32 public immutable secondsAgo;
     uint24 public immutable fee;
 
+    /**
+     * @param _factory     address of the UniswapV3Factory
+     * @param _theo        address of THEO token
+     * @param _performanceToken    address of the token with which THEO will be paired
+     * @param _fee         the fee collected upon every swap in the pool, denominated in hundredths of a bip (i.e. 1e-6; e.g. 3000 for 0.3% fee tier);
+     * @param _secondsAgo  the time range, in seconds, used for the twap
+     */
     constructor(
         address _factory,
         address _theo,

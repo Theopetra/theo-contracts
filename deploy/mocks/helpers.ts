@@ -2,13 +2,12 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 
 import { MOCKS, MOCKSWITHARGS } from '../../utils/constants';
 
-interface NamedMockAddresses {
-  [key: string]: string;
-}
-
-const getNamedMockAddresses = async (hre: HardhatRuntimeEnvironment): Promise<NamedMockAddresses> => {
+const getNamedMockAddresses = async (hre: HardhatRuntimeEnvironment): Promise<any> => {
   try {
-    const { deployments } = hre;
+    const { deployments, getChainId } = hre;
+    const chainId = await getChainId();
+
+    if (chainId != '1337') return;
 
     const namedMockAddresses: Record<any, any> = {};
     for (const key in MOCKS) {

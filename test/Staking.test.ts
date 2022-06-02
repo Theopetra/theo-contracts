@@ -217,13 +217,13 @@ describe('Staking', function () {
     });
 
     describe('setContract', function () {
-      it('should allow the manager to set a contract address for LP staking', async function () {
+      it('should allow the guardian to set a contract address for LP staking', async function () {
         const [, alice] = users;
         await Staking.setContract(0, alice.address); // set distributor
         expect(await Staking.distributor()).to.equal(alice.address);
       });
 
-      it('should revert if called by an address other than the manager', async function () {
+      it('should revert if called by an address other than the guardian', async function () {
         const [, alice] = users;
         await expect(alice.Staking.setContract(0, alice.address)).to.be.revertedWith('UNAUTHORIZED');
       });
@@ -234,13 +234,13 @@ describe('Staking', function () {
         expect(await Staking.warmupPeriod()).to.equal(0);
       });
 
-      it('setWarmup, should allow the manager to set a warmup period for new stakers', async function () {
+      it('setWarmup, should allow the guardian to set a warmup period for new stakers', async function () {
         expect(await Staking.warmupPeriod()).to.equal(0);
         await Staking.setWarmup(5);
         expect(await Staking.warmupPeriod()).to.equal(5);
       });
 
-      it('setWarmup, should revert if called by an address other than the manager', async function () {
+      it('setWarmup, should revert if called by an address other than the guardian', async function () {
         const [, alice] = users;
         await expect(alice.Staking.setWarmup(1)).to.be.revertedWith('UNAUTHORIZED');
       });
