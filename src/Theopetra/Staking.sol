@@ -408,7 +408,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @notice sets the contract address for LP staking
         @param _contract address
      */
-    function setContract(CONTRACTS _contract, address _address) external onlyManager {
+    function setContract(CONTRACTS _contract, address _address) external onlyGuardian {
         if (_contract == CONTRACTS.DISTRIBUTOR) {
             // 0
             distributor = _address;
@@ -427,7 +427,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
      * @notice set warmup period for new stakers
      * @param _warmupPeriod uint
      */
-    function setWarmup(uint256 _warmupPeriod) external onlyManager {
+    function setWarmup(uint256 _warmupPeriod) external onlyGuardian {
         warmupPeriod = _warmupPeriod;
     }
 

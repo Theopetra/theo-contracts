@@ -74,7 +74,7 @@ contract pTheopetra is IStakedTHEOToken, ERC20Permit, TheopetraAccessControlled 
         return true;
     }
 
-    function setIndex(uint256 _INDEX) external onlyManager returns (bool) {
+    function setIndex(uint256 _INDEX) external onlyGuardian returns (bool) {
         require(INDEX == 0);
         INDEX = gonsForBalance(_INDEX);
         return true;

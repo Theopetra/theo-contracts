@@ -11,10 +11,12 @@ import "../Interfaces/IERC20Metadata.sol";
 import "../Interfaces/IWhitelistBondDepository.sol";
 
 /**
- * @title Theopetra Whitelist Bond Depository
+ * @title Theopetra Public Pre-List Bond Depository
+ * @notice Based off of WhitelistTheopetraBondDepository, with the call to `verifySignature` removed,
+ *         as well as the function `setWethHelper` and state variable `wethHelper` removed
  */
 
-contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeeper, Signed, PriceConsumerV3 {
+contract PublicPreListBondDepository is IWhitelistBondDepository, NoteKeeper, Signed, PriceConsumerV3 {
     /* ======== DEPENDENCIES ======== */
 
     using SafeERC20 for IERC20;
@@ -36,7 +38,6 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
     Market[] public markets; // persistent market data
     Terms[] public terms; // deposit construction data
     Metadata[] public metadata; // extraneous market data
-    address private wethHelper;
 
     // Queries
     mapping(address => uint256[]) public marketsForQuote; // market IDs for quote token
@@ -73,9 +74,6 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
         address _referral,
         bytes calldata signature
     ) external override returns (DepositInfo memory depositInfo) {
-        if (msg.sender != wethHelper) {
-            verifySignature("", signature);
-        }
         Market storage market = markets[_id];
         Terms memory term = terms[_id];
         uint48 currentTime = uint48(block.timestamp);
@@ -329,12 +327,5 @@ contract WhitelistTheopetraBondDepository is IWhitelistBondDepository, NoteKeepe
             return _price / int256(10**uint256(_priceDecimals - _decimals));
         }
         return _price;
-    }
-
-    /* ====== POLICY FUNCTIONS ====== */
-
-    function setWethHelper(address _wethHelper) external onlyGovernor {
-        require(_wethHelper != address(0), "Zero address");
-        wethHelper = _wethHelper;
     }
 }

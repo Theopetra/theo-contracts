@@ -137,7 +137,7 @@ describe('Theopetra Yield Reporter', function () {
       expect(events[0].args.yield).to.equal(amount);
     });
 
-    it('should revert if called by an address other than the policy owner', async function () {
+    it('should revert if called by an address other than the manager', async function () {
       const { users } = await setup();
       const [, alice] = users;
 
