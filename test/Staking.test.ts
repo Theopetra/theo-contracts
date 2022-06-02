@@ -1674,5 +1674,60 @@ describe('Staking', function () {
         expect(rewards).to.equal(newSTheoValueFromBalance.sub(balanceFromGons));
       });
     });
+
+    describe('forfeit', function () {
+      it('allows a user to forfeit', async function () {
+        const [, bob] = users;
+        const claim = false;
+        const mistakeAmount = 300_000_000_000;
+        await createClaim(amountToStake, claim, false);
+        await createClaim(mistakeAmount, claim, false);
+
+
+        const bobStartingTheoBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
+
+        const mistakenClaimInfo = await StakingUnlocked.stakingInfo(bob.address, 1);
+        expect(Number(mistakenClaimInfo.gonsInWarmup)).to.be.greaterThan(0);
+
+        await bob.StakingUnlocked.forfeit(1);
+        const mistakenClaimInfoUpdated = await StakingUnlocked.stakingInfo(bob.address, 1);
+        const firstClaimInfo = await StakingUnlocked.stakingInfo(bob.address, 0);
+
+        expect(Number(mistakenClaimInfoUpdated.gonsInWarmup)).to.equal(0);
+        expect(Number(firstClaimInfo.gonsInWarmup)).to.be.greaterThan(0);
+
+        const bobNewTheoBalance = Number(await TheopetraERC20Token.balanceOf(bob.address));
+        expect(bobNewTheoBalance).to.be.greaterThan(bobStartingTheoBalance);
+      });
+
+      it('will revert if sTheo has already been retrieved for a claim', async function () {
+        const [, bob] = users;
+        await setupForRebase();
+        // STAKE
+        // Already in next epoch so rebase will occur when staking, but Profit will be zero at this point
+        await createClaim(amountToStake, true, false);
+        await createClaim(amountToStake * 1000, true, false);
+        const secondsToMove = randomIntFromInterval(0, 60 * 60 * 24 * 365);
+        await moveTimeForward(secondsToMove);
+
+        const [, , , , gonsRemaining] = await StakingUnlocked.stakingInfo(bob.address, 0);
+        const balanceFromGons = await sTheoUnlocked.balanceForGons(gonsRemaining);
+        const bobTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
+
+        // UNSTAKE
+        await bob.sTheoUnlocked.approve(StakingUnlocked.address, LARGE_APPROVAL);
+        await bob.StakingUnlocked.unstake(bob.address, [balanceFromGons.toNumber()], true, [0]); // Set _trigger for rebase to be true, to cause rebase (with non-zero profit)
+        const bobFinalTheoBalance = await TheopetraERC20Token.balanceOf(bob.address);
+        const rewards = bobFinalTheoBalance.sub(balanceFromGons.add(bobTheoBalance));
+
+        expect(rewards.toNumber()).to.greaterThan(0);
+
+
+        await expect(bob.StakingUnlocked.forfeit(0)).to.be.revertedWith('Claim has already been retrieved');
+        const bobTheoBalanceAfterForfeit = await TheopetraERC20Token.balanceOf(bob.address);
+
+        expect(bobTheoBalanceAfterForfeit.toString()).to.equal(bobFinalTheoBalance.toString());
+      });
+    });
   });
 });
