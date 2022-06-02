@@ -53,6 +53,9 @@ abstract contract ERC20Permit is ERC20, IERC2612Permit {
 
         bytes32 _hash = keccak256(abi.encodePacked(uint16(0x1901), DOMAIN_SEPARATOR, hashStruct));
 
+        require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "invalid signature 's' value");
+        require(v == 27 || v == 28, "invalid signature 'v' value");
+
         address signer = ecrecover(_hash, v, r, s);
         require(signer != address(0) && signer == owner, "ZeroSwapPermit: Invalid signature");
 
