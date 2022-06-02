@@ -192,6 +192,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
      */
     function forfeit(uint256 _index) external {
         Claim memory info = stakingInfo[msg.sender][_index];
+        require(info.gonsInWarmup > 0, "Claim has already been retrieved");
         delete stakingInfo[msg.sender][_index];
 
         gonsInWarmup = gonsInWarmup.sub(info.gonsInWarmup);
