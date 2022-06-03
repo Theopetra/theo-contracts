@@ -1,5 +1,25 @@
 # Launch Notes
 
+## Contract groupings for deployment to mainnet
+### Group 1
+* TheopetraAuthority
+* TheopetraERC20Token
+* TheopetraTreasury
+* TheopetraYieldReporter
+* TheopetraFounderVesting
+
+#### Constructor arguments to check/confirm for Group 1 deployment
+* For TheopetraAuthority: All constructor arguments (Multi Sig wallet addresses) except for vault
+* For TheopetraFounderVesting:
+```
+        uint256 _fdvTarget,
+        address[] memory _payees,
+        uint256[] memory _shares,
+        uint256[] memory _unlockTimes,
+        uint256[] memory _unlockAmounts
+```
+
+## Other updates for deployment to live networks
 - [ ] In Staking deploy script: `epochLength`, `firstEpochNumber` and `firstEpoch` to be updated as needed for other networks
 - [ ] In Distributor deploy script: `epochLength` and `nextEpoch` to be updated as needed for other networks
 - [ ] Testing very large deposits to the bond depo with e2e testing (with sTHEO supply increasing via rebasing)
