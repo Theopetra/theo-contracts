@@ -455,7 +455,7 @@ describe('Staking', function () {
         expect(firstClaimUpdatedInfo.gonsRemaining).to.equal(0);
       });
 
-      it('correctly reduces the amount of gons remaining to be redeemed on a Claim, when redeeming a partial amount of the total available, after 100% of staking term has passed', async function () {
+      it.only('correctly reduces the amount of gons remaining to be redeemed on a Claim, when redeeming a partial amount of the total available, after 100% of staking term has passed', async function () {
         const [, bob] = users;
 
         await createClaim(amountToStake, false);
@@ -463,7 +463,8 @@ describe('Staking', function () {
 
         await bob.sTheo.approve(Staking.address, LARGE_APPROVAL);
 
-        const amountToUnStake = amountToStake - 2_000_000_000;
+        const amountToUnStake = amountToStake - (1_000_000_000_000 - 4);
+        // const amountToUnStake = amountToStake - 2_000_000_000;
 
         // Move time forward past 100% of staking term to allow partial redeem
         await moveTimeForward(lockedStakingTerm * 1.05);
@@ -476,6 +477,9 @@ describe('Staking', function () {
         );
 
         expect(firstClaimUpdatedInfo.gonsRemaining).to.equal(expectedGonsRemaining);
+
+        const currentRewards = await Staking.rewardsFor(bob.address, 0);
+        console.log("THIS CURRENT REWARDS🌈", currentRewards);
       });
 
       it('correctly reduces the amount of gons remaining to be redeemed on multiple Claims, when unstaking after 100% of staking term has passed', async function () {
