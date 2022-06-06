@@ -589,6 +589,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         uint256 _amountRemaining = IStakedTHEOToken(sTHEO).balanceForGons(claim.gonsRemaining);
         currentRewards_ = 0;
         if (isUnRedeemed(_user, _index)) {
+
             currentRewards_ = (_amountRemaining.add(getSlashedRewards(_amountRemaining))).sub(claim.deposit);
         }
         return currentRewards_;

@@ -479,7 +479,6 @@ describe('Staking', function () {
         expect(firstClaimUpdatedInfo.gonsRemaining).to.equal(expectedGonsRemaining);
 
         const currentRewards = await Staking.rewardsFor(bob.address, 0);
-        console.log("THIS CURRENT REWARDS🌈", currentRewards);
       });
 
       it('correctly reduces the amount of gons remaining to be redeemed on multiple Claims, when unstaking after 100% of staking term has passed', async function () {
