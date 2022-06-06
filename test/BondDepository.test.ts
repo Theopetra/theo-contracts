@@ -566,7 +566,7 @@ describe('Bond depository', function () {
         bob.BondDepository.deposit(bid, depositAmount, initialPrice, bob.address, bob.address, autoStake)
       );
       const [payout_] = await BondDepository.pendingFor(bob.address, 0);
-      expect(events).to.have.length(process.env.NODE_ENV === TESTWITHMOCKS ? 7 : 10);
+      expect(events).to.have.length(process.env.NODE_ENV === TESTWITHMOCKS ? 7 : 11);
 
       const receipt = await ethers.provider.getTransactionReceipt(
         events[process.env.NODE_ENV === TESTWITHMOCKS ? 6 : 9]?.transactionHash
