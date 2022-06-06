@@ -21,6 +21,8 @@ contract sTheopetra is IStakedTHEOToken, ITokenDebt, ERC20Permit, TheopetraAcces
     event LogSupply(uint256 indexed epoch, uint256 timestamp, uint256 totalSupply);
     event LogRebase(uint256 indexed epoch, uint256 rebase, uint256 index);
     event LogStakingContractUpdated(address stakingContract);
+    event SetIndex(uint256 index);
+    event ChangeDebt(address debtor, uint256 debt, bool add);
 
     struct Rebase {
         uint256 epoch;
@@ -82,6 +84,7 @@ contract sTheopetra is IStakedTHEOToken, ITokenDebt, ERC20Permit, TheopetraAcces
     function setIndex(uint256 _INDEX) external onlyGuardian returns (bool) {
         require(INDEX == 0);
         INDEX = gonsForBalance(_INDEX);
+        emit SetIndex(INDEX);
         return true;
     }
 
@@ -251,5 +254,6 @@ contract sTheopetra is IStakedTHEOToken, ITokenDebt, ERC20Permit, TheopetraAcces
             debtBalances[debtor] = debtBalances[debtor].sub(amount);
         }
         require(debtBalances[debtor] <= balanceOf(debtor), "sTHEO: insufficient balance");
+        emit ChangeDebt(debtor, amount, add);
     }
 }

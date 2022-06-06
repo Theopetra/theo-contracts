@@ -104,6 +104,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         // mint tokens for the initial shares
         uint256 tokensToMint = totalShares.mul(THEO.totalSupply()).div(10**decimals() - totalShares);
         treasury.mint(address(this), tokensToMint);
+        emit InitialMint(tokensToMint);
     }
 
     /**

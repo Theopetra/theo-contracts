@@ -20,6 +20,7 @@ contract pTheopetra is IStakedTHEOToken, ERC20Permit, TheopetraAccessControlled 
     event LogSupply(uint256 indexed epoch, uint256 timestamp, uint256 totalSupply);
     event LogRebase(uint256 indexed epoch, uint256 rebase, uint256 index);
     event LogStakingContractUpdated(address stakingContract);
+    event SetIndex(uint256 index);
 
     struct Rebase {
         uint256 epoch;
@@ -77,6 +78,7 @@ contract pTheopetra is IStakedTHEOToken, ERC20Permit, TheopetraAccessControlled 
     function setIndex(uint256 _INDEX) external onlyGuardian returns (bool) {
         require(INDEX == 0);
         INDEX = gonsForBalance(_INDEX);
+        emit SetIndex(INDEX);
         return true;
     }
 

@@ -47,6 +47,14 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
      */
     bytes16 private one = 0x3fff0000000000000000000000000000;
 
+    event Distribute(uint256 indexed amount, uint256 indexed rate, address recipient);
+    event BountyRetrieved(uint256 indexed amount, address indexed beneficiary);
+    event SetBounty(uint256 indexed amount);
+    event AddRecipient(address recipient, uint256 startRate, bool locked);
+    event RemoveRecipient(address recipient);
+    event SetStakingContract(address stakingContract);
+    event UpdateDRS(address recipient, int256 drs);
+    event UpdateDYS(address recipient, int256 dry);
     /* ====== STRUCTS ====== */
 
     /**
@@ -113,7 +121,9 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         for (uint256 i = 0; i < info.length; i++) {
             uint256 _rate = nextRewardRate(i);
             if (_rate > 0) {
-                ITreasury(treasury).mint(info[i].recipient, nextRewardAt(_rate, info[i].recipient));
+                uint256 reward = nextRewardAt(_rate, info[i].recipient);
+                ITreasury(treasury).mint(info[i].recipient, reward);
+                emit Distribute(reward, _rate, info[i].recipient);
             }
             if (info[i].nextEpochTime <= block.timestamp) {
                 if (info[i].locked == false && info[i].start > 20_000_000) {
@@ -134,6 +144,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         // msg.sender at this point can only be a staking contract
         if (bounty > 0) {
             treasury.mint(address(msg.sender), bounty);
+            emit BountyRetrieved(bounty, address(msg.sender));
         }
 
         return bounty;
@@ -199,6 +210,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     function setBounty(uint256 _bounty) external override onlyGovernor {
         require(_bounty <= 2e9, "Too much");
         bounty = _bounty;
+        emit SetBounty(_bounty);
     }
 
     /**
@@ -230,6 +242,12 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
                 nextEpochTime: uint48((block.timestamp).add(uint256(epochLength)))
             })
         );
+
+        emit AddRecipient(
+            _recipient,
+            _startRate,
+            _locked
+        );
     }
 
     /**
@@ -239,7 +257,9 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @param _addr address
      */
     function setStaking(address _addr) public override onlyGovernor {
+        // TODO: add event
         staking[_addr] = true;
+        emit SetStakingContract(_addr);
     }
 
     /**
@@ -247,6 +267,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @param _index uint
      */
     function removeRecipient(uint256 _index) external override {
+        // TODO: add event
         require(
             msg.sender == authority.governor() || msg.sender == authority.guardian(),
             "Caller is not governor or guardian"
@@ -256,14 +277,19 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         info[_index].start = 0;
         info[_index].drs = 0;
         info[_index].dys = 0;
+        emit RemoveRecipient(info[_index].recipient);
     }
 
     function setDiscountRateStaking(uint256 _index, int256 _drs) public override onlyPolicy {
+        // TODO: add event
         info[_index].drs = _drs;
+        emit UpdateDRS(info[_index].recipient, _drs);
     }
 
     function setDiscountRateYield(uint256 _index, int256 _dys) public override onlyPolicy {
+        // TODO: add event
         info[_index].dys = _dys;
+        emit UpdateDYS(info[_index].recipient, _dys);
     }
 
     /**

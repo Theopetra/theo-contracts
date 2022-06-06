@@ -13,6 +13,10 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
     mapping(address => mapping(uint256 => address)) private noteTransfers; // change note ownership
     mapping(address => mapping(uint256 => uint256)) private noteForClaim; // index of staking claim for a user's note
 
+    event TreasuryUpdated(address addr);
+    event PushNote(address from, address to, uint256 noteId);
+    event PullNote(address from, address to, uint256 noteId);
+
     IStakedTHEOToken internal immutable sTHEO;
     IStaking internal immutable staking;
     ITreasury internal treasury;
@@ -37,7 +41,9 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
                 msg.sender == authority.policy(),
             "Only authorized"
         );
-        treasury = ITreasury(authority.vault());
+        address treasuryAddress = authority.vault();
+        treasury = ITreasury(treasuryAddress);
+        emit TreasuryUpdated(treasuryAddress);
     }
 
     /* ========== ADD ========== */
@@ -150,6 +156,8 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
     function pushNote(address _to, uint256 _index) external override {
         require(notes[msg.sender][_index].created != 0, "Depository: note not found");
         noteTransfers[msg.sender][_index] = _to;
+
+        emit PushNote(msg.sender, _to, _index);
     }
 
     /**
@@ -176,6 +184,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         notes[msg.sender].push(notes[_from][_index]);
 
         delete notes[_from][_index];
+        emit PullNote(_from, msg.sender, _index);
     }
 
     /* ========== VIEW ========== */
