@@ -10,7 +10,10 @@ import "../Libraries/SafeMath.sol";
 contract TheopetraERC20Token is ERC20Permit, TheopetraAccessControlled {
     using SafeMath for uint256;
 
+    event UpdateMintLimit(uint256 mintLimit);
+
     uint256 private _initialSupply;
+    uint256 private _mintLimit;
 
     constructor(address _authority)
         ERC20("Theopetra", "THEO", 9)
@@ -19,6 +22,10 @@ contract TheopetraERC20Token is ERC20Permit, TheopetraAccessControlled {
 
     function getInitialSupply() public view returns (uint256) {
         return _initialSupply;
+    }
+
+    function setMintLimit(uint256 limit) public onlyGuardian {
+        _mintLimit = limit;
     }
 
     /** @dev If `_initialSupply` is not zero, the amount to mint is
@@ -31,12 +38,11 @@ contract TheopetraERC20Token is ERC20Permit, TheopetraAccessControlled {
      */
     function mint(address account_, uint256 amount_) external onlyVault {
         uint256 amount = amount_;
-        uint256 mintLimit = (_initialSupply * 5) / 100;
-
         if (_initialSupply == 0) {
             _initialSupply = amount_;
-        } else if (_initialSupply != 0 && amount_ > mintLimit) {
-            amount = mintLimit;
+            _mintLimit = _initialSupply;
+        } else if (_initialSupply != 0 && amount_ > _mintLimit) {
+            amount = _mintLimit;
         }
         _mint(account_, amount);
     }
