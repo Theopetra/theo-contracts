@@ -23,7 +23,7 @@ contract TheopetraYieldReporter is IYieldReporter, TheopetraAccessControlled {
 
     /* ======== CONSTANTS ======== */
 
-    string private OUT_OF_BOUNDS = "OUT_OF_BOUNDS";
+    string private constant OUT_OF_BOUNDS = "OUT_OF_BOUNDS";
 
     /* ======== CONSTRUCTOR ======== */
 
