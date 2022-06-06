@@ -97,9 +97,9 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     uint256 public onChainGovernanceTimelock;
     bytes32 public constant BOND_ROLE = keccak256("BOND_ROLE");
 
-    string internal notAccepted = "Treasury: not accepted";
-    string internal notApproved = "Treasury: not approved";
-    string internal invalidToken = "Treasury: invalid token";
+    string internal constant notAccepted = "Treasury: not accepted";
+    string internal constant notApproved = "Treasury: not approved";
+    string internal constant invalidToken = "Treasury: invalid token";
 
     /* ========== CONSTRUCTOR ========== */
 
