@@ -217,7 +217,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         int256 _dys,
         bool _locked
     ) external override onlyGovernor {
-        require(_recipient != address(0));
+        require(_recipient != address(0), "Recipient cannot be the zero address");
         require(_startRate <= rateDenominator, "Rate cannot exceed denominator");
 
         info.push(

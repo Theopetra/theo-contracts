@@ -120,7 +120,7 @@ library EnumerableSet {
         uint256 index_,
         bytes32 valueToInsert_
     ) private returns (bool) {
-        require(set_._values.length > index_);
+        require(set_._values.length > index_, "EnumerableSet: index out of bounds");
         require(!_contains(set_, valueToInsert_), "Remove value you wish to insert if you wish to reorder array.");
         bytes32 existingValue_ = _at(set_, index_);
         set_._values[index_] = valueToInsert_;
