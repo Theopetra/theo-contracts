@@ -606,9 +606,12 @@ contract TheopetraStaking is TheopetraAccessControlled {
      * @param _user             the user that the claim belongs to
      * @param _index            the index of the claim in the user's array
      * @return currentRewards_  the current total rewards expected for a claim (valid only for claims out of warmup),
-                                calculated as: (sTHEO remaining + slashedRewards) - deposit amount
-                                note that currentRewards_ does not include any potential bounty or additional sTheo balance that
-                                may be applied if rebasing when unstaking
+     *                          calculated as: (sTHEO remaining + slashedRewards) - deposit amount
+     *                          note that currentRewards_ does not include any potential bounty or additional sTheo balance that
+     *                          may be applied if rebasing when unstaking. This function may revert or return a wrong value if a user
+     *                          has un-staked some of their stake to let the current remaining balance be less than claim.deposit.
+     *                          This can only happen if the user has un-staked directly with the contracts, instead of using the UI.
+     *                          This also does not affect any rewards that may be applied to the claim if it is redeemed.
      */
     function rewardsFor(address _user, uint256 _index) external view returns (uint256 currentRewards_) {
         Claim memory claim = stakingInfo[_user][_index];
