@@ -8,7 +8,7 @@ abstract contract TheopetraAccessControlled {
 
     event AuthorityUpdated(ITheopetraAuthority indexed authority);
 
-    string UNAUTHORIZED = "UNAUTHORIZED"; // save gas
+    string constant UNAUTHORIZED = "UNAUTHORIZED"; // save gas
 
     /* ========== STATE VARIABLES ========== */
 

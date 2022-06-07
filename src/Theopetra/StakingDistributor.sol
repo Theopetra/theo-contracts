@@ -36,16 +36,16 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     mapping(uint256 => Adjust) public adjustments;
     uint256 public override bounty;
 
-    uint256 private immutable rateDenominator = 1_000_000_000;
+    uint256 private constant rateDenominator = 1_000_000_000;
 
     /**
         @dev    byte representation of 1095. See also `deriveRate`.
      */
-    bytes16 private immutable n = 0x400911c0000000000000000000000000;
+    bytes16 private constant n = 0x400911c0000000000000000000000000;
     /**
         @dev    byte representation of 1;
      */
-    bytes16 private one = 0x3fff0000000000000000000000000000;
+    bytes16 private constant one = 0x3fff0000000000000000000000000000;
 
     /* ====== STRUCTS ====== */
 
@@ -155,7 +155,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @param _recipient address
         @return uint256
      */
-    function nextRewardFor(address _recipient) public view override returns (uint256) {
+    function nextRewardFor(address _recipient) external view override returns (uint256) {
         uint256 reward;
         for (uint256 i = 0; i < info.length; i++) {
             if (info[i].recipient == _recipient) {
@@ -217,7 +217,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         int256 _dys,
         bool _locked
     ) external override onlyGovernor {
-        require(_recipient != address(0));
+        require(_recipient != address(0), "Recipient cannot be the zero address");
         require(_startRate <= rateDenominator, "Rate cannot exceed denominator");
 
         info.push(
@@ -238,7 +238,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
              the contract must also be set up as a recipient to receive the rewards
         @param _addr address
      */
-    function setStaking(address _addr) public override onlyGovernor {
+    function setStaking(address _addr) external override onlyGovernor {
         staking[_addr] = true;
     }
 
@@ -258,11 +258,11 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         info[_index].dys = 0;
     }
 
-    function setDiscountRateStaking(uint256 _index, int256 _drs) public override onlyPolicy {
+    function setDiscountRateStaking(uint256 _index, int256 _drs) external override onlyPolicy {
         info[_index].drs = _drs;
     }
 
-    function setDiscountRateYield(uint256 _index, int256 _dys) public override onlyPolicy {
+    function setDiscountRateYield(uint256 _index, int256 _dys) external override onlyPolicy {
         info[_index].dys = _dys;
     }
 

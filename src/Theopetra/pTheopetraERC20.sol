@@ -62,8 +62,8 @@ contract pTheopetra is IStakedTHEOToken, ERC20Permit, TheopetraAccessControlled 
     }
 
     function initialize(address stakingContract_) external returns (bool) {
-        require(msg.sender == initializer);
-        require(stakingContract_ != address(0));
+        require(msg.sender == initializer, "UNAUTHORIZED");
+        require(stakingContract_ != address(0), "stakingContract cannot be the zero address");
         stakingContract = stakingContract_;
         _gonBalances[stakingContract] = TOTAL_GONS;
 
@@ -75,7 +75,7 @@ contract pTheopetra is IStakedTHEOToken, ERC20Permit, TheopetraAccessControlled 
     }
 
     function setIndex(uint256 _INDEX) external onlyGuardian returns (bool) {
-        require(INDEX == 0);
+        require(INDEX == 0, "Index already set");
         INDEX = gonsForBalance(_INDEX);
         return true;
     }
@@ -85,7 +85,7 @@ contract pTheopetra is IStakedTHEOToken, ERC20Permit, TheopetraAccessControlled 
         @param profit_ uint256
         @return uint256
      */
-    function rebase(uint256 profit_, uint256 epoch_) public override onlyStakingContract returns (uint256) {
+    function rebase(uint256 profit_, uint256 epoch_) external override onlyStakingContract returns (uint256) {
         uint256 rebaseAmount;
         uint256 circulatingSupply_ = circulatingSupply();
 
@@ -165,7 +165,7 @@ contract pTheopetra is IStakedTHEOToken, ERC20Permit, TheopetraAccessControlled 
         return balanceForGons(INDEX);
     }
 
-    function transfer(address to, uint256 value) public override(ERC20, IERC20) returns (bool) {
+    function transfer(address to, uint256 value) external override(ERC20, IERC20) returns (bool) {
         uint256 gonValue = gonsForBalance(value);
         _gonBalances[msg.sender] = _gonBalances[msg.sender].sub(gonValue);
         _gonBalances[to] = _gonBalances[to].add(gonValue);
@@ -181,7 +181,7 @@ contract pTheopetra is IStakedTHEOToken, ERC20Permit, TheopetraAccessControlled 
         address from,
         address to,
         uint256 value
-    ) public override(ERC20, IERC20) returns (bool) {
+    ) external override(ERC20, IERC20) returns (bool) {
         _allowedValue[from][msg.sender] = _allowedValue[from][msg.sender].sub(value);
         emit Approval(from, msg.sender, _allowedValue[from][msg.sender]);
 
@@ -193,7 +193,7 @@ contract pTheopetra is IStakedTHEOToken, ERC20Permit, TheopetraAccessControlled 
         return true;
     }
 
-    function approve(address spender, uint256 value) public override(ERC20, IERC20) returns (bool) {
+    function approve(address spender, uint256 value) external override(ERC20, IERC20) returns (bool) {
         _allowedValue[msg.sender][spender] = value;
         emit Approval(msg.sender, spender, value);
         return true;
@@ -209,13 +209,13 @@ contract pTheopetra is IStakedTHEOToken, ERC20Permit, TheopetraAccessControlled 
         emit Approval(owner, spender, value);
     }
 
-    function increaseAllowance(address spender, uint256 addedValue) public override returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue) external override returns (bool) {
         _allowedValue[msg.sender][spender] = _allowedValue[msg.sender][spender].add(addedValue);
         emit Approval(msg.sender, spender, _allowedValue[msg.sender][spender]);
         return true;
     }
 
-    function decreaseAllowance(address spender, uint256 subtractedValue) public override returns (bool) {
+    function decreaseAllowance(address spender, uint256 subtractedValue) external override returns (bool) {
         uint256 oldValue = _allowedValue[msg.sender][spender];
         if (subtractedValue >= oldValue) {
             _allowedValue[msg.sender][spender] = 0;

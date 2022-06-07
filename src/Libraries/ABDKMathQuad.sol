@@ -37,6 +37,11 @@ library ABDKMathQuad {
      */
     bytes16 private constant NaN = 0x7FFF8000000000000000000000000000;
 
+    /*
+     * Error message for failed require() calls.
+     */
+    string private constant REQUIRE_ERROR = "ABDKQuad: Mathematical operation failed";
+
     /**
      * Convert signed 256-bit integer number into quadruple precision number.
      *
@@ -73,7 +78,7 @@ library ABDKMathQuad {
         unchecked {
             uint256 exponent = (uint128(x) >> 112) & 0x7FFF;
 
-            require(exponent <= 16638); // Overflow
+            require(exponent <= 16638, REQUIRE_ERROR); // Overflow
             if (exponent < 16383) return 0; // Underflow
 
             uint256 result = (uint256(uint128(x)) & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFF) | 0x10000000000000000000000000000;
@@ -83,7 +88,7 @@ library ABDKMathQuad {
 
             if (uint128(x) >= 0x80000000000000000000000000000000) {
                 // Negative
-                require(result <= 0x8000000000000000000000000000000000000000000000000000000000000000);
+                require(result <= 0x8000000000000000000000000000000000000000000000000000000000000000, REQUIRE_ERROR);
                 return -int256(result); // We rely on overflow behavior here
             } else {
                 require(result <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
@@ -130,9 +135,9 @@ library ABDKMathQuad {
 
             if (exponent < 16383) return 0; // Underflow
 
-            require(uint128(x) < 0x80000000000000000000000000000000); // Negative
+            require(uint128(x) < 0x80000000000000000000000000000000, REQUIRE_ERROR); // Negative
 
-            require(exponent <= 16638); // Overflow
+            require(exponent <= 16638, REQUIRE_ERROR); // Overflow
             uint256 result = (uint256(uint128(x)) & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFF) | 0x10000000000000000000000000000;
 
             if (exponent < 16495) result >>= 16495 - exponent;
@@ -179,7 +184,7 @@ library ABDKMathQuad {
         unchecked {
             uint256 exponent = (uint128(x) >> 112) & 0x7FFF;
 
-            require(exponent <= 16510); // Overflow
+            require(exponent <= 16510, REQUIRE_ERROR); // Overflow
             if (exponent < 16255) return 0; // Underflow
 
             uint256 result = (uint256(uint128(x)) & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFF) | 0x10000000000000000000000000000;
@@ -189,10 +194,10 @@ library ABDKMathQuad {
 
             if (uint128(x) >= 0x80000000000000000000000000000000) {
                 // Negative
-                require(result <= 0x8000000000000000000000000000000000000000000000000000000000000000);
+                require(result <= 0x8000000000000000000000000000000000000000000000000000000000000000, REQUIRE_ERROR);
                 return -int256(result); // We rely on overflow behavior here
             } else {
-                require(result <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+                require(result <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, REQUIRE_ERROR);
                 return int256(result);
             }
         }
@@ -235,7 +240,7 @@ library ABDKMathQuad {
         unchecked {
             uint256 exponent = (uint128(x) >> 112) & 0x7FFF;
 
-            require(exponent <= 16446); // Overflow
+            require(exponent <= 16446, REQUIRE_ERROR); // Overflow
             if (exponent < 16319) return 0; // Underflow
 
             uint256 result = (uint256(uint128(x)) & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFF) | 0x10000000000000000000000000000;
@@ -245,10 +250,10 @@ library ABDKMathQuad {
 
             if (uint128(x) >= 0x80000000000000000000000000000000) {
                 // Negative
-                require(result <= 0x80000000000000000000000000000000);
+                require(result <= 0x80000000000000000000000000000000, REQUIRE_ERROR);
                 return -int128(int256(result)); // We rely on overflow behavior here
             } else {
-                require(result <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+                require(result <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, REQUIRE_ERROR);
                 return int128(int256(result));
             }
         }
@@ -442,7 +447,7 @@ library ABDKMathQuad {
         unchecked {
             uint128 absoluteX = uint128(x) & 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
-            require(absoluteX <= 0x7FFF0000000000000000000000000000); // Not NaN
+            require(absoluteX <= 0x7FFF0000000000000000000000000000, REQUIRE_ERROR); // Not NaN
 
             if (absoluteX == 0) return 0;
             else if (uint128(x) >= 0x80000000000000000000000000000000) return -1;
@@ -462,14 +467,14 @@ library ABDKMathQuad {
         unchecked {
             uint128 absoluteX = uint128(x) & 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
-            require(absoluteX <= 0x7FFF0000000000000000000000000000); // Not NaN
+            require(absoluteX <= 0x7FFF0000000000000000000000000000, REQUIRE_ERROR); // Not NaN
 
             uint128 absoluteY = uint128(y) & 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
-            require(absoluteY <= 0x7FFF0000000000000000000000000000); // Not NaN
+            require(absoluteY <= 0x7FFF0000000000000000000000000000, REQUIRE_ERROR); // Not NaN
 
             // Not infinities of the same sign
-            require(x != y || absoluteX < 0x7FFF0000000000000000000000000000);
+            require(x != y || absoluteX < 0x7FFF0000000000000000000000000000, REQUIRE_ERROR);
 
             if (x == y) return 0;
             else {
@@ -1334,7 +1339,7 @@ library ABDKMathQuad {
      */
     function mostSignificantBit(uint256 x) private pure returns (uint256) {
         unchecked {
-            require(x > 0);
+            require(x > 0, REQUIRE_ERROR);
 
             uint256 result = 0;
 

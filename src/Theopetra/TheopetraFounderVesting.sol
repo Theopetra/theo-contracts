@@ -46,7 +46,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     mapping(IERC20 => uint256) private erc20TotalReleased;
     mapping(IERC20 => mapping(address => uint256)) private erc20Released;
 
-    uint256 private deployTime = block.timestamp;
+    uint256 private immutable deployTime = block.timestamp;
     uint256[] private unlockTimes;
     uint256[] private unlockAmounts;
 
@@ -124,7 +124,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     /**
      * @dev Getter for the amount of shares held by an account.
      */
-    function getShares(address account) public view override returns (uint256) {
+    function getShares(address account) external view override returns (uint256) {
         return shares[account];
     }
 
@@ -208,7 +208,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
      * percentage of the total shares and their previous withdrawals. `token` must be the address of an IERC20
      * contract.
      */
-    function release(IERC20 token) public override {
+    function release(IERC20 token) external override {
         address account = msg.sender;
         require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
 
@@ -231,7 +231,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
      * percentage of the total shares and their previous withdrawals. `token` must be the address of an IERC20
      * contract.
      */
-    function releaseAmount(IERC20 token, uint256 amount) public override {
+    function releaseAmount(IERC20 token, uint256 amount) external override {
         address account = msg.sender;
         require(shares[account] > 0, "TheopetraFounderVesting: account has no shares");
         require(amount > 0, "TheopetraFounderVesting: amount cannot be 0");

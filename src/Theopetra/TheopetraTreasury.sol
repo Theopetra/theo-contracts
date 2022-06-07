@@ -97,9 +97,9 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     uint256 public onChainGovernanceTimelock;
     bytes32 public constant BOND_ROLE = keccak256("BOND_ROLE");
 
-    string internal notAccepted = "Treasury: not accepted";
-    string internal notApproved = "Treasury: not approved";
-    string internal invalidToken = "Treasury: invalid token";
+    string internal constant notAccepted = "Treasury: not accepted";
+    string internal constant notApproved = "Treasury: not approved";
+    string internal constant invalidToken = "Treasury: invalid token";
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -288,7 +288,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      * @notice             set the address for the theo bonding calculator
      * @param _theoBondingCalculator    address of the theo bonding calculator
      */
-    function setTheoBondingCalculator(address _theoBondingCalculator) public override onlyGuardian {
+    function setTheoBondingCalculator(address _theoBondingCalculator) external override onlyGuardian {
         theoBondingCalculator = IBondCalculator(_theoBondingCalculator);
     }
 
@@ -421,7 +421,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         address _address,
         address _calculator
     ) external onlyGovernor {
-        require(_address != address(0));
+        require(_address != address(0), "Address cannot be the zero address");
         require(timelockEnabled == true, "Timelock is disabled, use enable");
 
         uint256 timelock = block.number.add(blocksNeededForQueue);
