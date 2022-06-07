@@ -155,7 +155,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @param _recipient address
         @return uint256
      */
-    function nextRewardFor(address _recipient) public view override returns (uint256) {
+    function nextRewardFor(address _recipient) external view override returns (uint256) {
         uint256 reward;
         for (uint256 i = 0; i < info.length; i++) {
             if (info[i].recipient == _recipient) {
@@ -238,7 +238,7 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
              the contract must also be set up as a recipient to receive the rewards
         @param _addr address
      */
-    function setStaking(address _addr) public override onlyGovernor {
+    function setStaking(address _addr) external override onlyGovernor {
         staking[_addr] = true;
     }
 
@@ -258,11 +258,11 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         info[_index].dys = 0;
     }
 
-    function setDiscountRateStaking(uint256 _index, int256 _drs) public override onlyPolicy {
+    function setDiscountRateStaking(uint256 _index, int256 _drs) external override onlyPolicy {
         info[_index].drs = _drs;
     }
 
-    function setDiscountRateYield(uint256 _index, int256 _dys) public override onlyPolicy {
+    function setDiscountRateYield(uint256 _index, int256 _dys) external override onlyPolicy {
         info[_index].dys = _dys;
     }
 

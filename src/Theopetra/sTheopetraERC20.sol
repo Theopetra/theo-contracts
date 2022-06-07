@@ -90,7 +90,7 @@ contract sTheopetra is IStakedTHEOToken, ITokenDebt, ERC20Permit, TheopetraAcces
         @param profit_ uint256
         @return uint256
      */
-    function rebase(uint256 profit_, uint256 epoch_) public override onlyStakingContract returns (uint256) {
+    function rebase(uint256 profit_, uint256 epoch_) external override onlyStakingContract returns (uint256) {
         uint256 rebaseAmount;
         uint256 circulatingSupply_ = circulatingSupply();
 
@@ -170,7 +170,7 @@ contract sTheopetra is IStakedTHEOToken, ITokenDebt, ERC20Permit, TheopetraAcces
         return balanceForGons(INDEX);
     }
 
-    function transfer(address to, uint256 value) public override(ERC20, IERC20) returns (bool) {
+    function transfer(address to, uint256 value) external override(ERC20, IERC20) returns (bool) {
         uint256 gonValue = gonsForBalance(value);
         _gonBalances[msg.sender] = _gonBalances[msg.sender].sub(gonValue);
         _gonBalances[to] = _gonBalances[to].add(gonValue);
@@ -186,7 +186,7 @@ contract sTheopetra is IStakedTHEOToken, ITokenDebt, ERC20Permit, TheopetraAcces
         address from,
         address to,
         uint256 value
-    ) public override(ERC20, IERC20) returns (bool) {
+    ) external override(ERC20, IERC20) returns (bool) {
         _allowedValue[from][msg.sender] = _allowedValue[from][msg.sender].sub(value);
         emit Approval(from, msg.sender, _allowedValue[from][msg.sender]);
 
@@ -198,7 +198,7 @@ contract sTheopetra is IStakedTHEOToken, ITokenDebt, ERC20Permit, TheopetraAcces
         return true;
     }
 
-    function approve(address spender, uint256 value) public override(ERC20, IERC20) returns (bool) {
+    function approve(address spender, uint256 value) external override(ERC20, IERC20) returns (bool) {
         _allowedValue[msg.sender][spender] = value;
         emit Approval(msg.sender, spender, value);
         return true;
@@ -214,13 +214,13 @@ contract sTheopetra is IStakedTHEOToken, ITokenDebt, ERC20Permit, TheopetraAcces
         emit Approval(owner, spender, value);
     }
 
-    function increaseAllowance(address spender, uint256 addedValue) public override returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue) external override returns (bool) {
         _allowedValue[msg.sender][spender] = _allowedValue[msg.sender][spender].add(addedValue);
         emit Approval(msg.sender, spender, _allowedValue[msg.sender][spender]);
         return true;
     }
 
-    function decreaseAllowance(address spender, uint256 subtractedValue) public override returns (bool) {
+    function decreaseAllowance(address spender, uint256 subtractedValue) external override returns (bool) {
         uint256 oldValue = _allowedValue[msg.sender][spender];
         if (subtractedValue >= oldValue) {
             _allowedValue[msg.sender][spender] = 0;

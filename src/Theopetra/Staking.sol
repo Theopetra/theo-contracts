@@ -571,7 +571,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         return claim.gonsInWarmup == 0 && claim.gonsRemaining > 0;
     }
 
-    function getClaimsCount(address _user) public view returns (uint256) {
+    function getClaimsCount(address _user) external view returns (uint256) {
         return stakingInfo[_user].length;
     }
 
@@ -584,7 +584,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                                 note that currentRewards_ does not include any potential bounty or additional sTheo balance that
                                 may be applied if rebasing when unstaking
      */
-    function rewardsFor(address _user, uint256 _index) public view returns (uint256 currentRewards_) {
+    function rewardsFor(address _user, uint256 _index) external view returns (uint256 currentRewards_) {
         Claim memory claim = stakingInfo[_user][_index];
         uint256 _amountRemaining = IStakedTHEOToken(sTHEO).balanceForGons(claim.gonsRemaining);
         currentRewards_ = 0;

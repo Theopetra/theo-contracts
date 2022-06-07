@@ -288,7 +288,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      * @notice             set the address for the theo bonding calculator
      * @param _theoBondingCalculator    address of the theo bonding calculator
      */
-    function setTheoBondingCalculator(address _theoBondingCalculator) public override onlyGuardian {
+    function setTheoBondingCalculator(address _theoBondingCalculator) external override onlyGuardian {
         theoBondingCalculator = IBondCalculator(_theoBondingCalculator);
     }
 

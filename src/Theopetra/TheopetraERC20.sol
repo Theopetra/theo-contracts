@@ -41,11 +41,11 @@ contract TheopetraERC20Token is ERC20Permit, TheopetraAccessControlled {
         _mint(account_, amount);
     }
 
-    function burn(uint256 amount) public virtual {
+    function burn(uint256 amount) external virtual {
         _burn(msg.sender, amount);
     }
 
-    function burnFrom(address account_, uint256 amount_) public virtual {
+    function burnFrom(address account_, uint256 amount_) external virtual {
         _burnFrom(account_, amount_);
     }
 
