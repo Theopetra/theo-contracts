@@ -257,7 +257,6 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @param _addr address
      */
     function setStaking(address _addr) public override onlyGovernor {
-        // TODO: add event
         staking[_addr] = true;
         emit SetStakingContract(_addr);
     }
@@ -267,7 +266,6 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
         @param _index uint
      */
     function removeRecipient(uint256 _index) external override {
-        // TODO: add event
         require(
             msg.sender == authority.governor() || msg.sender == authority.guardian(),
             "Caller is not governor or guardian"
@@ -281,13 +279,11 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     }
 
     function setDiscountRateStaking(uint256 _index, int256 _drs) public override onlyPolicy {
-        // TODO: add event
         info[_index].drs = _drs;
         emit UpdateDRS(info[_index].recipient, _drs);
     }
 
     function setDiscountRateYield(uint256 _index, int256 _dys) public override onlyPolicy {
-        // TODO: add event
         info[_index].dys = _dys;
         emit UpdateDYS(info[_index].recipient, _dys);
     }
