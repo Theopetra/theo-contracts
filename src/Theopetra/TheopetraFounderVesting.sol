@@ -162,7 +162,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         }
 
         // expects valuation to be come back as fixed point with 9 decimals
-        uint256 currentPrice = IBondCalculator(theoBondingCalculator).valuation(address(THEO), 1);
+        uint256 currentPrice = IBondCalculator(theoBondingCalculator).valuation(address(THEO), 1_000_000_000);
         uint256 calculatedFdv = currentPrice.mul(THEO.totalSupply());
 
         if (calculatedFdv >= fdvTarget.mul(10**decimals())) {
