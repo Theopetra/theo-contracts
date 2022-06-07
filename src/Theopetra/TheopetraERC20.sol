@@ -26,6 +26,7 @@ contract TheopetraERC20Token is ERC20Permit, TheopetraAccessControlled {
 
     function setMintLimit(uint256 limit) public onlyGuardian {
         _mintLimit = limit;
+        emit UpdateMintLimit(limit);
     }
 
     /** @dev If `_initialSupply` is not zero, the amount to mint is
