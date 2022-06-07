@@ -42,8 +42,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
     mapping(address => bool) private bondDepos;
 
     event Stake(address user, uint256 amount, uint256 index);
+    event Unstake(address user, uint256 amount, uint256 index);
     event WarmupClaimed(address user, uint256 amount, uint256 index);
-    event Unstake(address user, uint256 amount);
     event DefinePenalty(uint256 band, uint256 amount);
     event LockBonusManaged(uint256 amount);
     event SetContract(CONTRACTS contractType, address addr);
@@ -304,6 +304,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     amount_ = amount_.add(stakingInfo[_to][_indexes[i]].deposit).sub(penalty);
                 }
             }
+
+            emit Unstake(_to, unstakeAmounts._amountSingle, _indexes[i]);
         }
 
         require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
