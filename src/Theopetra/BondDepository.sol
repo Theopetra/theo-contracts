@@ -364,7 +364,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * @param _id                   uint256 the ID of the bond market to update
      * @param _discountRateBond     uint64 the new Discount Rate Return Bond (Drb), 9 decimals
      */
-    function setDiscountRateBond(uint256 _id, int64 _discountRateBond) public override onlyPolicy {
+    function setDiscountRateBond(uint256 _id, int64 _discountRateBond) external override onlyPolicy {
         terms[_id].discountRateBond = _discountRateBond;
     }
 
@@ -373,7 +373,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * @param _id                   uint256 the ID of the bond market to update
      * @param _discountRateYield    uint64 the new Discount Rate Return Yield (Dyb), 9 decimals
      */
-    function setDiscountRateYield(uint256 _id, int64 _discountRateYield) public override onlyPolicy {
+    function setDiscountRateYield(uint256 _id, int64 _discountRateYield) external override onlyPolicy {
         terms[_id].discountRateYield = _discountRateYield;
     }
 
@@ -457,7 +457,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      * @param _id          ID of market
      * @return             current debt for market in THEO decimals
      */
-    function currentDebt(uint256 _id) public view override returns (uint256) {
+    function currentDebt(uint256 _id) external view override returns (uint256) {
         return markets[_id].totalDebt - debtDecay(_id);
     }
 

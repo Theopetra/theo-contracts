@@ -241,7 +241,7 @@ abstract contract NoteKeeper is INoteKeeper, FrontEndRewarder {
         discount_ = note.discount;
     }
 
-    function getNotesCount(address _user) public view returns (uint256) {
+    function getNotesCount(address _user) external view returns (uint256) {
         return notes[_user].length;
     }
 }

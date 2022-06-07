@@ -25,7 +25,7 @@ abstract contract ERC20Permit is ERC20, IERC2612Permit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public virtual override {
+    ) external virtual override {
         require(block.timestamp <= deadline, "Permit: expired deadline");
         uint256 chainID;
         assembly {
@@ -60,7 +60,7 @@ abstract contract ERC20Permit is ERC20, IERC2612Permit {
     /**
      * @dev See {IERC2612Permit-nonces}.
      */
-    function nonces(address owner) public view override returns (uint256) {
+    function nonces(address owner) external view override returns (uint256) {
         return _nonces[owner].current();
     }
 }
