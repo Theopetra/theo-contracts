@@ -36,16 +36,16 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
     mapping(uint256 => Adjust) public adjustments;
     uint256 public override bounty;
 
-    uint256 private immutable rateDenominator = 1_000_000_000;
+    uint256 private constant rateDenominator = 1_000_000_000;
 
     /**
         @dev    byte representation of 1095. See also `deriveRate`.
      */
-    bytes16 private immutable n = 0x400911c0000000000000000000000000;
+    bytes16 private constant n = 0x400911c0000000000000000000000000;
     /**
         @dev    byte representation of 1;
      */
-    bytes16 private one = 0x3fff0000000000000000000000000000;
+    bytes16 private constant one = 0x3fff0000000000000000000000000000;
 
     /* ====== STRUCTS ====== */
 

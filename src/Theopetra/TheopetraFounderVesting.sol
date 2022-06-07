@@ -46,7 +46,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     mapping(IERC20 => uint256) private erc20TotalReleased;
     mapping(IERC20 => mapping(address => uint256)) private erc20Released;
 
-    uint256 private deployTime = block.timestamp;
+    uint256 private immutable deployTime = block.timestamp;
     uint256[] private unlockTimes;
     uint256[] private unlockAmounts;
 
