@@ -384,7 +384,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @param _amount uint
      */
     function giveLockBonus(uint256 _amount) external {
-        require(msg.sender == locker);
+        require(msg.sender == locker, "Only the locker can give bonuses");
         totalBonus = totalBonus.add(_amount);
         IERC20(sTHEO).safeTransfer(locker, _amount);
     }
@@ -394,7 +394,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         @param _amount uint
      */
     function returnLockBonus(uint256 _amount) external {
-        require(msg.sender == locker);
+        require(msg.sender == locker, "Only the locker can return bonuses");
         totalBonus = totalBonus.sub(_amount);
         IERC20(sTHEO).safeTransferFrom(locker, address(this), _amount);
     }

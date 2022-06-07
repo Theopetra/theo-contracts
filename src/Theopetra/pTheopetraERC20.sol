@@ -62,8 +62,8 @@ contract pTheopetra is IStakedTHEOToken, ERC20Permit, TheopetraAccessControlled 
     }
 
     function initialize(address stakingContract_) external returns (bool) {
-        require(msg.sender == initializer);
-        require(stakingContract_ != address(0));
+        require(msg.sender == initializer, "UNAUTHORIZED");
+        require(stakingContract_ != address(0), "stakingContract cannot be the zero address");
         stakingContract = stakingContract_;
         _gonBalances[stakingContract] = TOTAL_GONS;
 
@@ -75,7 +75,7 @@ contract pTheopetra is IStakedTHEOToken, ERC20Permit, TheopetraAccessControlled 
     }
 
     function setIndex(uint256 _INDEX) external onlyGuardian returns (bool) {
-        require(INDEX == 0);
+        require(INDEX == 0, "Index already set");
         INDEX = gonsForBalance(_INDEX);
         return true;
     }

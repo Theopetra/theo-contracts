@@ -421,7 +421,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         address _address,
         address _calculator
     ) external onlyGovernor {
-        require(_address != address(0));
+        require(_address != address(0), "Address cannot be the zero address");
         require(timelockEnabled == true, "Timelock is disabled, use enable");
 
         uint256 timelock = block.number.add(blocksNeededForQueue);
