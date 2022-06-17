@@ -51,7 +51,7 @@ contract TwapGetter is IBondCalculator {
         secondsAgo = _secondsAgo;
     }
 
-    function valuation(address tokenIn, uint256 _amount) external view override returns (uint256 amountOut) {
+    function valuation(address tokenIn, uint256 _amount) external view override returns (uint256) {
         address tokenOut = tokenIn == theo ? performanceToken : theo;
 
         address _pool = IUniswapV3Factory(factory).getPool(tokenIn, tokenOut, fee);

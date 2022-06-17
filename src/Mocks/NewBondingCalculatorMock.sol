@@ -54,7 +54,6 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
         if (tokenIn == theo) {
             if (msg.sender == founderVesting) {
                 uint8 performanceTokenDecimals = IERC20Metadata(performanceToken).decimals();
-                console.log('HITTING VALUATION>>>>>>>>>>', performanceTokenDecimals, performanceTokenAmount);
                 return scaleAmountOut(performanceTokenAmount, performanceTokenDecimals);
             }
             return performanceTokenAmount;
