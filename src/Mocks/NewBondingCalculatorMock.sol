@@ -29,7 +29,7 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
     }
 
     /**
-     * @dev when tokenIn is theo, valuation is being used for the Treasury (`tokenPerformanceUpdate`)
+     * @dev when tokenIn is theo, valuation is being used for the Treasury (`tokenPerformanceUpdate`) or for Founder Vesting (in `getFdvFactor`)
      *      when tokenIn is WETH or USDC (aka, a 'quote token'), valuation is being used for the Bond Depository (`marketPrice`)
      *      If tokenIn is WETH (or USDC), the method returns the number of THEO expected per `_amount` of WETH (or USDC)
      *      where the number of THEO per quote token is calculated based on the following mock dollar prices:
@@ -39,6 +39,9 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
      *      THEO per WETH is 2000 / 0.01 (i.e., 200000)
      *      THEO per USDC is 1 / 0.01 (i.e. 100)
      *      THEO is 9 decimals, WETH is 18 decimals, USDC is 6 decimals
+     *
+     *      If tokenIn is THEO, the method will return the performanceTokenAmount, where performanceTokenAmount should have a value with
+     *      the correct number of decimals expected for the performance token; for example, USDC would have 6 decimals
      */
     function valuation(address tokenIn, uint256 _amount) external view override returns (uint256) {
         if (tokenIn == theo) {
@@ -50,6 +53,10 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
         }
     }
 
+    /**
+     * @dev The value for performanceTokenAmount should be set with the number of decimals expected for the specific
+     *      performance token, as desired; for example, if the performance token is expected to be USDC, performanceTokenAmount should use 6 decimals
+     */
     function setPerformanceTokenAmount(uint256 _amount) public onlyGovernor {
         performanceTokenAmount = _amount;
     }
