@@ -12,6 +12,7 @@ const setup = deployments.createFixture(async () => {
     TheopetraERC20Token: await ethers.getContract(CONTRACTS.theoToken),
     Weth: await ethers.getContract(MOCKS.WETH9),
     UsdcTokenMock: await ethers.getContract(MOCKS.usdcTokenMock),
+    FounderVesting: await ethers.getContract(CONTRACTS.founderVesting),
   };
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
   return {
@@ -24,12 +25,14 @@ const setup = deployments.createFixture(async () => {
 describe('NewBondingCalculatorMock', function () {
   describe('deployment', function () {
     it('can be deployed', async function () {
-      await setup();
+      const { NewBondingCalculatorMock, FounderVesting, UsdcTokenMock} = await setup();
+      expect((await NewBondingCalculatorMock.founderVesting()).toString()).to.equal(FounderVesting.address);
+      expect((await NewBondingCalculatorMock.performanceToken()).toString()).to.equal(UsdcTokenMock.address);
     });
   });
 
   describe('valuation', function () {
-    it('can return the valuation for the performance token (for use in Treasury, via `tokenPerformanceUpdate`)', async function () {
+    it('can return the valuation for the performance token for use in Treasury, via `tokenPerformanceUpdate`', async function () {
       const { NewBondingCalculatorMock, TheopetraERC20Token } = await setup();
 
       // Set initial value for performance token
@@ -38,6 +41,18 @@ describe('NewBondingCalculatorMock', function () {
 
       const initialPrice = await NewBondingCalculatorMock.valuation(TheopetraERC20Token.address, 1_000_000_000);
       expect(initialPrice.toNumber()).to.equal(initialPerformanceTokenAmount);
+    });
+
+    it('can return the valuation for the performance token for use in Founder Vesting', async function () {
+      const { NewBondingCalculatorMock, TheopetraERC20Token, FounderVesting } = await setup();
+
+      // Set initial value for performance token
+      const initialPerformanceTokenAmount = 1000000; // Equivalent to 1 USDC, 6 decimals
+      await NewBondingCalculatorMock.setPerformanceTokenAmount(initialPerformanceTokenAmount);
+
+      const initialPrice = await (NewBondingCalculatorMock).connect(FounderVesting.address).valuation(TheopetraERC20Token.address, 1_000_000_000);
+      const expectedScalingFactor = 10**(9-6) // 9 Decimals for THEO, 6 for performanceToken (because in this case we are using USDC as performanceToken)
+      expect(initialPrice.toNumber()).to.equal(initialPerformanceTokenAmount*expectedScalingFactor);
     });
 
     it('can return the valuation for THEO when the quote token is WETH (for use in bond depo, via `marketPrice`)', async function () {

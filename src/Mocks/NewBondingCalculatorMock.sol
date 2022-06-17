@@ -19,13 +19,20 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
     uint256 public performanceTokenAmount;
     address public weth;
     address public usdc;
+    address public immutable founderVesting;
+    address public immutable performanceToken;
     uint256 public timePerformanceTokenLastUpdated;
+    uint8 private constant DECIMALS = 9;
 
     constructor(
         address _theo,
-        address _authority
+        address _authority,
+        address _performanceToken,
+        address _founderVesting
     ) TheopetraAccessControlled(ITheopetraAuthority(_authority)) {
         theo = _theo;
+        performanceToken = _performanceToken;
+        founderVesting = _founderVesting;
     }
 
     /**
@@ -45,6 +52,11 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
      */
     function valuation(address tokenIn, uint256 _amount) external view override returns (uint256) {
         if (tokenIn == theo) {
+            if (msg.sender == founderVesting) {
+                uint8 performanceTokenDecimals = IERC20Metadata(performanceToken).decimals();
+                console.log('HITTING VALUATION>>>>>>>>>>', performanceTokenDecimals, performanceTokenAmount);
+                return scaleAmountOut(performanceTokenAmount, performanceTokenDecimals);
+            }
             return performanceTokenAmount;
         } else if (tokenIn == weth) {
             return (_amount * (200000 * 10**9)) / 10**18;
@@ -74,7 +86,22 @@ contract NewBondingCalculatorMock is IBondCalculator, TheopetraAccessControlled 
      * @dev                 use to update the Token ROI (deltaTokenPrice) by the specified percentage
      */
     function updatePerformanceTokenAmount(int256 _percentageChange) public onlyGovernor {
-        performanceTokenAmount = ((performanceTokenAmount).toInt256() + ((performanceTokenAmount).toInt256() * _percentageChange / 100)).toUint256();
+        performanceTokenAmount = ((performanceTokenAmount).toInt256() +
+            (((performanceTokenAmount).toInt256() * _percentageChange) / 100)).toUint256();
         timePerformanceTokenLastUpdated = block.timestamp;
+    }
+
+    /**
+     * @notice For calls to `valuation` from the Founder Vesting contract, scale the amountOut (performanceToken per THEO) to be in THEO decimals (9)
+     * @param _amountOut        performanceToken amount (per THEO) from Uniswap TWAP, with performanceToken decimals
+     * @param _performanceTokenDecimals    decimals used for the performance token
+     */
+    function scaleAmountOut(uint256 _amountOut, uint8 _performanceTokenDecimals) internal pure returns (uint256) {
+        if (_performanceTokenDecimals < DECIMALS) {
+            return _amountOut * 10**uint256(DECIMALS - _performanceTokenDecimals);
+        } else if (_performanceTokenDecimals > DECIMALS) {
+            return _amountOut / 10**uint256(_performanceTokenDecimals - DECIMALS);
+        }
+        return _amountOut;
     }
 }
