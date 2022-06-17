@@ -89,6 +89,10 @@ interface IBondDepository {
 
     function liveMarketsFor(address _quoteToken) external view returns (uint256[] memory);
 
+    function getMarkets() external view returns (uint256[] memory);
+
+    function getMarketsFor(address _quoteToken) external view returns (uint256[] memory);
+
     function payoutFor(uint256 _amount, uint256 _bid) external view returns (uint256);
 
     function marketPrice(uint256 _bid) external view returns (uint256);
