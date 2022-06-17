@@ -438,7 +438,7 @@ describe('Theopetra Founder Vesting', function () {
         'TheopetraFounderVesting: No bonding calculator'
       );
     });
-    it.only('to equal 1 (9 decimals) if the FDV target is hit', async function () {
+    it('to equal 1 (9 decimals) if the FDV target is hit', async function () {
       const expectedFdvFactor = 1_000_000_000;
       const NewBondingCalculatorMock = await ethers.getContract('NewBondingCalculatorMock');
       await TheopetraTreasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
