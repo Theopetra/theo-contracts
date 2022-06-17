@@ -448,7 +448,7 @@ describe('Theopetra Founder Vesting', function () {
 
       expect(fdvFactor).to.equal(expectedFdvFactor);
     });
-    it.only('to equal proportional value (9 decimals) if the FDV target is not hit', async function () {
+    it('to equal proportional value (9 decimals) if the FDV target is not hit', async function () {
       const initialBalance = await TheopetraERC20Token.totalSupply();
       const expectedScalingFactor = 10**(9-6) // 9 Decimals for THEO, 6 for performanceToken (because in this case we are using USDC as performanceToken in mock bonding calculator)
       const testValuationValue = ethers.BigNumber.from(FDVTARGET)
@@ -456,15 +456,14 @@ describe('Theopetra Founder Vesting', function () {
         .div(initialBalance)
         .sub(10_000);
       const scaledTestValuationMethod = testValuationValue.div(expectedScalingFactor);
-      const expectedFdvFactor = scaledTestValuationMethod.mul(initialBalance).div(FDVTARGET);
-      // TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
-      // BondingCalculatorMock.setValuation(testValuationValue);
+
+      const expectedFdvFactor = scaledTestValuationMethod.mul(expectedScalingFactor).mul(initialBalance).div(FDVTARGET);
+
       const NewBondingCalculatorMock = await ethers.getContract('NewBondingCalculatorMock');
       await TheopetraTreasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
       await NewBondingCalculatorMock.setPerformanceTokenAmount(scaledTestValuationMethod);
 
       const fdvFactor = await TheopetraFounderVesting.getFdvFactor();
-      console.log('THIS FDV FACTOR', fdvFactor.toString(), expectedFdvFactor.toString());
 
       expect(fdvFactor).to.equal(expectedFdvFactor);
     });
