@@ -7,6 +7,7 @@ interface IFounderVesting {
     event PayeeAdded(address account, uint256 shares);
     event ERC20PaymentReleased(IERC20 indexed token, address to, uint256 amount);
     event PaymentReceived(address from, uint256 amount);
+    event InitialMint(uint256 amount);
 
     function getTotalShares() external view returns (uint256);
 

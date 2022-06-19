@@ -138,7 +138,7 @@ describe('TheopetraERC20', function () {
       expect(newVaultBalance).to.equal(ethers.BigNumber.from(104));
     });
 
-    it('if initial supply is not zero, it should limit minting of new tokens to be at most 5% of initial supply', async function () {
+    it('if initial supply is not zero, it should limit minting of new tokens to not exceed initial supply by default', async function () {
       const [, vault] = users;
       const initialAmountToMint = 100;
 
@@ -147,12 +147,12 @@ describe('TheopetraERC20', function () {
 
       expect(vaultBalance).to.equal(ethers.BigNumber.from(100));
       await vault.TheopetraERC20Token.mint(vault.address, 150);
-      expect(await TheopetraERC20Token.totalSupply()).to.equal(105);
+      expect(await TheopetraERC20Token.totalSupply()).to.equal(200);
 
       await vault.TheopetraERC20Token.mint(vault.address, 150);
-      expect(await TheopetraERC20Token.totalSupply()).to.equal(110);
+      expect(await TheopetraERC20Token.totalSupply()).to.equal(300);
       const newVaultBalance = await TheopetraERC20Token.balanceOf(vault.address);
-      expect(newVaultBalance).to.equal(ethers.BigNumber.from(110));
+      expect(newVaultBalance).to.equal(ethers.BigNumber.from(300));
     });
   });
 

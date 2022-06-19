@@ -41,6 +41,17 @@ contract TheopetraStaking is TheopetraAccessControlled {
     mapping(uint256 => uint256) penaltyBands;
     mapping(address => bool) private bondDepos;
 
+    event Stake(address user, uint256 amount, uint256 index);
+    event Unstake(address user, uint256 amount, uint256 index);
+    event WarmupClaimed(address user, uint256 amount, uint256 index);
+    event DefinePenalty(uint256 band, uint256 amount);
+    event LockBonusManaged(uint256 amount);
+    event SetContract(CONTRACTS contractType, address addr);
+    event SetWarmup(uint256 period);
+    event SetBondDepo(address depoAddress, bool isDepo);
+    event PullClaim(address from, uint256 index);
+    event PushClaim(address to, uint256 index);
+
     /* ====== STRUCTS ====== */
 
     struct Epoch {
@@ -128,6 +139,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     gonsRemaining: IStakedTHEOToken(sTHEO).gonsForBalance(_amount)
                 })
             );
+
             _send(_recipient, _amount);
         } else {
             gonsInWarmup = gonsInWarmup.add(IStakedTHEOToken(sTHEO).gonsForBalance(_amount));
@@ -142,6 +154,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
             );
         }
 
+        emit Stake(msg.sender, _amount, _index);
         return (_amount, _index);
     }
 
@@ -170,6 +183,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     uint256 balanceForGons = IStakedTHEOToken(sTHEO).balanceForGons(info.gonsInWarmup);
                     stakingInfo[_recipient][_indexes[i]].gonsRemaining = info.gonsInWarmup;
                     amount_ = amount_.add(balanceForGons);
+
+                    emit WarmupClaimed(_recipient, balanceForGons, _indexes[i]);
                 }
             }
         }
@@ -289,6 +304,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
                     amount_ = amount_.add(stakingInfo[_to][_indexes[i]].deposit).sub(penalty);
                 }
             }
+
+            emit Unstake(_to, unstakeAmounts._amountSingle, _indexes[i]);
         }
 
         require(amount_ <= ITHEO(THEO).balanceOf(address(this)), "Insufficient THEO balance in contract");
@@ -323,6 +340,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
 
     function _definePenalty(uint256 _percentBandMax, uint256 _penalty) private {
         penaltyBands[_percentBandMax] = _penalty;
+        emit DefinePenalty(_percentBandMax, _penalty);
     }
 
     function ceil(uint256 a, uint256 m) private view returns (uint256) {
@@ -387,6 +405,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         require(msg.sender == locker, "Only the locker can give bonuses");
         totalBonus = totalBonus.add(_amount);
         IERC20(sTHEO).safeTransfer(locker, _amount);
+        emit LockBonusManaged(-_amount);
     }
 
     /**
@@ -397,6 +416,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         require(msg.sender == locker, "Only the locker can return bonuses");
         totalBonus = totalBonus.sub(_amount);
         IERC20(sTHEO).safeTransferFrom(locker, address(this), _amount);
+        emit LockBonusManaged(_amount);
     }
 
     enum CONTRACTS {
@@ -424,6 +444,8 @@ contract TheopetraStaking is TheopetraAccessControlled {
             require(locker == address(0), "Locker cannot be set more than once");
             locker = _address;
         }
+
+        emit SetContract(_contract, _address);
     }
 
     /**
@@ -432,6 +454,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
      */
     function setWarmup(uint256 _warmupPeriod) external onlyGuardian {
         warmupPeriod = _warmupPeriod;
+        emit SetWarmup(_warmupPeriod);
     }
 
     /**
@@ -441,6 +464,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
      */
     function setBondDepo(address _bondDepo, bool val) external onlyGovernor {
         bondDepos[_bondDepo] = val;
+        emit SetBondDepo(_bondDepo, val);
     }
 
     /* ========== INTERNAL FUNCTIONS ========== */
@@ -483,6 +507,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         stakingInfo[msg.sender].push(stakingInfo[_from][_index]);
 
         delete stakingInfo[_from][_index];
+        emit PullClaim(_from, _index);
     }
 
     /**
@@ -502,6 +527,7 @@ contract TheopetraStaking is TheopetraAccessControlled {
         stakingInfo[_to].push(stakingInfo[msg.sender][_index]);
 
         delete stakingInfo[msg.sender][_index];
+        emit PushClaim(_to, _index);
     }
 
     /* ========== VIEW FUNCTIONS ========== */
@@ -580,9 +606,12 @@ contract TheopetraStaking is TheopetraAccessControlled {
      * @param _user             the user that the claim belongs to
      * @param _index            the index of the claim in the user's array
      * @return currentRewards_  the current total rewards expected for a claim (valid only for claims out of warmup),
-                                calculated as: (sTHEO remaining + slashedRewards) - deposit amount
-                                note that currentRewards_ does not include any potential bounty or additional sTheo balance that
-                                may be applied if rebasing when unstaking
+     *                          calculated as: (sTHEO remaining + slashedRewards) - deposit amount
+     *                          note that currentRewards_ does not include any potential bounty or additional sTheo balance that
+     *                          may be applied if rebasing when unstaking. This function may revert or return a wrong value if a user
+     *                          has un-staked some of their stake to let the current remaining balance be less than claim.deposit.
+     *                          This can only happen if the user has un-staked directly with the contracts, instead of using the UI.
+     *                          This also does not affect any rewards that may be applied to the claim if it is redeemed.
      */
     function rewardsFor(address _user, uint256 _index) external view returns (uint256 currentRewards_) {
         Claim memory claim = stakingInfo[_user][_index];

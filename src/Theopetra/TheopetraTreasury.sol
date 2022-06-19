@@ -36,6 +36,9 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
     event Minted(address indexed caller, address indexed recipient, uint256 amount);
     event PermissionQueued(STATUS indexed status, address queued);
     event Permissioned(address addr, STATUS indexed status, bool result);
+    event BondCalculatorUpdated(address addr);
+    event DebtLimitUpdated(address addr, uint256 limit);
+    event TimelockUpdated(bool enabled);
 
     /* ========== DATA STRUCTURES ========== */
 
@@ -290,6 +293,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      */
     function setTheoBondingCalculator(address _theoBondingCalculator) external override onlyGuardian {
         theoBondingCalculator = IBondCalculator(_theoBondingCalculator);
+        emit BondCalculatorUpdated(_theoBondingCalculator);
     }
 
     /* ========== MANAGERIAL FUNCTIONS ========== */
@@ -325,6 +329,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      */
     function setDebtLimit(address _address, uint256 _limit) external onlyGovernor {
         debtLimit[_address] = _limit;
+        emit DebtLimitUpdated(_address, _limit);
     }
 
     /**
@@ -492,6 +497,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
      */
     function nullify(uint256 _index) external onlyGovernor {
         permissionQueue[_index].nullify = true;
+        emit Permissioned(permissionQueue[_index].toPermit, permissionQueue[_index].managing, false);
     }
 
     /**
@@ -501,6 +507,7 @@ contract TheopetraTreasury is TheopetraAccessControlled, ITreasury {
         require(timelockEnabled == true, "timelock already disabled");
         if (onChainGovernanceTimelock != 0 && onChainGovernanceTimelock <= block.number) {
             timelockEnabled = false;
+            TimelockUpdated(false);
         } else {
             onChainGovernanceTimelock = block.number.add(blocksNeededForQueue.mul(7)); // 7-day timelock
         }

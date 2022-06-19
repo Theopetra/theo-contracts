@@ -13,8 +13,11 @@ abstract contract Signed is TheopetraAccessControlled {
 
     string private _secret;
 
+    event SetSecret(string secret);
+
     function setSecret(string calldata secret) external onlyGovernor {
         _secret = secret;
+        emit SetSecret(secret);
     }
 
     function createHash(string memory data) internal view returns (bytes32) {

@@ -104,6 +104,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         // mint tokens for the initial shares
         uint256 tokensToMint = totalShares.mul(THEO.totalSupply()).div(10**decimals() - totalShares);
         treasury.mint(address(this), tokensToMint);
+        emit InitialMint(tokensToMint);
     }
 
     /**
@@ -161,7 +162,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         }
 
         // expects valuation to be come back as fixed point with 9 decimals
-        uint256 currentPrice = IBondCalculator(theoBondingCalculator).valuation(address(THEO), 1);
+        uint256 currentPrice = IBondCalculator(theoBondingCalculator).valuation(address(THEO), 1_000_000_000);
         uint256 calculatedFdv = currentPrice.mul(THEO.totalSupply());
 
         if (calculatedFdv >= fdvTarget.mul(10**decimals())) {

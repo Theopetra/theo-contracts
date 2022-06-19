@@ -29,6 +29,8 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
     event CreateMarket(uint256 indexed id, address indexed baseToken, address indexed quoteToken, uint256 initialPrice);
     event CloseMarket(uint256 indexed id);
     event Bond(uint256 indexed id, uint256 amount, uint256 price);
+    event SetDYB(uint256 indexed id, int64 dYB);
+    event SetDRB(uint256 indexed id, int64 dRB);
 
     /* ======== STATE VARIABLES ======== */
 
@@ -366,6 +368,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      */
     function setDiscountRateBond(uint256 _id, int64 _discountRateBond) external override onlyPolicy {
         terms[_id].discountRateBond = _discountRateBond;
+        emit SetDRB(_id, _discountRateBond);
     }
 
     /**
@@ -375,6 +378,7 @@ contract TheopetraBondDepository is IBondDepository, NoteKeeper {
      */
     function setDiscountRateYield(uint256 _id, int64 _discountRateYield) external override onlyPolicy {
         terms[_id].discountRateYield = _discountRateYield;
+        emit SetDYB(_id, _discountRateYield);
     }
 
     /**

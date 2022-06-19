@@ -14,6 +14,7 @@ abstract contract FrontEndRewarder is TheopetraAccessControlled {
 
     IERC20 internal immutable theo; // reward token
 
+    event SetRewards(uint256 toRef, uint256 toDao);
     constructor(ITheopetraAuthority _authority, IERC20 _theo) TheopetraAccessControlled(_authority) {
         theo = _theo;
     }
@@ -55,6 +56,8 @@ abstract contract FrontEndRewarder is TheopetraAccessControlled {
     function setRewards(uint256 _toFrontEnd, uint256 _toDAO) external onlyGovernor {
         refReward = _toFrontEnd;
         daoReward = _toDAO;
+
+        emit SetRewards(_toFrontEnd, _toDAO);
     }
 
     /**
