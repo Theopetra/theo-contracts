@@ -38,4 +38,3 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
 export default func;
 func.tags = [CONTRACTS.WethHelper];
-func.dependencies = [CONTRACTS.bondDepo];
