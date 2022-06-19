@@ -13,6 +13,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
     const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
     const Treasury = await deployments.get(CONTRACTS.treasury);
+    const StakingUnlocked = await deployments.get(CONTRACTS.staking);
 
     // Deploy pTHEO
     await deploy(CONTRACTS.pTheo, {
@@ -21,17 +22,14 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       args: [TheopetraAuthority.address],
     });
 
-    const pTheopetraERC20 = await deployments.get(CONTRACTS.pTheo);
-    console.log('DEPLOYED pTHEO at🌈', pTheopetraERC20);
     // Deploy Locked Staking Tranche
-    // staking term is seconds in a year
-    const stakingTerm = 31536000;
+    const stakingTerm = 31536000; // staking term is seconds in a year
     const epochLength = 8 * 60 * 60;
     const firstEpochNumber = '1';
     const currentBlock = await ethers.provider.send('eth_blockNumber', []);
     const blockTimestamp = (await ethers.provider.getBlock(currentBlock)).timestamp;
     const firstEpochTime = blockTimestamp + epochLength;
-
+    const pTheopetraERC20 = await deployments.get(CONTRACTS.pTheo);
     const lockedStakingArgs = [
       TheopetraERC20Token.address,
       pTheopetraERC20.address,
@@ -43,9 +41,31 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       Treasury.address,
     ];
 
+    await deploy(CONTRACTS.stakingLocked, {
+      from: deployer,
+      log: true,
+      contract: 'TheopetraStaking', // Name of artifact
+      args: lockedStakingArgs,
+    });
 
 
-    console.log('Deployed Group 3: Locked Staking Tranche, pTHEO, Staking Distributor ✅');
+    // Deploy Staking Distributor
+    const distributorEpochLength = 60 * 60 * 24 * 365;
+    const distributorArgs = [
+      Treasury.address,
+      TheopetraERC20Token.address,
+      distributorEpochLength,
+      TheopetraAuthority.address,
+      StakingUnlocked.address,
+    ];
+
+    await deploy(CONTRACTS.distributor, {
+      from: deployer,
+      log: true,
+      args: distributorArgs,
+    });
+
+    console.log('Deployed Group 3: pTHEO, Locked Staking Tranche, Staking Distributor ✅');
   } catch (error) {
     console.log(error);
   }
