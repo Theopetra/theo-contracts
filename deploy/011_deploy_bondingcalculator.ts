@@ -8,11 +8,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deploy } = deployments;
     const chainId = await getChainId();
     const { deployer } = await getNamedAccounts();
+    const founderVesting = await deployments.get(CONTRACTS.founderVesting);
     const factoryAddress = '0x1F98431c8aD98523631AE4a59f267346ea31F984'; // UniswapV3Factory address
     let theoAddress;
     let performanceTokenAddress;
     let secondsAgo;
     let fee;
+
 
     // On Hardhat or Rinkeby network
     if (chainId === '1337' || chainId === '4') {
@@ -24,7 +26,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       // TODO: Add arguments for use on mainnet
     }
 
-    const args = [factoryAddress, theoAddress, performanceTokenAddress, fee, secondsAgo];
+    const args = [factoryAddress, theoAddress, performanceTokenAddress, founderVesting.address, fee, secondsAgo];
 
     await deploy(CONTRACTS.twapGetter, {
       from: deployer,
