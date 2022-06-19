@@ -113,6 +113,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     } else if (chainId === '4') {
       // Rinkeby network WETH address
       wethHelperArgs.unshift('0xc778417E063141139Fce010982780140Aa0cD5Ab');
+    } else if (chainId === '3') {
+      // Ropsten network WETH address
+      wethHelperArgs.unshift('0xc778417E063141139Fce010982780140Aa0cD5Ab');
     } else if (chainId === '1') {
       // Mainnet WETH address
       wethHelperArgs.unshift('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
