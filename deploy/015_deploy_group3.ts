@@ -48,7 +48,6 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       args: lockedStakingArgs,
     });
 
-
     // Deploy Staking Distributor
     const distributorEpochLength = 60 * 60 * 24 * 365;
     const distributorArgs = [

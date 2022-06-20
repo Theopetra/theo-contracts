@@ -15,7 +15,6 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     const TheopetraAuthority = await deployments.get(CONTRACTS.authority);
     const Treasury = await deployments.get(CONTRACTS.treasury);
     const TheopetraERC20Token = await deployments.get(CONTRACTS.theoToken);
-    const sTheoToken = await deployments.get(CONTRACTS.sTheo);
     const FounderVesting = await deployments.get(CONTRACTS.founderVesting);
     // Deploy sTHEO
     await deploy(CONTRACTS.sTheo, {
@@ -24,6 +23,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       args: [TheopetraAuthority.address],
     });
 
+    const sTheoToken = await deployments.get(CONTRACTS.sTheo);
     // Deploy Unlocked Staking Tranche
     const stakingTerm = 0;
     const epochLength = 8 * 60 * 60;
@@ -49,39 +49,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       args: stakingArgs,
     });
 
-    // Deploy Whitelist Bond Depository
     const Staking = await deployments.get(CONTRACTS.staking);
-
-    const whitelistBondDepoArgs = [
-      TheopetraAuthority.address,
-      TheopetraERC20Token.address,
-      sTheoToken.address,
-      Staking.address,
-      Treasury.address,
-    ];
-
-    await deploy(CONTRACTS.whitelistBondDepo, {
-      from: deployer,
-      log: true,
-      args: whitelistBondDepoArgs,
-    });
-
-    // Deploy Public Pre-List Bond Depository
-    const publicPreListArgs = [
-      TheopetraAuthority.address,
-      TheopetraERC20Token.address,
-      sTheoToken.address,
-      Staking.address,
-      Treasury.address,
-    ];
-
-    await deploy(CONTRACTS.publicPreListBondDepo, {
-      from: deployer,
-      log: true,
-      args: publicPreListArgs,
-    });
-
-    // Deploy Public Bond Depository
     const bondDepoArgs = [
       TheopetraAuthority.address,
       TheopetraERC20Token.address,
@@ -89,7 +57,21 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       Staking.address,
       Treasury.address,
     ];
+    // Deploy Whitelist Bond Depository
+    await deploy(CONTRACTS.whitelistBondDepo, {
+      from: deployer,
+      log: true,
+      args: bondDepoArgs,
+    });
 
+    // Deploy Public Pre-List Bond Depository
+    await deploy(CONTRACTS.publicPreListBondDepo, {
+      from: deployer,
+      log: true,
+      args: bondDepoArgs,
+    });
+
+    // Deploy Public Bond Depository
     await deploy(CONTRACTS.bondDepo, {
       from: deployer,
       log: true,
@@ -106,21 +88,27 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       WhitelistTheopetraBondDepository.address,
     ];
 
-    // Add WETH address, depending on network
+    // Add WETH address (for WETH Helper) and performanceTokenAddress (for Mock Bonding Calculator), depending on network
+    let performanceTokenAddress: any;
     if (chainId === '1337') {
       const { WETH9 } = await getNamedMockAddresses(hre);
       wethHelperArgs.unshift(WETH9);
+      performanceTokenAddress = (await deployments.get(MOCKS.usdcTokenMock))?.address;
     } else if (chainId === '4') {
       // Rinkeby network WETH address
       wethHelperArgs.unshift('0xc778417E063141139Fce010982780140Aa0cD5Ab');
+      performanceTokenAddress = '0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b'; // Rinkeby USDC token address
     } else if (chainId === '3') {
       // Ropsten network WETH address
       wethHelperArgs.unshift('0xc778417E063141139Fce010982780140Aa0cD5Ab');
+      performanceTokenAddress = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F'; // Ropsten USDC token address
     } else if (chainId === '1') {
       // Mainnet WETH address
       wethHelperArgs.unshift('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
+      performanceTokenAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'; // Mainnet USDC token address
     }
 
+    // Deploy WETH Helper
     await deploy(CONTRACTS.WethHelper, {
       from: deployer,
       log: true,
@@ -128,22 +116,12 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     });
 
     // Deploy Mock Bonding Calculator
-    let performanceTokenAddress: any;
-    if (chainId === '1337') {
-      performanceTokenAddress = (await deployments.get(MOCKS.usdcTokenMock))?.address;
-    } else if (chainId === '4') {
-      performanceTokenAddress = '0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b'; // Rinkeby USDC token address
-    } else if (chainId === '3') {
-      performanceTokenAddress = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F'; // Ropsten USDC token address
-    }
-
     const mockBondingCalculatorArgs = [
       TheopetraERC20Token.address,
       TheopetraAuthority.address,
       performanceTokenAddress,
       FounderVesting.address,
     ];
-
     await deploy('NewBondingCalculatorMock', {
       from: deployer,
       log: true,
