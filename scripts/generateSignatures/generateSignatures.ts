@@ -1,5 +1,6 @@
+import hre from 'hardhat';
 import { ethers } from 'hardhat';
-import { SignerHelper__factory } from '../../typechain-types';
+import { SignerHelper__factory} from '../../typechain-types';
 import fs from 'fs';
 import * as path from 'path';
 
@@ -27,6 +28,7 @@ const WL_ADDRESSES: string[] = [
 ];
 
 async function generateSignatures() {
+  const networkName = hre.network.name;
   const WL_CONTRACT_ADDRESS = loadEnvVar('WL_CONTRACT_ADDRESS');
   const WETH_HELPER_CONTRACT_ADDRESS = loadEnvVar('WETH_HELPER_CONTRACT_ADDRESS');
 
@@ -56,10 +58,10 @@ async function generateSignatures() {
     WETHHELPERSIGNED.push({ address, wethHelperSignature });
   }
   if (WLSIGNED.length > 0)
-    fs.writeFileSync(path.resolve(__dirname, './wl-bonddepo-signed-messages.json'), JSON.stringify(WLSIGNED));
+    fs.writeFileSync(path.resolve(__dirname, `./wl-bonddepo-signed-messages-${networkName}.json`), JSON.stringify(WLSIGNED));
 
   if (WETHHELPERSIGNED.length > 0)
-    fs.writeFileSync(path.resolve(__dirname, './weth-helper-signed-messages.json'), JSON.stringify(WETHHELPERSIGNED));
+    fs.writeFileSync(path.resolve(__dirname, `./weth-helper-signed-messages-${networkName}.json`), JSON.stringify(WETHHELPERSIGNED));
 }
 
 generateSignatures()
