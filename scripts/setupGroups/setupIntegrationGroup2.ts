@@ -10,6 +10,7 @@ import {
   TheopetraBondDepository,
   WhitelistTheopetraBondDepository,
   PublicPreListBondDepository,
+  WethHelper,
 } from '../../typechain-types';
 import { CONTRACTS } from '../../utils/constants';
 import { waitFor } from '../../test/utils';
@@ -25,6 +26,7 @@ const setupIntegrationGroup2 = async () => {
     await ethers.getContract(CONTRACTS.whitelistBondDepo)
   );
   const PublicPreListBondDepo = <PublicPreListBondDepository>await ethers.getContract(CONTRACTS.publicPreListBondDepo);
+  const WethHelper = <WethHelper>await ethers.getContract(CONTRACTS.WethHelper);
 
   await waitFor(sTheo.initialize(Staking.address, Treasury.address)); // Initialize sTHEO
   console.log('sTHEO initialzied, with Treasury address >>>>', await sTheo.treasury());
@@ -43,23 +45,11 @@ const setupIntegrationGroup2 = async () => {
   const response  = await waitFor(Staking.setBondDepo(BondDepository.address, true)); // Set address of bond depo in staking, to allow bond depo to push claims to user when they redeem a note that has been autostaked
   console.log('Bond Depo set on Staking >>>>', response);
 
-  /* ======== Setup for `Treasury.mint` (when `TheopetraBondDepository.deposit` is called) ======== */
+  const setSecretResponseWhitelistBondDepo = await waitFor(WhitelistBondDepository.setSecret(`${process.env.WHITELIST_SECRET}`));
+  console.log('Events from setting secret >>>>>>', setSecretResponseWhitelistBondDepo);
 
-  // await waitFor(pTheo.connect(owner).initialize(StakingLocked.address)); // Initialize pTHEO
-
-  // /* ======== Setup for `Treasury.mint` (when `mint` is called on Treasury from StakingDistributor) ======== */
-  // await waitFor(Treasury.connect(owner).enable(8, Distributor.address, addressZero)); // Set Distributor as reward manager in Treasury (to allow call to mint from Distributor when Rebasing)
-
-  // /* ======== Setup for `Treasury.mint` (when `mint` is called on Treasury from StakingDistributor) ======== */
-  // await waitFor(Treasury.connect(owner).enable(8, Distributor.address, addressZero)); // Set Distributor as reward manager in Treasury (to allow call to mint from Distributor when Rebasing)
-
-  // /* ======== Distributor and Staking setup  ======== */
-  // // Set Distributor on Staking (unlocked) and StakingLocked contracts
-  // await waitFor(Staking.setContract(0, Distributor.address));
-  // await waitFor(StakingLocked.setContract(0, Distributor.address));
-  // // Set staking contracts on Distributor
-  // await waitFor(Distributor.setStaking(Staking.address));
-  // await waitFor(Distributor.setStaking(StakingLocked.address));
+  const setSecretResponseWethHelper = await waitFor(WethHelper.setSecret(`${process.env.WHITELIST_SECRET}`));
+  console.log('Events from setting secret >>>>>>', setSecretResponseWethHelper);
 
   console.log('Set-up for Group 2 done ✅');
 };
