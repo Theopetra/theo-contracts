@@ -135,7 +135,7 @@ For more information about the method arguments used above, please see the test 
 
 #### Signing
 
-Addresses for whitelisting should be hashed using SignerHelper -- A script can be used for this purpose, to itterate over addresses and, in a similar way to that shown below, to create hashes that can then be signed by the `whitelistSigner` as set within `TheopetraAuthority` (when initially deployed, the `whitelistSigner` is the governor):
+Addresses for whitelisting should be hashed using SignerHelper -- A script (scripts/generateSignatures/generateSignatures.ts) is used for this purpose, to itterate over addresses and, in a similar way to that shown below, to create hashes that can then be signed by the `whitelistSigner` as set within `TheopetraAuthority` (when initially deployed, the `whitelistSigner` is the governor):
 
 ```
 async function setupForDeposit() {
@@ -162,6 +162,8 @@ async function setupForDeposit() {
 ```
 
 Further examples of signature verification can be found within `WhitelistBondDepository.test.ts` in the describe block `'Deposit signature verification'`
+
+`Signed` is used by both WethHelper and WhitelistTheopetraBondDepository, therefore we need to create 2 lots of hashes for the whitelisted users: one lot of hashes for the Whitelist Bond Depo, and a second lot for WethHelper. The hashes are stored in the directory `scripts/generateSignatures` as json files.
 
 ### TheopetraBondDepository
 
@@ -220,6 +222,11 @@ export async function performanceUpdate<T>(
 #### Updating bonding rates
 
 The Discount Rate Return Bond (Drb) and Discount Rate Return Yield (Dyb) are initially set during `create`, and can subsequently be updated via `setDiscountRateBond` and `setDiscountRateYield`
+
+### PublicPreListBondDepository
+For switching from using WhitelistTheopetraBondDepository to PublicPreListBondDepository, the address of the PublicPreListBondDepository contract needs to be set (by the Governor) in the WethHelper contract, using the method `setPublicPreList`
+
+The `deposit` method of PublicPreListBondDepository includes a `signature` parameter. This parameter is included in order to keep the method's parameters the same as those for the `deposit` method in WhitelistTheopetraBondDepository. When switching over from the WhitelistTheopetraBondDepository to the PublicPreListBondDepository, any arbitrary signature can be used as an argument within the `deposit` method in the WethHelper contract (see also the test file WethHelper.test.ts for examples).
 
 ### StakingDistributor
 
