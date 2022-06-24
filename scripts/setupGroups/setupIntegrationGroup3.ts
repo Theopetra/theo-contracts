@@ -18,7 +18,8 @@ const setupIntegrationGroup3 = async () => {
   const pTheo = <PTheopetra>await ethers.getContract(CONTRACTS.pTheo);
   const StakingLocked = <TheopetraStaking>await ethers.getContract(CONTRACTS.stakingLocked);
   await waitFor(pTheo.initialize(StakingLocked.address)); // Initialize pTHEO
-  console.log('pTHEO initialzied, with Treasury address >>>>', await pTheo.stakingContract());
+  console.log('pTHEO initialzied, with Staking (Locked) address >>>>', await pTheo.stakingContract());
+
   const Distributor = <StakingDistributor>await ethers.getContract(CONTRACTS.distributor);
   await waitFor(Treasury.enable(8, Distributor.address, addressZero)); // Set Distributor as reward manager in Treasury (to allow call to mint from Distributor when Rebasing)
   console.log('Distributor given permissions on Treasury >>>> ', await Treasury.permissions(8, Distributor.address));

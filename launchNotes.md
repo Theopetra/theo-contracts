@@ -1,12 +1,25 @@
 # Launch Notes
 
-## Contract groupings for deployment to mainnet
-### Group 1
-* TheopetraAuthority
-* TheopetraERC20Token
-* TheopetraTreasury
-* TheopetraYieldReporter
-* TheopetraFounderVesting
+## Deployment instructions: Contract groupings and setup
+Contracts have been deployed to test networks using [Hardhat-Deploy](https://github.com/wighawag/hardhat-deploy)
+Deployment is split into three groups, using the following deploy scripts:
+`deploy/013_deploy_group1.ts`
+`deploy/014_deploy_group2.ts`
+`deploy/015_deploy_group3.ts`
+
+The details of which contracts are deployed by each script can be found within the relevant script file.
+
+The groups should be deployed in order (groups 1-3). Each deploy script can be run individualy as follows by using the desired network name and the script's tag (found within the script, as the value of `func.tags`) within the command:
+`npx hardhat deploy --network <network name> --tags <script tag>`
+for example, to deploy the contracts within group 1 to the goerli test network:
+`npx hardhat deploy --network goerli --tags groupone`
+
+After each group is deployed, the following scripts should be run, to set up permissions and other basic connections between the deployed contracts:
+`scripts/setupGroups/setupIntegrationGroup1.ts`
+`scripts/setupGroups/setupIntegrationGroup2.ts`
+`scripts/setupGroups/setupIntegrationGroup3.ts`
+A script can be run on a network as follows:
+`npx hardhat run --network <network name> scripts/setupGroups/<filename>.ts`
 
 #### Constructor arguments to check/confirm for Group 1 deployment
 * For TheopetraAuthority: All constructor arguments (Multi Sig wallet addresses) except for vault

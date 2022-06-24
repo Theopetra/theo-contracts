@@ -14,7 +14,8 @@ const setupIntegrationGroup1 = async () => {
   const FounderVesting = <TheopetraFounderVesting>await ethers.getContract(CONTRACTS.founderVesting);
   await waitFor(TheopetraAuthority.pushVault(Treasury.address, true)); // Push vault role to Treasury, to allow it to call THEO.mint
   console.log("Vault address >>>>", await TheopetraAuthority.vault());
-  await waitFor(Treasury.enable(11, YieldReporter.address, addressZero)); // Enable Yield Reporter in Treasury
+  const permissionsedResponse = await waitFor(Treasury.enable(11, YieldReporter.address, addressZero)); // Enable Yield Reporter in Treasury
+  console.log("Yield Reporter permissioned on Treasury >>>>>", permissionsedResponse);
   // console.log("Yield Reporter permission on Treasury (Expect Reverted with Division By Zero, as no yields are yet reported) >>>>", await Treasury.deltaTreasuryYield())
   await waitFor(Treasury.enable(8, FounderVesting.address, addressZero)); // Set Whitelist Founder Vesting as reward manager in Treasury (to allow call to mint)
   console.log("Founder Vesting permission on Treasury >>>>", await Treasury.permissions(8, FounderVesting.address));
