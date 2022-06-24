@@ -15,18 +15,30 @@ const createWhitelistBondingMarket = async () => {
   // const usdcUsdRinkebyPriceFeedAddress = '0xa24de01df22b63d23Ebc1882a5E3d4ec0d907bFB';
   // const ethUsdRinkebyPriceFeedAddress = '0x8A753747A1Fa494EC906cE90E9f37563A8AF630e';
 
-  // Ropsten setup
-  const provider = new ethers.providers.InfuraProvider('ropsten', process.env.INFURA_API_KEY);
-  const usdcTokenRopstenAddress = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F';
-  const wethTokenRopstenAddress = '0xc778417E063141139Fce010982780140Aa0cD5Ab';
-  const USDCToken = IERC20__factory.connect(usdcTokenRopstenAddress, provider);
-  const WETHToken = IERC20__factory.connect(wethTokenRopstenAddress, provider);
-  // As no Chainlink pricefeeds are available on Ropsten, the following addresses use mocks (these were simply deployed via remix),
-  // These mocks return values that are based on a call to the pricefeeds available on Rinkeby
-  const usdcUsdRinkebyPriceFeedAddress = '0xc1656e185ED242c0aA3a20059Fcd311B0FF38D0A';
-  const ethUsdRinkebyPriceFeedAddress = '0xBcdF034cE6624A817c1BfEffBDE8691443e5fDbB';
+  // // Ropsten setup
+  // const provider = new ethers.providers.InfuraProvider('ropsten', process.env.INFURA_API_KEY);
+  // const usdcTokenRopstenAddress = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F';
+  // const wethTokenRopstenAddress = '0xc778417E063141139Fce010982780140Aa0cD5Ab';
+  // const USDCToken = IERC20__factory.connect(usdcTokenRopstenAddress, provider);
+  // const WETHToken = IERC20__factory.connect(wethTokenRopstenAddress, provider);
+  // // As no Chainlink pricefeeds are available on Ropsten, the following addresses use mocks (these were simply deployed via remix),
+  // // These mocks return values that are based on a call to the pricefeeds available on Rinkeby
+  // const usdcUsdRinkebyPriceFeedAddress = '0xc1656e185ED242c0aA3a20059Fcd311B0FF38D0A';
+  // const ethUsdRinkebyPriceFeedAddress = '0xBcdF034cE6624A817c1BfEffBDE8691443e5fDbB';
 
-  const capacity = '10000000000000000000000'; // 1e22
+  // Goerli setup
+  const provider = new ethers.providers.InfuraProvider('goerli', process.env.INFURA_API_KEY);
+  const usdcTokenGoerliAddress = '0xD87Ba7A50B2E7E660f678A895E4B72E7CB4CCd9C';
+  const wethTokenGoerliAddress = '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6';
+  const USDCToken = IERC20__factory.connect(usdcTokenGoerliAddress, provider);
+  const WETHToken = IERC20__factory.connect(wethTokenGoerliAddress, provider);
+  // As no Chainlink pricefeeds are available on Goerli, the following addresses use mocks (these were simply deployed via remix),
+  // These mocks return values that are based on a call to the pricefeeds available on Rinkeby
+  const usdcUsdGoerliPriceFeedAddress = '0xd4293e0EBf6FE1Cc16F56A4707BEF2f38651d16f';
+  const ethUsdGoerliPriceFeedAddress = '0xF60AbA69463AC75231e742956F68577BFbC8B002';
+
+  // const capacity = '10000000000000000000000'; // 1e22 -- Previously used for Rinkeby and Ropsten testnet deployments
+  const capacity = '10000000000000000000000000000000000000000'; // 1e40
   const fixedBondPrice = '10000000'; // 1e7; 0.01 USD per THEO (9 decimals)
   const sixMonthFixedBondPrice = '60000000'; // 6e7; 0.06 USD per THEO (9 decimals)
   const twelveMonthFixedBondPrice = '30000000'; // 3e7; 0.03 USD per THEO (9 decimals)
@@ -48,7 +60,7 @@ const createWhitelistBondingMarket = async () => {
   // await waitFor(
   //   WhitelistBondDepository.create(
   //     USDCToken.address,
-  //     usdcUsdRinkebyPriceFeedAddress,
+  //     usdcUsdGoerliPriceFeedAddress,
   //     [capacity, fixedBondPrice],
   //     [capacityInQuote, fixedTerm],
   //     [sixMonthVesting, conclusion]
@@ -59,7 +71,7 @@ const createWhitelistBondingMarket = async () => {
   // await waitFor(
   //   WhitelistBondDepository.create(
   //     WETHToken.address,
-  //     ethUsdRinkebyPriceFeedAddress,
+  //     ethUsdGoerliPriceFeedAddress,
   //     [capacity, fixedBondPrice],
   //     [capacityInQuote, fixedTerm],
   //     [sixMonthVesting, conclusion]
@@ -70,7 +82,7 @@ const createWhitelistBondingMarket = async () => {
   // await waitFor(
   //   WhitelistBondDepository.create(
   //     USDCToken.address,
-  //     usdcUsdRinkebyPriceFeedAddress,
+  //     usdcUsdGoerliPriceFeedAddress,
   //     [capacity, fixedBondPrice],
   //     [capacityInQuote, fixedTerm],
   //     [twelveMonthVesting, conclusion]
@@ -81,7 +93,7 @@ const createWhitelistBondingMarket = async () => {
   // await waitFor(
   //   WhitelistBondDepository.create(
   //     WETHToken.address,
-  //     ethUsdRinkebyPriceFeedAddress,
+  //     ethUsdGoerliPriceFeedAddress,
   //     [capacity, fixedBondPrice],
   //     [capacityInQuote, fixedTerm],
   //     [twelveMonthVesting, conclusion]
@@ -92,7 +104,7 @@ const createWhitelistBondingMarket = async () => {
   // await waitFor(
   //   WhitelistBondDepository.create(
   //     USDCToken.address,
-  //     usdcUsdRinkebyPriceFeedAddress,
+  //     usdcUsdGoerliPriceFeedAddress,
   //     [capacity, fixedBondPrice],
   //     [capacityInQuote, fixedTerm],
   //     [eighteenMonthVesting, conclusion]
@@ -103,14 +115,14 @@ const createWhitelistBondingMarket = async () => {
   // await waitFor(
   //   WhitelistBondDepository.create(
   //     WETHToken.address,
-  //     ethUsdRinkebyPriceFeedAddress,
+  //     ethUsdGoerliPriceFeedAddress,
   //     [capacity, fixedBondPrice],
   //     [capacityInQuote, fixedTerm],
   //     [eighteenMonthVesting, conclusion]
   //   )
   // );
 
-  // Closed above markets, as different fixed pricing is needed for testing
+  // // Closed above markets, as different fixed pricing is needed for testing
   // await waitFor(WhitelistBondDepository.close(0));
   // await waitFor(WhitelistBondDepository.close(1));
   // await waitFor(WhitelistBondDepository.close(2));
@@ -121,7 +133,7 @@ const createWhitelistBondingMarket = async () => {
   // // Market ID 6: Created USDC 6-month testing market
   // await waitFor(WhitelistBondDepository.create(
   //   USDCToken.address,
-  //   usdcUsdRinkebyPriceFeedAddress,
+  //   usdcUsdGoerliPriceFeedAddress,
   //   [capacity, sixMonthFixedBondPrice],
   //   [capacityInQuote, fixedTerm],
   //   [sixMonthVesting, conclusion]
@@ -130,7 +142,7 @@ const createWhitelistBondingMarket = async () => {
   // // Market ID 7: Created WETH 6-month testing market
   // await waitFor(WhitelistBondDepository.create(
   //   WETHToken.address,
-  //   ethUsdRinkebyPriceFeedAddress,
+  //   ethUsdGoerliPriceFeedAddress,
   //   [capacity, sixMonthFixedBondPrice],
   //   [capacityInQuote, fixedTerm],
   //   [sixMonthVesting, conclusion]
@@ -139,7 +151,7 @@ const createWhitelistBondingMarket = async () => {
   // // Market ID 8: Created USDC 12-month testing market
   // await waitFor(WhitelistBondDepository.create(
   //   USDCToken.address,
-  //   usdcUsdRinkebyPriceFeedAddress,
+  //   usdcUsdGoerliPriceFeedAddress,
   //   [capacity, twelveMonthFixedBondPrice],
   //   [capacityInQuote, fixedTerm],
   //   [twelveMonthVesting, conclusion]
@@ -148,7 +160,7 @@ const createWhitelistBondingMarket = async () => {
   // // Market ID 9: Created WETH 12-month testing market
   // await waitFor(WhitelistBondDepository.create(
   //   WETHToken.address,
-  //   ethUsdRinkebyPriceFeedAddress,
+  //   ethUsdGoerliPriceFeedAddress,
   //   [capacity, twelveMonthFixedBondPrice],
   //   [capacityInQuote, fixedTerm],
   //   [twelveMonthVesting, conclusion]
@@ -157,7 +169,7 @@ const createWhitelistBondingMarket = async () => {
   // // Market ID 10: Created USDC 18-month testing market
   // await waitFor(WhitelistBondDepository.create(
   //   USDCToken.address,
-  //   usdcUsdRinkebyPriceFeedAddress,
+  //   usdcUsdGoerliPriceFeedAddress,
   //   [capacity, eighteenMonthFixedBondPrice],
   //   [capacityInQuote, fixedTerm],
   //   [eighteenMonthVesting, conclusion]
@@ -166,7 +178,7 @@ const createWhitelistBondingMarket = async () => {
   // // Market ID 11: Created WETH 18-month testing market
   // await waitFor(WhitelistBondDepository.create(
   //   WETHToken.address,
-  //   ethUsdRinkebyPriceFeedAddress,
+  //   ethUsdGoerliPriceFeedAddress,
   //   [capacity, eighteenMonthFixedBondPrice],
   //   [capacityInQuote, fixedTerm],
   //   [eighteenMonthVesting, conclusion]

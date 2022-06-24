@@ -8,6 +8,7 @@ Deployment is split into three groups, using the following deploy scripts:
 `deploy/015_deploy_group3.ts`
 
 The details of which contracts are deployed by each script can be found within the relevant script file.
+Owing to the current lack of a THEO pool on Uniswap (the address for which is needed for the TwapGetter contract, found in BondingCalculator.sol), the TwapGetter has not been included within the testnet deployments. Instead, a 'mock' bonding calculator (NewBondingCalculatorMock) has been deployed.
 
 The groups should be deployed in order (groups 1-3). Each deploy script can be run individualy as follows by using the desired network name and the script's tag (found within the script, as the value of `func.tags`) within the command:
 `npx hardhat deploy --network <network name> --tags <script tag>`
@@ -39,6 +40,16 @@ A script can be run on a network as follows:
 - [ ] Testing very large deposits to the bond depo with e2e testing (with sTHEO supply increasing via rebasing)
 
 ## Contract Setup
+
+### Setup of Bonding Markets on testnets
+Bonding markets have been created for the three bond depository contracts (WhitelistTheopetraBondDepository, PublicPreListBondDepository, and TheopetraBondDepository) using the following scripts:
+`scripts/setupBonding/whitelistBondingMarkets.ts`
+`scripts/setupBonding/publicPrelistBondingMarkets.ts`
+`scripts/setupBonding/regularBondingMarkets.ts` (for TheopetraBondDepository)
+
+### Generating signatures for WhitelistTheopetraBondDepository and WethHelper
+Signatures for whitelisted addresses are generated using the script `scripts/generateSignatures/generateSignatures.ts`
+This script creates two json files (for the relevant network being used): one with signatures for WhitelistTheopetraBondDepository, and the other with signatures for use with WethHelper.
 
 ### Constructor arguments
 

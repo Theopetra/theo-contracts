@@ -22,11 +22,18 @@ const createMarket = async () => {
   // const WETHToken = IERC20__factory.connect(wethTokenRinkebyAddress, provider);
 
   // Ropsten setup
-  const provider = new ethers.providers.InfuraProvider('ropsten', process.env.INFURA_API_KEY);
-  const usdcTokenRopstenAddress = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F';
-  const wethTokenRopstenAddress = '0xc778417E063141139Fce010982780140Aa0cD5Ab';
-  const USDCToken = IERC20__factory.connect(usdcTokenRopstenAddress, provider);
-  const WETHToken = IERC20__factory.connect(wethTokenRopstenAddress, provider);
+  // const provider = new ethers.providers.InfuraProvider('ropsten', process.env.INFURA_API_KEY);
+  // const usdcTokenRopstenAddress = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F';
+  // const wethTokenRopstenAddress = '0xc778417E063141139Fce010982780140Aa0cD5Ab';
+  // const USDCToken = IERC20__factory.connect(usdcTokenRopstenAddress, provider);
+  // const WETHToken = IERC20__factory.connect(wethTokenRopstenAddress, provider);
+
+  // Goerli setup
+  const provider = new ethers.providers.InfuraProvider('goerli', process.env.INFURA_API_KEY);
+  const usdcTokenGoerliAddress = '0xD87Ba7A50B2E7E660f678A895E4B72E7CB4CCd9C';
+  const wethTokenGoerliAddress = '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6';
+  const USDCToken = IERC20__factory.connect(usdcTokenGoerliAddress, provider);
+  const WETHToken = IERC20__factory.connect(wethTokenGoerliAddress, provider);
 
   // Check USDC balance
   // USDC has 6 Decimals
@@ -36,7 +43,8 @@ const createMarket = async () => {
   const BondDepository = <TheopetraBondDepository>await ethers.getContract(CONTRACTS.bondDepo);
 
   // Arguments for creating market
-  const capacity = '10000000000000000000000'; // 1e22
+  // const capacity = '10000000000000000000000'; // 1e22 -- Previously used for Rinkeby and Ropsten testnet deployments
+  const capacity = '10000000000000000000000000000000000000000'; // 1e40
   const initialPrice = 400e9; // This value could be changed to adjust targetDebt (and thereby maxPayout and maxDebt) if desired
   const buffer = 2e5;
   const capacityInQuote = false;
@@ -73,75 +81,75 @@ const createMarket = async () => {
 
   // Market was created above and now exists at index 0;
   // Closed market at id 0 (as not needed)
-  // await waitFor(BondDepository.connect(owner).close(0));
+  // await waitFor(BondDepository.close(0));
 
   // Market ID 1: Created USDC 6-month testing market
-  // await waitFor(
-  //   BondDepository.create(
-  //     USDCToken.address,
-  //     [capacity, initialPrice, buffer],
-  //     [capacityInQuote, fixedTerm],
-  //     [sixMonthVesting, conclusion],
-  //     [sixMonthBondRatefixed, sixMonthMaxBRV, discountRateBond, discountRateYield],
-  //     [depositInterval, tuneInterval]
-  //   )
-  // );
+  await waitFor(
+    BondDepository.create(
+      USDCToken.address,
+      [capacity, initialPrice, buffer],
+      [capacityInQuote, fixedTerm],
+      [sixMonthVesting, conclusion],
+      [sixMonthBondRatefixed, sixMonthMaxBRV, discountRateBond, discountRateYield],
+      [depositInterval, tuneInterval]
+    )
+  );
 
   // Market ID 2: Created WETH 6-month testing market
-  // await waitFor(
-  //   BondDepository.connect(owner).create(
-  //     WETHToken.address,
-  //     [capacity, initialPrice, buffer],
-  //     [capacityInQuote, fixedTerm],
-  //     [sixMonthVesting, conclusion],
-  //     [sixMonthBondRatefixed, sixMonthMaxBRV, discountRateBond, discountRateYield],
-  //     [depositInterval, tuneInterval]
-  //   )
-  // );
+  await waitFor(
+    BondDepository.connect(owner).create(
+      WETHToken.address,
+      [capacity, initialPrice, buffer],
+      [capacityInQuote, fixedTerm],
+      [sixMonthVesting, conclusion],
+      [sixMonthBondRatefixed, sixMonthMaxBRV, discountRateBond, discountRateYield],
+      [depositInterval, tuneInterval]
+    )
+  );
 
   // Market ID 3: Created USDC 12-month testing market
-  // await waitFor(
-  //   BondDepository.connect(owner).create(
-  //     USDCToken.address,
-  //     [capacity, initialPrice, buffer],
-  //     [capacityInQuote, fixedTerm],
-  //     [twelveMonthVesting, conclusion],
-  //     [twelveMonthBondRateFixed, twelveMonthMaxBRV, discountRateBond, discountRateYield],
-  //     [depositInterval, tuneInterval]
-  //   )
-  // );
+  await waitFor(
+    BondDepository.connect(owner).create(
+      USDCToken.address,
+      [capacity, initialPrice, buffer],
+      [capacityInQuote, fixedTerm],
+      [twelveMonthVesting, conclusion],
+      [twelveMonthBondRateFixed, twelveMonthMaxBRV, discountRateBond, discountRateYield],
+      [depositInterval, tuneInterval]
+    )
+  );
 
   // Market ID 4: Created WETH 12-month testing market
-  // await waitFor(
-  //   BondDepository.connect(owner).create(
-  //     WETHToken.address,
-  //     [capacity, initialPrice, buffer],
-  //     [capacityInQuote, fixedTerm],
-  //     [twelveMonthVesting, conclusion],
-  //     [twelveMonthBondRateFixed, twelveMonthMaxBRV, discountRateBond, discountRateYield],
-  //     [depositInterval, tuneInterval]
-  //   )
-  // );
+  await waitFor(
+    BondDepository.connect(owner).create(
+      WETHToken.address,
+      [capacity, initialPrice, buffer],
+      [capacityInQuote, fixedTerm],
+      [twelveMonthVesting, conclusion],
+      [twelveMonthBondRateFixed, twelveMonthMaxBRV, discountRateBond, discountRateYield],
+      [depositInterval, tuneInterval]
+    )
+  );
 
   // Market ID 5: Created USDC 18-month testing market
-  //   await waitFor(BondDepository.connect(owner).create(
-  //   USDCToken.address,
-  //   [capacity, initialPrice, buffer],
-  //   [capacityInQuote, fixedTerm],
-  //   [eighteenMonthVesting, conclusion],
-  //   [eighteenMonthBondRateFixed, eighteenMonthhMaxBRV, discountRateBond, discountRateYield],
-  //   [depositInterval, tuneInterval]
-  // ));
+    await waitFor(BondDepository.connect(owner).create(
+    USDCToken.address,
+    [capacity, initialPrice, buffer],
+    [capacityInQuote, fixedTerm],
+    [eighteenMonthVesting, conclusion],
+    [eighteenMonthBondRateFixed, eighteenMonthhMaxBRV, discountRateBond, discountRateYield],
+    [depositInterval, tuneInterval]
+  ));
 
   // Market ID 6: Created WETH 18-month testing market
-  // await waitFor(BondDepository.connect(owner).create(
-  //   WETHToken.address,
-  //   [capacity, initialPrice, buffer],
-  //   [capacityInQuote, fixedTerm],
-  //   [eighteenMonthVesting, conclusion],
-  //   [eighteenMonthBondRateFixed, eighteenMonthhMaxBRV, discountRateBond, discountRateYield],
-  //   [depositInterval, tuneInterval]
-  // ));
+  await waitFor(BondDepository.connect(owner).create(
+    WETHToken.address,
+    [capacity, initialPrice, buffer],
+    [capacityInQuote, fixedTerm],
+    [eighteenMonthVesting, conclusion],
+    [eighteenMonthBondRateFixed, eighteenMonthhMaxBRV, discountRateBond, discountRateYield],
+    [depositInterval, tuneInterval]
+  ));
 
   const liveMarkets = await BondDepository.liveMarkets();
   const liveMarketIds = liveMarkets.map((market) => {
