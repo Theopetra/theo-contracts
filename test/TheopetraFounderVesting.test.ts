@@ -440,8 +440,9 @@ describe('Theopetra Founder Vesting', function () {
     });
     it('to equal 1 (9 decimals) if the FDV target is hit', async function () {
       const expectedFdvFactor = 1_000_000_000;
-      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
-      BondingCalculatorMock.setValuation(100_000_000);
+      const NewBondingCalculatorMock = await ethers.getContract('NewBondingCalculatorMock');
+      await TheopetraTreasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
+      await NewBondingCalculatorMock.setPerformanceTokenAmount(100_000); // Equivalent to 0.1 USDC, 6 decimals
 
       const fdvFactor = await TheopetraFounderVesting.getFdvFactor();
 
@@ -449,13 +450,18 @@ describe('Theopetra Founder Vesting', function () {
     });
     it('to equal proportional value (9 decimals) if the FDV target is not hit', async function () {
       const initialBalance = await TheopetraERC20Token.totalSupply();
+      const expectedScalingFactor = 10**(9-6) // 9 Decimals for THEO, 6 for performanceToken (because in this case we are using USDC as performanceToken in mock bonding calculator)
       const testValuationValue = ethers.BigNumber.from(FDVTARGET)
         .mul(10 ** (await TheopetraFounderVesting.decimals()))
         .div(initialBalance)
         .sub(10_000);
-      const expectedFdvFactor = testValuationValue.mul(initialBalance).div(FDVTARGET);
-      TheopetraTreasury.setTheoBondingCalculator(BondingCalculatorMock.address);
-      BondingCalculatorMock.setValuation(testValuationValue);
+      const scaledTestValuationMethod = testValuationValue.div(expectedScalingFactor);
+
+      const expectedFdvFactor = scaledTestValuationMethod.mul(expectedScalingFactor).mul(initialBalance).div(FDVTARGET);
+
+      const NewBondingCalculatorMock = await ethers.getContract('NewBondingCalculatorMock');
+      await TheopetraTreasury.setTheoBondingCalculator(NewBondingCalculatorMock.address);
+      await NewBondingCalculatorMock.setPerformanceTokenAmount(scaledTestValuationMethod);
 
       const fdvFactor = await TheopetraFounderVesting.getFdvFactor();
 
