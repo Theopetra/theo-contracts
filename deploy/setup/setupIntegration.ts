@@ -61,6 +61,8 @@ const func = async function (hre: HardhatRuntimeEnvironment) {
     // Set staking contracts on Distributor
     await waitFor(Distributor.setStaking(Staking.address));
     await waitFor(Distributor.setStaking(StakingLocked.address));
+
+    console.log("Set-up done ✅");
   } catch (error) {
     console.log(error);
   }

@@ -292,6 +292,31 @@ contract PublicPreListBondDepository is IWhitelistBondDepository, NoteKeeper, Si
     }
 
     /**
+     * @notice returns an array of market IDs for historical analysis
+     */
+    function getMarkets() external view override returns (uint256[] memory) {
+        uint256[] memory ids = new uint256[](markets.length);
+        for (uint256 i = 0; i < markets.length; i++) {
+                ids[i] = i;
+        }
+        return ids;
+    }
+
+    /**
+     * @notice             returns an array of all market IDs for a given quote token
+     * @param _token       quote token to check for
+     */
+    function getMarketsFor(address _token) external view override returns (uint256[] memory) {
+        uint256[] memory mkts = marketsForQuote[_token];
+        uint256[] memory ids = new uint256[](mkts.length);
+
+        for (uint256 i = 0; i < mkts.length; i++) {
+            ids[i] = mkts[i];
+        }
+        return ids;
+    }
+
+    /**
      * @notice                  calculate the price of THEO in quote token terms; i.e. the number of quote tokens per THEO
      * @dev                     get the latest price for the market's quote token in USD
      *                          (`priceConsumerPrice`, with decimals `priceConsumerDecimals`)

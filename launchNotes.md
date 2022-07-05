@@ -1,10 +1,55 @@
 # Launch Notes
 
-- [ ] In Staking deploy script: `epochLength`, `firstEpochNumber` and `firstEpoch` to be updated as needed for other networks
-- [ ] In Distributor deploy script: `epochLength` and `nextEpoch` to be updated as needed for other networks
+## Deployment instructions: Contract groupings and setup
+Contracts have been deployed to test networks using [Hardhat-Deploy](https://github.com/wighawag/hardhat-deploy)
+Deployment is split into three groups, using the following deploy scripts:
+`deploy/013_deploy_group1.ts`
+`deploy/014_deploy_group2.ts`
+`deploy/015_deploy_group3.ts`
+
+The details of which contracts are deployed by each script can be found within the relevant script file.
+Owing to the current lack of a THEO pool on Uniswap (the address for which is needed for the TwapGetter contract, found in BondingCalculator.sol), the TwapGetter has not been included within the testnet deployments. Instead, a 'mock' bonding calculator (NewBondingCalculatorMock) has been deployed.
+
+The groups should be deployed in order (groups 1-3). Each deploy script can be run individualy as follows by using the desired network name and the script's tag (found within the script, as the value of `func.tags`) within the command:
+`npx hardhat deploy --network <network name> --tags <script tag>`
+for example, to deploy the contracts within group 1 to the goerli test network:
+`npx hardhat deploy --network goerli --tags groupone`
+
+After each group is deployed, the following scripts should be run, to set up permissions and other basic connections between the deployed contracts:
+`scripts/setupGroups/setupIntegrationGroup1.ts`
+`scripts/setupGroups/setupIntegrationGroup2.ts`
+`scripts/setupGroups/setupIntegrationGroup3.ts`
+A script can be run on a network as follows:
+`npx hardhat run --network <network name> scripts/setupGroups/<filename>.ts`
+
+#### Constructor arguments to check/confirm for Group 1 deployment
+* For TheopetraAuthority: All constructor arguments (Multi Sig wallet addresses) except for vault
+* For TheopetraFounderVesting:
+```
+        uint256 _fdvTarget,
+        address[] memory _payees,
+        uint256[] memory _shares,
+        uint256[] memory _unlockTimes,
+        uint256[] memory _unlockAmounts
+```
+
+## Other updates for deployment to live networks
+- [ ]  Check that `from` in the call to `deploy` can be from the named account `deployer` (this is currently the case for all deploy scripts)
+- [ ] In Staking deploy script: `epochLength`, `firstEpochNumber` and `firstEpoch` to be checked/updated as needed for other networks
+- [ ] In Distributor deploy script: `epochLength` and `nextEpoch` to be checked/updated as needed for other networks
 - [ ] Testing very large deposits to the bond depo with e2e testing (with sTHEO supply increasing via rebasing)
 
 ## Contract Setup
+
+### Setup of Bonding Markets on testnets
+Bonding markets have been created for the three bond depository contracts (WhitelistTheopetraBondDepository, PublicPreListBondDepository, and TheopetraBondDepository) using the following scripts:
+`scripts/setupBonding/whitelistBondingMarkets.ts`
+`scripts/setupBonding/publicPrelistBondingMarkets.ts`
+`scripts/setupBonding/regularBondingMarkets.ts` (for TheopetraBondDepository)
+
+### Generating signatures for WhitelistTheopetraBondDepository and WethHelper
+Signatures for whitelisted addresses are generated using the script `scripts/generateSignatures/generateSignatures.ts`
+This script creates two json files (for the relevant network being used): one with signatures for WhitelistTheopetraBondDepository, and the other with signatures for use with WethHelper.
 
 ### Constructor arguments
 
@@ -114,7 +159,7 @@ For more information about the method arguments used above, please see the test 
 
 #### Signing
 
-Addresses for whitelisting should be hashed using SignerHelper -- A script can be used for this purpose, to itterate over addresses and, in a similar way to that shown below, to create hashes that can then be signed by the `whitelistSigner` as set within `TheopetraAuthority` (when initially deployed, the `whitelistSigner` is the governor):
+Addresses for whitelisting should be hashed using SignerHelper -- A script (scripts/generateSignatures/generateSignatures.ts) is used for this purpose, to itterate over addresses and, in a similar way to that shown below, to create hashes that can then be signed by the `whitelistSigner` as set within `TheopetraAuthority` (when initially deployed, the `whitelistSigner` is the governor):
 
 ```
 async function setupForDeposit() {
@@ -141,6 +186,8 @@ async function setupForDeposit() {
 ```
 
 Further examples of signature verification can be found within `WhitelistBondDepository.test.ts` in the describe block `'Deposit signature verification'`
+
+`Signed` is used by both WethHelper and WhitelistTheopetraBondDepository, therefore we need to create 2 lots of hashes for the whitelisted users: one lot of hashes for the Whitelist Bond Depo, and a second lot for WethHelper. The hashes are stored in the directory `scripts/generateSignatures` as json files.
 
 ### TheopetraBondDepository
 
@@ -199,6 +246,11 @@ export async function performanceUpdate<T>(
 #### Updating bonding rates
 
 The Discount Rate Return Bond (Drb) and Discount Rate Return Yield (Dyb) are initially set during `create`, and can subsequently be updated via `setDiscountRateBond` and `setDiscountRateYield`
+
+### PublicPreListBondDepository
+For switching from using WhitelistTheopetraBondDepository to PublicPreListBondDepository, the address of the PublicPreListBondDepository contract needs to be set (by the Governor) in the WethHelper contract, using the method `setPublicPreList`
+
+The `deposit` method of PublicPreListBondDepository includes a `signature` parameter. This parameter is included in order to keep the method's parameters the same as those for the `deposit` method in WhitelistTheopetraBondDepository. When switching over from the WhitelistTheopetraBondDepository to the PublicPreListBondDepository, any arbitrary signature can be used as an argument within the `deposit` method in the WethHelper contract (see also the test file WethHelper.test.ts for examples).
 
 ### StakingDistributor
 
