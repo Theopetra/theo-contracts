@@ -51,6 +51,9 @@ const setupIntegrationGroup2 = async () => {
   const setSecretResponseWethHelper = await waitFor(WethHelper.setSecret(`${process.env.WHITELIST_SECRET}`));
   console.log('Events from setting secret >>>>>>', setSecretResponseWethHelper);
 
+  // Set WethHelper address on Whitelist Bond Depo contract
+  await waitFor(WhitelistBondDepository.setWethHelper(WethHelper.address));
+
   console.log('Set-up for Group 2 done ✅');
 };
 
