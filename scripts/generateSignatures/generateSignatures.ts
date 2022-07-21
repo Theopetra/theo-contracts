@@ -33,6 +33,7 @@ const WL_ADDRESSES: string[] = [
   "0xA8133947C84379D29A6deBb7a7Dc5bf9C6653F8d",
   "0x1dd0c4579Ed72636cfE12e017E97Eb748daaA654",
   "0xb59A6603AB98aa6Aeb0a9657A44264a36ad0Ea77",
+  "0x62BE3ceeb91E55eE62D546E05d123C12341B7e76",
 ];
 
 async function generateSignatures() {
