@@ -2,7 +2,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
 import getNamedMockAddresses from './mocks/helpers';
-import { CONTRACTS, CAPTABLE, FDVTARGET, TESTWITHMOCKS, UNLOCKSCHEDULE } from '../utils/constants';
+import { CONTRACTS, CAPTABLE, CAPTABLE2, FDVTARGET, TESTWITHMOCKS, UNLOCKSCHEDULE, UNLOCKSCHEDULE2 } from '../utils/constants';
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, getChainId, getNamedAccounts } = hre;
@@ -25,6 +25,17 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     UNLOCKSCHEDULE.amounts,
   ];
 
+  let args2: any = [
+    TheopetraAuthority.address,
+    TheopetraTreasury.address,
+    Theo.address,
+    FDVTARGET,
+    CAPTABLE2.addresses,
+    CAPTABLE2.shares,
+    UNLOCKSCHEDULE2.times,
+    UNLOCKSCHEDULE2.amounts,
+  ];
+
   // If on Hardhat network, use the following values for testing
   if (chainId === '1337') {
     const captableAddresses = CAPTABLE.addresses;
@@ -43,6 +54,13 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     from: deployer,
     log: true,
     args,
+  });
+
+  await deploy(CONTRACTS.founderVesting, {
+    skipIfAlreadyDeployed: false,
+    from: deployer,
+    log: true,
+    args: args2,
   });
 };
 

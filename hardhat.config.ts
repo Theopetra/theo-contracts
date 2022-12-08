@@ -9,6 +9,7 @@ import 'solidity-coverage';
 import 'hardhat-contract-sizer';
 
 import { node_url, accounts } from './utils/network';
+
 dotenv.config();
 
 // You need to export an object to set up your config
@@ -106,7 +107,10 @@ const config: HardhatUserConfig = {
     },
     mainnet: {
       url: node_url('mainnet'),
-      accounts: accounts('mainnet'),
+      gasMultiplier: 1.2,
+      accounts: process.env.MAINNET_PRIVATE_KEY ? [
+        process.env.MAINNET_PRIVATE_KEY
+      ] : accounts('mainnet'),
     },
     rinkeby: {
       url: node_url('rinkeby'),
@@ -122,8 +126,13 @@ const config: HardhatUserConfig = {
     },
     goerli: {
       url: node_url('goerli'),
-      accounts: accounts('goerli'),
+      accounts: process.env.GOERLI_PRIVATE_KEY ? [
+        process.env.GOERLI_PRIVATE_KEY
+      ] : accounts('goerli'),
     },
+  },
+  etherscan: {
+    apiKey: "F2TFGGSCBP5I9E5DU8TUP6VZSW7SX3EAT6"
   },
   paths: {
     sources: 'src',

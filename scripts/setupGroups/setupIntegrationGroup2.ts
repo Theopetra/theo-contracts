@@ -27,6 +27,7 @@ const setupIntegrationGroup2 = async () => {
   );
   const PublicPreListBondDepo = <PublicPreListBondDepository>await ethers.getContract(CONTRACTS.publicPreListBondDepo);
   const WethHelper = <WethHelper>await ethers.getContract(CONTRACTS.WethHelper);
+  console.log(`${process.env.WHITELIST_SECRET}`);
 
   await waitFor(sTheo.initialize(Staking.address, Treasury.address)); // Initialize sTHEO
   console.log('sTHEO initialzied, with Treasury address >>>>', await sTheo.treasury());
