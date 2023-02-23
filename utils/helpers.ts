@@ -25,6 +25,7 @@ import {
   TwapGetter,
   WethHelper,
   PublicPreListBondDepository,
+  // TheopetraRebates,
 } from '../typechain-types';
 import { CONTRACTS, MOCKS, MOCKSWITHARGS, TESTWITHMOCKS } from './constants';
 
@@ -67,6 +68,7 @@ export async function getContracts(currentContract?: string): Promise<any> {
     TwapGetter: <TwapGetter>await ethers.getContract(CONTRACTS.twapGetter),
     WethHelper: <WethHelper>await ethers.getContract(CONTRACTS.WethHelper),
     PublicPreListBondDepository: <PublicPreListBondDepository>await ethers.getContract(CONTRACTS.publicPreListBondDepo),
+    // TheopetraRebates: <TheopetraRebates>await ethers.getContract(CONTRACTS.rebates),
   };
   return chainId !== '1337'
     ? contracts

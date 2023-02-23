@@ -30,7 +30,7 @@ const setupIntegrationGroup2 = async () => {
   console.log(`${process.env.WHITELIST_SECRET}`);
 
   await waitFor(sTheo.initialize(Staking.address, Treasury.address)); // Initialize sTHEO
-  console.log('sTHEO initialzied, with Treasury address >>>>', await sTheo.treasury());
+  console.log('sTHEO initialized, with Treasury address >>>>', await sTheo.treasury());
 
   // Set bond depos as reward managers in Treasury (to allow calls to mint from NoteKeeper when adding new note)
   await waitFor(Treasury.enable(8, BondDepository.address, addressZero)); //
