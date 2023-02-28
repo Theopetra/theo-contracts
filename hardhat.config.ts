@@ -107,7 +107,7 @@ const config: HardhatUserConfig = {
     },
     mainnet: {
       url: node_url('mainnet'),
-      gasMultiplier: 1.2,
+      gasMultiplier: 1.1,
       accounts: process.env.MAINNET_PRIVATE_KEY ? [
         process.env.MAINNET_PRIVATE_KEY
       ] : accounts('mainnet'),
