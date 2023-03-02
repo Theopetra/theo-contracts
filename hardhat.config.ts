@@ -130,6 +130,13 @@ const config: HardhatUserConfig = {
         process.env.GOERLI_PRIVATE_KEY
       ] : accounts('goerli'),
     },
+    sepolia: {
+      url: node_url('sepolia'),
+      accounts: process.env.SEPOLIA_PRIVATE_KEY ? [
+        process.env.SEPOLIA_PRIVATE_KEY
+      ] : accounts('sepolia'),
+      chainId: 11155111,
+    },
   },
   etherscan: {
     apiKey: "F2TFGGSCBP5I9E5DU8TUP6VZSW7SX3EAT6"

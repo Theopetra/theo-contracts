@@ -110,6 +110,10 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       // Mainnet WETH address
       wethHelperArgs.unshift('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
       performanceTokenAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'; // Mainnet USDC token address
+    } else if (chainId === '11155111') {
+      // Sepolia WETH address
+      wethHelperArgs.unshift('0x55c3D276bb119E83eB056660c6716d6946DED806');
+      performanceTokenAddress = '0x87E81A82b35232c1d6E4eFa2586363ed1cC04451'; // Sepolia USDC token address
     }
 
     // Deploy WETH Helper

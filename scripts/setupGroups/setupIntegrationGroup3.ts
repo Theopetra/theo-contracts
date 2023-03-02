@@ -34,6 +34,12 @@ const setupIntegrationGroup3 = async () => {
   await waitFor(Distributor.setStaking(Staking.address));
   await waitFor(Distributor.setStaking(StakingLocked.address));
 
+   //Add unlocked staking contract
+   await waitFor(Distributor.addRecipient(Staking.address, 50000, 100000, 100000, false));
+
+   //Add locked staking contract
+   await waitFor(Distributor.addRecipient(StakingLocked.address, 300000, 100000, 100000, false));
+
   console.log('Set-up for Group 3 done ✅');
 };
 
