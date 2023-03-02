@@ -91,7 +91,7 @@ const config: HardhatUserConfig = {
             interval: process.env.MINING_INTERVAL.split(',').map((v) => parseInt(v)) as [number, number],
           }
         : undefined,
-      chainId: 1337,
+      chainId: 31337,
     },
     localhost: {
       url: node_url('localhost'),
