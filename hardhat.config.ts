@@ -136,6 +136,11 @@ const config: HardhatUserConfig = {
         process.env.SEPOLIA_PRIVATE_KEY
       ] : accounts('sepolia'),
       chainId: 11155111,
+      verify: {
+        etherscan: {
+          apiUrl: 'https://api-sepolia.etherscan.io/'
+        }
+      }
     },
   },
   etherscan: {
