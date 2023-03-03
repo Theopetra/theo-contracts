@@ -3,7 +3,6 @@ import hre from 'hardhat';
 import { ethers } from 'hardhat';
 import {address, abi} from '../../deployments/mainnet/TheopetraERC20Token.json';
 import {address as treasuryAddress} from '../../deployments/mainnet/TheopetraTreasury.json'
-import { BigNumber } from 'ethers';
 dotenv.config();
 
 const doTheTest = async () => {
@@ -17,15 +16,10 @@ const doTheTest = async () => {
         treasuryAddress,
         "0x8ac7230489e80000",
     ]);
-
-    let eth = await hre.network.provider.request({
-        method: "eth_getBalance",
-        params: [treasuryAddress],
-    });
     
     const provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545/');
 
-    let signer = await provider.getSigner(treasuryAddress);
+    let signer = provider.getSigner(treasuryAddress);
     let contract = await ethers.getContractAt(abi, address, signer);
 
     await contract.mint('0xAd72dEd03A5110c1807E68022D25c75E79B50eC5', 1000000000000000);
