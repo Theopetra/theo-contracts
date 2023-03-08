@@ -14,7 +14,7 @@ contract TwapGetter is IBondCalculator {
     address public immutable factory;
     address public immutable theo;
     address public immutable performanceToken;
-    address public immutable founderVesting;
+    mapping (address => bool) public founderVesting;
     uint32 public immutable secondsAgo;
     uint24 public immutable fee;
     uint8 private constant DECIMALS = 9;
@@ -25,7 +25,7 @@ contract TwapGetter is IBondCalculator {
      * @param _factory     address of the UniswapV3Factory
      * @param _theo        address of THEO token
      * @param _performanceToken    address of the token with which THEO will be paired
-     * @param _founderVesting address of the Founder Vesting contract
+     * @param _founderVesting addresses of the Founder Vesting contracts
      * @param _fee         the fee collected upon every swap in the pool, denominated in hundredths of a bip (i.e. 1e-6; e.g. 3000 for 0.3% fee tier);
      * @param _secondsAgo  the time range, in seconds, used for the twap
      */
@@ -33,7 +33,7 @@ contract TwapGetter is IBondCalculator {
         address _factory,
         address _theo,
         address _performanceToken,
-        address _founderVesting,
+        address[] memory _founderVesting,
         uint24 _fee,
         uint32 _secondsAgo
     ) {
@@ -43,8 +43,9 @@ contract TwapGetter is IBondCalculator {
         theo = _theo;
         require(_performanceToken != address(0), REQUIRE_ERROR);
         performanceToken = _performanceToken;
-        require(_founderVesting != address(0), REQUIRE_ERROR);
-        founderVesting = _founderVesting;
+        require(_founderVesting[0] != address(0) && _founderVesting[1] != address(0), REQUIRE_ERROR);
+        founderVesting[_founderVesting[0]] = true;
+        founderVesting[_founderVesting[1]] = true;
         fee = _fee;
 
         require(_secondsAgo != 0, "No time period provided");
@@ -72,7 +73,7 @@ contract TwapGetter is IBondCalculator {
         uint128 amount_ = _amount.toUint128();
         uint256 amountOut = OracleLibrary.getQuoteAtTick(tick, amount_, tokenIn, tokenOut);
 
-        if(msg.sender == founderVesting){
+        if(founderVesting[msg.sender]){
             uint8 performanceTokenDecimals = IERC20Metadata(performanceToken).decimals();
             return scaleAmountOut(amountOut, performanceTokenDecimals);
         }
