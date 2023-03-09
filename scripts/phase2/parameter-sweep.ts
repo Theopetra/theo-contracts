@@ -81,7 +81,7 @@ async function runAnalysis() {
     for (const i in runSet) {
         const [startingTvl, drY, drB, yieldReports] = runSet[i];
         // set starting TVL
-        await adjustUniswapTVLToTarget(startingTvl, signer);
+        await adjustUniswapTVLToTarget(startingTvl);
 
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
@@ -189,7 +189,7 @@ async function adjustUniswapTVLToTarget(target: number) {
     const theoERC20 = new ethers.Contract(THEOERC20_MAINNET_DEPLOYMENT.address, THEOERC20_MAINNET_DEPLOYMENT.abi, treasurySigner);
     await theoERC20.mint(governorAddress, target / 2);
 
-    //Impersonate Governor wallet, wrap ETH, and remove liquidity from pool
+    //Impersonate Governor wallet and wrap ETH
     await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [governorAddress],
@@ -220,7 +220,7 @@ async function adjustUniswapTVLToTarget(target: number) {
         "0x88316456",
         THEOERC20_MAINNET_DEPLOYMENT.address,
         WETH9.address,
-        "1000",
+        "10000",
         target / 2,
         target / 2,
         "887272",
