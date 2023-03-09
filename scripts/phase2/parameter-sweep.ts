@@ -4,6 +4,8 @@ import { ethers } from 'hardhat';
 import 'lodash.product';
 import _ from 'lodash';
 import {Signer} from "ethers";
+import { writeToStream } from "fast-csv";
+import fs from 'fs';
 
 const UNISWAP_POOL_ADDRESS = "0x1fc037ac35af9b940e28e97c2faf39526fbb4556";
 import UNISWAP_POOL_ABI from './UniswapV3PoolAbi.json';
@@ -95,6 +97,7 @@ async function runAnalysis() {
         // await helpers.reset(RPC_URL, BLOCK_NUMBER);
     }
 
+    saveResults(runResults);
 }
 
 async function main() {
@@ -145,6 +148,11 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
 }
 
 const range = (length: number) => Array.from({ length }, (value, index) => index);
+
+function saveResults(rows: any[]) {
+    const fsStream = fs.createWriteStream(`./run-results-${new Date().getTime()}.csv`);
+    writeToStream(fsStream, rows);
+}
 
 main()
     .then(() => process.exit(0))
