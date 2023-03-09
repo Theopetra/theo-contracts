@@ -1,3 +1,4 @@
+import hre from 'hardhat';
 import { ethers } from 'hardhat';
 import  helpers from '@nomicfoundation/hardhat-network-helpers';
 import type {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
@@ -13,10 +14,13 @@ import THEOERC20_MAINNET_DEPLOYMENT from '../../deployments/mainnet/TheopetraERC
 import MAINNET_YIELD_REPORTER from '../../deployments/mainnet/TheopetraYieldReporter.json';
 import MAINNET_BOND_DEPO from '../../deployments/mainnet/TheopetraBondDepository.json';
 import MAINNET_TREASURY_DEPLOYMENT from '../../deployments/mainnet/TheopetraTreasury.json';
+import WETH9 from './WETH9.json';
 
 import {waitFor} from "../../test/utils";
 
 const UNISWAP_POOL_ADDRESS = "0x1fc037ac35af9b940e28e97c2faf39526fbb4556";
+const governorAddress = '0xb0D6fb365d04FbB7351b2C2796d895eBFDfC422A';
+
 const RPC_URL = process.env.ETH_NODE_URI_MAINNET;
 const BLOCK_NUMBER = 1111111111; // CHANGE ME
 const EPOCH_LENGTH = 8 * 60 * 60;
@@ -169,8 +173,66 @@ function getBondPurchases() {
     return range(txnCount).map(() => getNormallyDistributedRandomNumber(valueDist));
 }
 
-async function adjustUniswapTVLToTarget(target: number, signer: SignerWithAddress) {
+async function adjustUniswapTVLToTarget(target: number) {
+    //Impersonate treasury and mint THEO to Governor address
+    await hre.network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [MAINNET_TREASURY_DEPLOYMENT.address],
+      });
+
+    await hre.network.provider.send("hardhat_setBalance", [
+        MAINNET_TREASURY_DEPLOYMENT.address,
+        target / 2,
+    ]);
+
+    const treasurySigner = await ethers.getSigner(MAINNET_TREASURY_DEPLOYMENT.address);
+    const theoERC20 = new ethers.Contract(THEOERC20_MAINNET_DEPLOYMENT.address, THEOERC20_MAINNET_DEPLOYMENT.abi, treasurySigner);
+    await theoERC20.mint(governorAddress, target / 2);
+
+    //Impersonate Governor wallet, wrap ETH, and remove liquidity from pool
+    await hre.network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [governorAddress],
+    });
+
+    const signer = await ethers.getSigner(governorAddress);
+    const weth9 = new ethers.Contract(WETH9.address, WETH9.abi, signer);
+    await weth9.deposit(target / 2);
+    
     const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
+    //Remove initial liquidity positions and add liquidity evenly across range in multicall
+    const deadline = await helpers.time.latest() + 28800; 
+    const removeArgs1 = [
+        "0x0c49ccbe",
+        "457460", 
+        "0",
+        "1_045_574_999_999_999",
+        deadline,
+    ]
+    const removeArgs2 = [
+        "0x0c49ccbe",
+        "457448",
+        "2_999_999_999_999_999_999",
+        "1_045_574_999_999_999",
+        deadline
+    ]
+    const addArgs = [
+        "0x88316456",
+        THEOERC20_MAINNET_DEPLOYMENT.address,
+        WETH9.address,
+        "1000",
+        target / 2,
+        target / 2,
+        "887272",
+        "-887272",
+        "0",
+        "0",
+        governorAddress,
+        deadline
+    ]
+    await weth9.approve(uniswapV3Pool, 2_999_999_999_999_999_999 + target / 2);
+    await theoERC20.approve(uniswapV3Pool, 2_091_149_999_999_998 + target / 2)
+    await uniswapV3Pool.multicall(removeArgs1, removeArgs2, addArgs);
 }
 
 async function executeUniswapTransactions(transactions: Array<Array<(number|Direction)>>, signer: SignerWithAddress) {
