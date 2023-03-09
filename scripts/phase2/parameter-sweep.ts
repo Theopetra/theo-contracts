@@ -1,6 +1,6 @@
-import  helpers from '@nomicfoundation/hardhat-network-helpers';
 import { ethers } from 'hardhat';
-
+import  helpers from '@nomicfoundation/hardhat-network-helpers';
+import type {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import 'lodash.product';
 import _ from 'lodash';
 import {Signer} from "ethers";
@@ -15,7 +15,6 @@ import MAINNET_BOND_DEPO from '../../deployments/mainnet/TheopetraBondDepository
 import MAINNET_TREASURY_DEPLOYMENT from '../../deployments/mainnet/TheopetraTreasury.json';
 
 import {waitFor} from "../../test/utils";
-import {sign} from "crypto";
 
 const UNISWAP_POOL_ADDRESS = "0x1fc037ac35af9b940e28e97c2faf39526fbb4556";
 const RPC_URL = process.env.ETH_NODE_URI_MAINNET;
@@ -170,11 +169,11 @@ function getBondPurchases() {
     return range(txnCount).map(() => getNormallyDistributedRandomNumber(valueDist));
 }
 
-async function adjustUniswapTVLToTarget(target: number, signer: Signer) {
+async function adjustUniswapTVLToTarget(target: number, signer: SignerWithAddress) {
     const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
 }
 
-async function executeUniswapTransactions(transactions: Array<Array<(number|Direction)>>, signer: Signer) {
+async function executeUniswapTransactions(transactions: Array<Array<(number|Direction)>>, signer: SignerWithAddress) {
     const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
     const token0 = await uniswapV3Pool.token0();
     const token1 = await uniswapV3Pool.token1();
@@ -203,7 +202,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
     }
 }
 
-async function executeBondTransactions(transactions: number[], signer: Signer) {
+async function executeBondTransactions(transactions: number[], signer: SignerWithAddress) {
     for (let l = 0; l < transactions.length; l++) {
         // TODO: Figure out a good value for maxPrice
         const maxPrice = 1_000_000_000;
