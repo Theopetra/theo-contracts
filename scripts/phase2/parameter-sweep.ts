@@ -216,6 +216,7 @@ async function adjustUniswapTVLToTarget(target: number) {
         "1_045_574_999_999_999",
         deadline
     ]
+    //Calls mint to create new position across the full range with the target liquidity
     const addArgs = [
         "0x88316456",
         THEOERC20_MAINNET_DEPLOYMENT.address,
@@ -230,8 +231,8 @@ async function adjustUniswapTVLToTarget(target: number) {
         governorAddress,
         deadline
     ]
-    await weth9.approve(uniswapV3Pool, 2_999_999_999_999_999_999 + target / 2);
-    await theoERC20.approve(uniswapV3Pool, 2_091_149_999_999_998 + target / 2)
+    await weth9.approve(uniswapV3Pool, target / 2);
+    await theoERC20.approve(uniswapV3Pool, target / 2);
     await uniswapV3Pool.multicall(removeArgs1, removeArgs2, addArgs);
 }
 
