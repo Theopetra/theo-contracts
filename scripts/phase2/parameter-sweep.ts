@@ -92,7 +92,7 @@ async function runAnalysis() {
     for (const i in runSet) {
         const [startingTvl, drY, drB, yieldReports] = runSet[i];
         // set starting TVL
-        await adjustUniswapTVLToTarget(startingTvl);
+        await adjustUniswapTVLToTarget(startingTvl, signer);
 
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
@@ -205,8 +205,8 @@ async function adjustUniswapTVLToTarget(target: number) {
     const theoERC20 = new ethers.Contract(THEOERC20_MAINNET_DEPLOYMENT.address, THEOERC20_MAINNET_DEPLOYMENT.abi, treasurySigner);
     await theoERC20.mint(governorAddress, target / 2);
 
-    //Impersonate Governor wallet, wrap ETH, and remove liquidity from pool
-    await network.provider.request({
+    //Impersonate Governor wallet and wrap ETH
+    await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [governorAddress],
     });
@@ -232,11 +232,12 @@ async function adjustUniswapTVLToTarget(target: number) {
         "1_045_574_999_999_999",
         deadline
     ]
+    //Calls mint to create new position across the full range with the target liquidity
     const addArgs = [
         "0x88316456",
         THEOERC20_MAINNET_DEPLOYMENT.address,
         WETH9.address,
-        "1000",
+        "10000",
         target / 2,
         target / 2,
         "887272",
@@ -246,8 +247,8 @@ async function adjustUniswapTVLToTarget(target: number) {
         governorAddress,
         deadline
     ]
-    await weth9.approve(uniswapV3Pool, 2_999_999_999_999_999_999 + target / 2);
-    await theoERC20.approve(uniswapV3Pool, 2_091_149_999_999_998 + target / 2)
+    await weth9.approve(uniswapV3Pool, target / 2);
+    await theoERC20.approve(uniswapV3Pool, target / 2);
     await uniswapV3Pool.multicall(removeArgs1, removeArgs2, addArgs);
 }
 
