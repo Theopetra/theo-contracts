@@ -152,7 +152,11 @@ async function runAnalysis() {
 }
 
 async function main() {
-    await runAnalysis();
+    try {
+        await runAnalysis();
+    } catch (e) {
+        console.log(e);
+    }
 }
 
 function boxMullerTransform() {
@@ -201,8 +205,8 @@ async function adjustUniswapTVLToTarget(target: number, signer: SignerWithAddres
     // const ethStartingPrice = bondingCalculator.valuation(WETH9.address, BigNumber.from("1000000000000000000"));
     //Hardcoding ETH price until mainnet bonding calculator is live or the performance token is changed;
     const ethStartingPrice = 1600;
-    const theoStartingPrice = bondingCalculator.valuation(THEOERC20_MAINNET_DEPLOYMENT.address, BigNumber.from(1000000000));
-    const wethTarget = (((target / 2) / ethStartingPrice) * 10**18).toString();
+    const theoStartingPrice = await bondingCalculator.valuation(THEOERC20_MAINNET_DEPLOYMENT.address, BigNumber.from(1000000000));
+    const wethTarget = BigNumber.from(target/2).div(ethStartingPrice).mul(BigNumber.from(10).pow(18));
     const theoTarget = (((target / 2) / theoStartingPrice) * 10**9).toString();
 
     //Impersonate treasury and mint THEO to Governor address
@@ -213,7 +217,7 @@ async function adjustUniswapTVLToTarget(target: number, signer: SignerWithAddres
 
     await hre.network.provider.send("hardhat_setBalance", [
         MAINNET_TREASURY_DEPLOYMENT.address,
-        BigNumber.from(wethTarget),
+        wethTarget.toHexString(),
     ]);
 
     const treasurySigner = await ethers.getSigner(MAINNET_TREASURY_DEPLOYMENT.address);
@@ -229,7 +233,7 @@ async function adjustUniswapTVLToTarget(target: number, signer: SignerWithAddres
 
     const govSigner = await ethers.getSigner(governorAddress);
     const weth9 = new ethers.Contract(WETH9.address, WETH9.abi, govSigner);
-    await weth9.deposit(BigNumber.from(wethTarget));
+    await weth9.deposit(wethTarget);
 
     const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, govSigner);
     //Remove initial liquidity positions and add liquidity evenly across range in multicall
