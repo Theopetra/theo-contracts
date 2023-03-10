@@ -34,6 +34,7 @@ const BOND_MARKET_ID = 0; // TODO: Get actual market ID
 
 const product = (_ as any).product; // stupid typescript doesn't recognize `product` on lodash >.>
 const BigNumber = ethers.BigNumber;
+
 /*
     Yield reporter is called on an interval to report yields, using reportYield function, yields are then used by the treasury to inform deltaTreasuryYield
     tokenPerformanceUpdate is called on another interval to inform deltaTokenPrice within the TheopetraTreasury
@@ -92,7 +93,7 @@ async function runAnalysis() {
     for (const i in runSet) {
         const [startingTvl, drY, drB, yieldReports] = runSet[i];
         // set starting TVL
-        await adjustUniswapTVLToTarget(startingTvl, signer);
+        await adjustUniswapTVLToTarget(startingTvl);
 
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
