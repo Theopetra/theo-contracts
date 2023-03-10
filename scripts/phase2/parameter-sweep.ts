@@ -32,6 +32,9 @@ const EPOCH_LENGTH = 8 * 60 * 60;
 const EPOCHS_PER_YIELD_REPORT = 3*30; // 3 per day, 30 days a month
 const BOND_MARKET_ID = 0; // TODO: Get actual market ID
 
+const THEO_DECIMALS = 9;
+const ETH_DECIMALS = 18;
+
 const product = (_ as any).product; // stupid typescript doesn't recognize `product` on lodash >.>
 const BigNumber = ethers.BigNumber;
 
@@ -261,16 +264,17 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
         const direction: Direction = (transactions[i][1] as Direction);
         const tokenIn = direction === Direction.buy ? WETH9.address : THEOERC20_MAINNET_DEPLOYMENT.address;
         const tokenOut = direction === Direction.buy ? THEOERC20_MAINNET_DEPLOYMENT.address : WETH9.address;
-        const tokenInDecimals = direction === Direction.buy ? 18 : 9;
-        const tokenOutDecimals = direction === Direction.buy ? 9 : 18;
+        const tokenInDecimals = direction === Direction.buy ? ETH_DECIMALS : THEO_DECIMALS;
+        const tokenOutDecimals = direction === Direction.buy ? THEO_DECIMALS : ETH_DECIMALS;
         const sqrtPriceLimitX96 = 0;
-        const fee = 500;
+        const fee = 500; // TODO: verify fee
+
         const Erc20 = Direction.buy ? IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer) : IERC20__factory.connect(WETH9.address, signer);
         const deadline = await helpers.time.latest() + 28800;
 
         if (direction == Direction.buy) {
-            const amountOut: number = (transactions[i][0] as number) * 10 ** tokenOutDecimals;
-            const amountInMaximum = 10*10**18;
+            const amountOut = BigNumber.from((transactions[i][0])).mul(BigNumber.from(10).pow(tokenOutDecimals));
+            const amountInMaximum = BigNumber.from(10).mul(BigNumber.from(10).pow(10));
 
             await waitFor(Erc20.approve(UNISWAP_SWAP_ROUTER_ADDRESS, amountInMaximum));
 
@@ -289,7 +293,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
         } else {
             // TODO: Is something better than 0 need for testing?
             const amountOutMin = 0;
-            const amountIn: number = (transactions[i][0] as number) * 10 ** tokenInDecimals;
+            const amountIn = BigNumber.from((transactions[i][0])).mul(BigNumber.from(10).pow(tokenInDecimals));
 
             await waitFor(Erc20.approve(UNISWAP_SWAP_ROUTER_ADDRESS, amountIn));
 
@@ -313,8 +317,9 @@ async function executeBondTransactions(transactions: number[], signer: SignerWit
     const TheopetraBondDepository = TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer);
     for (let l = 0; l < transactions.length; l++) {
         // TODO: Figure out a sensible value for maxPrice
-        const maxPrice = 1_000_000_000;
-        await waitFor(TheopetraBondDepository.deposit(BOND_MARKET_ID, transactions[l], maxPrice, signer.address, signer.address, false));
+        const maxPrice = BigNumber.from(1).mul(BigNumber.from(10).pow(18));
+        const theoToBond = BigNumber.from(transactions[l]);
+        await waitFor(TheopetraBondDepository.deposit(BOND_MARKET_ID, theoToBond, maxPrice, signer.address, signer.address, false));
     }
 }
 
