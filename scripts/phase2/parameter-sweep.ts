@@ -1,14 +1,18 @@
-import hre from 'hardhat';
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import  helpers from '@nomicfoundation/hardhat-network-helpers';
 import type {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import 'lodash.product';
 import _ from 'lodash';
-import {Signer} from "ethers";
 import { writeToStream } from "fast-csv";
 import fs from 'fs';
-import { IERC20Metadata__factory, TheopetraBondDepository__factory, TheopetraYieldReporter__factory, TheopetraTreasury__factory } from '../../typechain-types';
+import {
+    TheopetraBondDepository__factory,
+    TheopetraYieldReporter__factory,
+    TheopetraTreasury__factory,
+    STheopetra__factory, IERC20__factory
+} from '../../typechain-types';
 
+import UNISWAP_SWAP_ROUTER_ABI from './UniswapSwapRouter.json';
 import UNISWAP_POOL_ABI from './UniswapV3PoolAbi.json';
 import THEOERC20_MAINNET_DEPLOYMENT from '../../deployments/mainnet/TheopetraERC20Token.json';
 import MAINNET_YIELD_REPORTER from '../../deployments/mainnet/TheopetraYieldReporter.json';
@@ -18,6 +22,7 @@ import WETH9 from './WETH9.json';
 
 import {waitFor} from "../../test/utils";
 
+const UNISWAP_SWAP_ROUTER_ADDRESS = "";
 const UNISWAP_POOL_ADDRESS = "0x1fc037ac35af9b940e28e97c2faf39526fbb4556";
 const governorAddress = '0xb0D6fb365d04FbB7351b2C2796d895eBFDfC422A';
 
@@ -28,7 +33,7 @@ const EPOCHS_PER_YIELD_REPORT = 3*30; // 3 per day, 30 days a month
 const BOND_MARKET_ID = 0; // TODO: Get actual market ID
 
 const product = (_ as any).product; // stupid typescript doesn't recognize `product` on lodash >.>
-
+const BigNumber = ethers.BigNumber;
 /*
     Yield reporter is called on an interval to report yields, using reportYield function, yields are then used by the treasury to inform deltaTreasuryYield
     tokenPerformanceUpdate is called on another interval to inform deltaTokenPrice within the TheopetraTreasury
@@ -51,7 +56,11 @@ const product = (_ as any).product; // stupid typescript doesn't recognize `prod
 
 async function runAnalysis() {
     const [signer] = await ethers.getSigners();
-    // if (!RPC_URL) throw Error("ETH_NODE_URI_MAINNET not set");
+    if (!RPC_URL) throw Error("ETH_NODE_URI_MAINNET not set");
+    const TheopetraYieldReporter = TheopetraYieldReporter__factory.connect(MAINNET_YIELD_REPORTER.address, signer);
+    const TheopetraBondDepository = TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer);
+    const STheopetra = STheopetra__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer);
+    const TheopetraTreasury = TheopetraTreasury__factory.connect(MAINNET_TREASURY_DEPLOYMENT.address, signer);
 
     const parameters = {
         startingTVL: [50000, 180000, 5000, 20000, 360000, 1000000],
@@ -69,11 +78,13 @@ async function runAnalysis() {
     // 1st dimension: yield reports
     // 2nd dimension: epochs per yield report
     // 3rd dimension: Transactions per epoch
-    // TODO: fine tune getUniswapTransactions w.r.t. the context "Uniswap Transactions Per Epoch"
+    // TODO: fine tune generateUniswapTransactions w.r.t. the context "Uniswap Transactions Per Epoch"
     const uniswapTxns = range(parameters.yieldReports[0].length)
-        .map(() => range(EPOCHS_PER_YIELD_REPORT).map(() => getUniswapTransactions()));
+        .map(() => range(EPOCHS_PER_YIELD_REPORT).map(() => generateUniswapTransactions()));
+
+    // TODO: fine tune generateBondPurchases
     const bondPurchases = range(parameters.yieldReports[0].length)
-        .map(() => range(EPOCHS_PER_YIELD_REPORT).map(() => getBondPurchases()));
+        .map(() => range(EPOCHS_PER_YIELD_REPORT).map(() => generateBondPurchases()));
 
     const runResults = [];
     const runSet = product(parameters.startingTVL, parameters.drY, parameters.drB, parameters.yieldReports);
@@ -81,16 +92,20 @@ async function runAnalysis() {
     for (const i in runSet) {
         const [startingTvl, drY, drB, yieldReports] = runSet[i];
         // set starting TVL
-        await adjustUniswapTVLToTarget(startingTvl, signer);
+        await adjustUniswapTVLToTarget(startingTvl);
 
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
             // report yield, set drY and drB
-            await waitFor(TheopetraYieldReporter__factory.connect(MAINNET_YIELD_REPORTER.address, signer).reportYield(yieldReport));
-            await waitFor(TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer).setDiscountRateBond(BOND_MARKET_ID, drB));
-            await waitFor(TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer).setDiscountRateYield(BOND_MARKET_ID, drY));
+            await waitFor(TheopetraYieldReporter.reportYield(yieldReport));
+            await waitFor(TheopetraBondDepository.setDiscountRateBond(BOND_MARKET_ID, drB));
+            await waitFor(TheopetraBondDepository.setDiscountRateYield(BOND_MARKET_ID, drY));
 
             for (let k = 0; k < EPOCHS_PER_YIELD_REPORT; k++) {
+                const logRebaseFilter = STheopetra.filters["LogRebase(uint256,uint256,uint256)"]();
+                const rebaseEvents = await STheopetra.queryFilter(logRebaseFilter);
+                const currentEpoch = rebaseEvents.map((i: any) => i.epoch).reduce((p,c) => (c > p ? c : p));
+
                 // a. Get set of transactions to execute on uniswap pool
                 const uniswapTxnsThisEpoch = uniswapTxns[j][k];
 
@@ -98,7 +113,7 @@ async function runAnalysis() {
                 await executeUniswapTransactions(uniswapTxnsThisEpoch, signer);
 
                 // c. Execute tokenPerformanceUpdate
-                await waitFor(TheopetraTreasury__factory.connect(MAINNET_TREASURY_DEPLOYMENT.address, signer).tokenPerformanceUpdate());
+                await waitFor(TheopetraTreasury.tokenPerformanceUpdate());
 
                 // d. execute bond transactions
                 const bondPurchasesThisEpoch = bondPurchases[j][k];
@@ -113,17 +128,18 @@ async function runAnalysis() {
                     yieldReport,
                     yieldReportIdx: j,
                     epochIdx: k,
-                    deltaTokenPrice: await TheopetraTreasury__factory.connect(MAINNET_TREASURY_DEPLOYMENT.address, signer).deltaTokenPrice(),
-                    bondRateVariable: await TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer).bondRateVariable(BOND_MARKET_ID),
-                    marketPrice: await TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer).marketPrice(BOND_MARKET_ID),
+                    epochNumber: currentEpoch,
+                    deltaTokenPrice: await TheopetraTreasury.deltaTokenPrice(),
+                    bondRateVariable: await TheopetraBondDepository.bondRateVariable(BOND_MARKET_ID),
+                    marketPrice: await TheopetraBondDepository.marketPrice(BOND_MARKET_ID),
                 });
 
                 // fast-forward chain-time to next epoch
-                // await network.provider.send('evm_increaseTime', [EPOCH_LENGTH]);
+                await network.provider.send('evm_increaseTime', [EPOCH_LENGTH]);
             }
         }
         // reset fork
-        // await helpers.reset(RPC_URL, BLOCK_NUMBER);
+        await helpers.reset(RPC_URL, BLOCK_NUMBER);
     }
 
     saveResults(runResults);
@@ -156,7 +172,7 @@ enum Direction {
     sell = "SELL"
 }
 
-function getUniswapTransactions() {
+function generateUniswapTransactions() {
     const countDist: Distribution       = { mean: 5,    stddev: 0 };
     const valueDist: Distribution       = { mean: 1000, stddev: 800 };
     const directionDist: Distribution   = { mean: 0,    stddev: 1 }; // Gaussian distribution centered around 0, greater than 0 is BUY, less than 0 is SELL
@@ -166,7 +182,7 @@ function getUniswapTransactions() {
     return range(txnCount).map(i => [txnValues[i], txnDirections[i]]);
 }
 
-function getBondPurchases() {
+function generateBondPurchases() {
     const countDist: Distribution       = { mean: 5,    stddev: 0 };
     const valueDist: Distribution       = { mean: 1000, stddev: 800 };
     const txnCount = getNormallyDistributedRandomNumber(countDist);
@@ -175,12 +191,12 @@ function getBondPurchases() {
 
 async function adjustUniswapTVLToTarget(target: number) {
     //Impersonate treasury and mint THEO to Governor address
-    await hre.network.provider.request({
+    await network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [MAINNET_TREASURY_DEPLOYMENT.address],
       });
 
-    await hre.network.provider.send("hardhat_setBalance", [
+    await network.provider.send("hardhat_setBalance", [
         MAINNET_TREASURY_DEPLOYMENT.address,
         target / 2,
     ]);
@@ -190,7 +206,7 @@ async function adjustUniswapTVLToTarget(target: number) {
     await theoERC20.mint(governorAddress, target / 2);
 
     //Impersonate Governor wallet, wrap ETH, and remove liquidity from pool
-    await hre.network.provider.request({
+    await network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [governorAddress],
     });
@@ -236,39 +252,67 @@ async function adjustUniswapTVLToTarget(target: number) {
 }
 
 async function executeUniswapTransactions(transactions: Array<Array<(number|Direction)>>, signer: SignerWithAddress) {
-    const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
-    const token0 = await uniswapV3Pool.token0();
-    const token1 = await uniswapV3Pool.token1();
-
-    const token0Decimals = await IERC20Metadata__factory.connect(token0, signer).decimals();
-    const token1Decimals = await IERC20Metadata__factory.connect(token1, signer).decimals();
-
-
-    const theoIsToken1 = THEOERC20_MAINNET_DEPLOYMENT.address === token1;
+    const uniswapV3Router = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, signer);
+    const recipient = await signer.getAddress();
 
     for (const i in transactions) {
-        const value: number = (transactions[i][0] as number);
         const direction: Direction = (transactions[i][1] as Direction);
+        const tokenIn = direction === Direction.buy ? WETH9.address : THEOERC20_MAINNET_DEPLOYMENT.address;
+        const tokenOut = direction === Direction.buy ? THEOERC20_MAINNET_DEPLOYMENT.address : WETH9.address;
+        const tokenInDecimals = direction === Direction.buy ? 18 : 9;
+        const tokenOutDecimals = direction === Direction.buy ? 9 : 18;
+        const sqrtPriceLimitX96 = 0;
+        const fee = 500;
+        const Erc20 = Direction.buy ? IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer) : IERC20__factory.connect(WETH9.address, signer);
+        const deadline = await helpers.time.latest() + 28800;
 
-        const recipient = await signer.getAddress();
+        if (direction == Direction.buy) {
+            const amountOut: number = (transactions[i][0] as number) * 10 ** tokenOutDecimals;
+            const amountInMaximum = 10*10**18;
 
-        // if theo is token1, and we are buying, then we are swapping zero for one => zeroForOne = true
-        // if theo is token1, and we are selling, then we are swapping one for zero => zeroForOne = false
-        // if theo is token0, and we are selling, then we are swapping zero for one => zeroForOne = true
-        // if theo is token0, and we are buying, then we are swapping one for zero => zeroForOne = false
+            await waitFor(Erc20.approve(UNISWAP_SWAP_ROUTER_ADDRESS, amountInMaximum));
 
-        const zeroForOne = theoIsToken1 ? direction === Direction.buy : direction === Direction.sell;
-        const amountSpecified = zeroForOne ? value * 10 ** token0Decimals : value * 10 ** token1Decimals;
-        const txn = await uniswapV3Pool.swap(recipient, zeroForOne, amountSpecified, 0, []);
+            const params = {
+                tokenIn,
+                tokenOut,
+                fee,
+                recipient,
+                deadline,
+                amountOut,
+                amountInMaximum,
+                sqrtPriceLimitX96
+            };
 
+            await waitFor(uniswapV3Router.exactOutputSingle(params));
+        } else {
+            // TODO: Is something better than 0 need for testing?
+            const amountOutMin = 0;
+            const amountIn: number = (transactions[i][0] as number) * 10 ** tokenInDecimals;
+
+            await waitFor(Erc20.approve(UNISWAP_SWAP_ROUTER_ADDRESS, amountIn));
+
+            const params = {
+                tokenIn,
+                tokenOut,
+                fee,
+                recipient,
+                deadline,
+                amountIn,
+                amountOutMin,
+                sqrtPriceLimitX96
+            };
+
+            await waitFor(uniswapV3Router.exactInputSingle(params));
+        }
     }
 }
 
 async function executeBondTransactions(transactions: number[], signer: SignerWithAddress) {
+    const TheopetraBondDepository = TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer);
     for (let l = 0; l < transactions.length; l++) {
-        // TODO: Figure out a good value for maxPrice
+        // TODO: Figure out a sensible value for maxPrice
         const maxPrice = 1_000_000_000;
-        await waitFor(TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer).deposit(BOND_MARKET_ID, transactions[l], maxPrice, signer.address, signer.address, false));
+        await waitFor(TheopetraBondDepository.deposit(BOND_MARKET_ID, transactions[l], maxPrice, signer.address, signer.address, false));
     }
 }
 
