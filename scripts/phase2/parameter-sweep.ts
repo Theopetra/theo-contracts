@@ -1,4 +1,5 @@
 import { ethers, network } from 'hardhat';
+import hre from 'hardhat';
 import  helpers from '@nomicfoundation/hardhat-network-helpers';
 import type {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import 'lodash.product';
@@ -17,6 +18,7 @@ import UNISWAP_POOL_ABI from './UniswapV3PoolAbi.json';
 import THEOERC20_MAINNET_DEPLOYMENT from '../../deployments/mainnet/TheopetraERC20Token.json';
 import MAINNET_YIELD_REPORTER from '../../deployments/mainnet/TheopetraYieldReporter.json';
 import MAINNET_BOND_DEPO from '../../deployments/mainnet/TheopetraBondDepository.json';
+import MAINNET_BOND_CALC from '../../deployments/mainnet/NewBondingCalculatorMock.json';
 import MAINNET_TREASURY_DEPLOYMENT from '../../deployments/mainnet/TheopetraTreasury.json';
 import WETH9 from './WETH9.json';
 
@@ -96,7 +98,7 @@ async function runAnalysis() {
     for (const i in runSet) {
         const [startingTvl, drY, drB, yieldReports] = runSet[i];
         // set starting TVL
-        await adjustUniswapTVLToTarget(startingTvl);
+        await adjustUniswapTVLToTarget(startingTvl, signer);
 
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
@@ -193,21 +195,31 @@ function generateBondPurchases() {
     return range(txnCount).map(() => getNormallyDistributedRandomNumber(valueDist));
 }
 
-async function adjustUniswapTVLToTarget(target: number) {
+async function adjustUniswapTVLToTarget(target: number, signer: SignerWithAddress) {
+    //Find current prices and scale TVL target to each token's decimals and price
+    const bondingCalculator = new ethers.Contract(MAINNET_BOND_CALC.address, MAINNET_BOND_CALC.abi, signer);
+    // const ethStartingPrice = bondingCalculator.valuation(WETH9.address, BigNumber.from("1000000000000000000"));
+    //Hardcoding ETH price until mainnet bonding calculator is live or the performance token is changed;
+    const ethStartingPrice = 1600;
+    const theoStartingPrice = bondingCalculator.valuation(THEOERC20_MAINNET_DEPLOYMENT.address, BigNumber.from(1000000000));
+    const wethTarget = (((target / 2) / ethStartingPrice) * 10**18).toString();
+    const theoTarget = (((target / 2) / theoStartingPrice) * 10**9).toString();
+
     //Impersonate treasury and mint THEO to Governor address
-    await network.provider.request({
+    await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [MAINNET_TREASURY_DEPLOYMENT.address],
-      });
+    });
 
-    await network.provider.send("hardhat_setBalance", [
+    await hre.network.provider.send("hardhat_setBalance", [
         MAINNET_TREASURY_DEPLOYMENT.address,
-        target / 2,
+        BigNumber.from(wethTarget),
     ]);
 
     const treasurySigner = await ethers.getSigner(MAINNET_TREASURY_DEPLOYMENT.address);
     const theoERC20 = new ethers.Contract(THEOERC20_MAINNET_DEPLOYMENT.address, THEOERC20_MAINNET_DEPLOYMENT.abi, treasurySigner);
-    await theoERC20.mint(governorAddress, target / 2);
+    await theoERC20.mint(governorAddress, BigNumber.from(theoTarget));
+    //mintTheoToSigners(signer, treasurySigner);
 
     //Impersonate Governor wallet and wrap ETH
     await hre.network.provider.request({
@@ -215,16 +227,16 @@ async function adjustUniswapTVLToTarget(target: number) {
         params: [governorAddress],
     });
 
-    const signer = await ethers.getSigner(governorAddress);
-    const weth9 = new ethers.Contract(WETH9.address, WETH9.abi, signer);
-    await weth9.deposit(target / 2);
-    
-    const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
+    const govSigner = await ethers.getSigner(governorAddress);
+    const weth9 = new ethers.Contract(WETH9.address, WETH9.abi, govSigner);
+    await weth9.deposit(BigNumber.from(wethTarget));
+
+    const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, govSigner);
     //Remove initial liquidity positions and add liquidity evenly across range in multicall
-    const deadline = await helpers.time.latest() + 28800; 
+    const deadline = await helpers.time.latest() + 28800;
     const removeArgs1 = [
         "0x0c49ccbe",
-        "457460", 
+        "457460",
         "0",
         "1_045_574_999_999_999",
         deadline,
@@ -242,8 +254,8 @@ async function adjustUniswapTVLToTarget(target: number) {
         THEOERC20_MAINNET_DEPLOYMENT.address,
         WETH9.address,
         "10000",
-        target / 2,
-        target / 2,
+        BigNumber.from(wethTarget),
+        BigNumber.from(theoTarget),
         "887272",
         "-887272",
         "0",
@@ -251,8 +263,8 @@ async function adjustUniswapTVLToTarget(target: number) {
         governorAddress,
         deadline
     ]
-    await weth9.approve(uniswapV3Pool, target / 2);
-    await theoERC20.approve(uniswapV3Pool, target / 2);
+    await weth9.approve(uniswapV3Pool, wethTarget);
+    await theoERC20.approve(uniswapV3Pool, theoTarget);
     await uniswapV3Pool.multicall(removeArgs1, removeArgs2, addArgs);
 }
 
