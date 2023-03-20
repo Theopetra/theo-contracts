@@ -33,7 +33,7 @@ contract TwapGetter is IBondCalculator {
         address _factory,
         address _theo,
         address _performanceToken,
-        address[] memory _founderVesting,
+        address[2] memory _founderVesting,
         uint24 _fee,
         uint32 _secondsAgo
     ) {

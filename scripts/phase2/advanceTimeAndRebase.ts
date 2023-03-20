@@ -16,9 +16,11 @@ const doTheTest = async () => {
         amountTime = parseInt(process.argv.slice(2)[0]);
     } 
 
-    await time.increase(amountTime);
-    await unlockedStakingContract.rebase();
-    await lockedStakingContract.rebase();
+    for (let i = 0; i < amountTime / 28800; i++) {
+        await time.increase(28800);
+        await unlockedStakingContract.rebase();
+        await lockedStakingContract.rebase();
+    }
 
     console.log(`Time increased by ${amountTime}. Staking contracts have been rebased.`)
 

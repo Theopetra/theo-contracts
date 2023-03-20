@@ -93,6 +93,10 @@ const config: HardhatUserConfig = {
         : undefined,
       chainId: 31337,
     },
+    tenderly: {
+      chainId: 1, //Mainnet fork on Tenderly
+      url: 'https://rpc.tenderly.co/fork/64503dfb-3b89-4569-bbad-17121697d7bb'
+    },
     localhost: {
       url: node_url('localhost'),
       accounts: accounts(),
