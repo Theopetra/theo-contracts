@@ -15,3 +15,5 @@ deployments/hardhat
 deployments/localhost
 
 /.dapp
+
+.idea
