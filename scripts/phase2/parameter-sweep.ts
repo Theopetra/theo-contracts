@@ -10,7 +10,7 @@ import {
     TheopetraBondDepository__factory,
     TheopetraYieldReporter__factory,
     TheopetraTreasury__factory,
-    STheopetra__factory, IERC20__factory
+    STheopetra__factory, IERC20__factory, ERC20__factory
 } from '../../typechain-types';
 
 import UNISWAP_SWAP_ROUTER_ABI from './UniswapSwapRouter.json';
@@ -70,6 +70,7 @@ async function runAnalysis() {
 
     const parameters = {
         startingTVL: [50000, 180000, 5000, 20000, 360000, 1000000],
+        liquidityRatio: [0.5],
         drY: [0, 0.01, 0.025, 0.0375, 0.05, 1],
         drB: [0, 0.01, 0.025, 0.0375, 0.05, 1],
         yieldReports: [
@@ -93,12 +94,12 @@ async function runAnalysis() {
         .map(() => range(EPOCHS_PER_YIELD_REPORT).map(() => generateBondPurchases()));
 
     const runResults = [];
-    const runSet = product(parameters.startingTVL, parameters.drY, parameters.drB, parameters.yieldReports);
+    const runSet = product(parameters.startingTVL, parameters.liquidityRatio, parameters.drY, parameters.drB, parameters.yieldReports);
 
     for (const i in runSet) {
-        const [startingTvl, drY, drB, yieldReports] = runSet[i];
+        const [startingTvl, liquidityRatio, drY, drB, yieldReports] = runSet[i];
         // set starting TVL
-        await adjustUniswapTVLToTarget(startingTvl, signer);
+        await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
 
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
@@ -199,15 +200,25 @@ function generateBondPurchases() {
     return range(txnCount).map(() => getNormallyDistributedRandomNumber(valueDist));
 }
 
-async function adjustUniswapTVLToTarget(target: number, signer: SignerWithAddress) {
-    //Find current prices and scale TVL target to each token's decimals and price
-    const bondingCalculator = new ethers.Contract(MAINNET_BOND_CALC.address, MAINNET_BOND_CALC.abi, signer);
-    // const ethStartingPrice = bondingCalculator.valuation(WETH9.address, BigNumber.from("1000000000000000000"));
-    //Hardcoding ETH price until mainnet bonding calculator is live or the performance token is changed;
-    const ethStartingPrice = 1600;
-    const theoStartingPrice = await bondingCalculator.valuation(THEOERC20_MAINNET_DEPLOYMENT.address, BigNumber.from(1000000000));
-    const wethTarget = BigNumber.from(target/2).div(ethStartingPrice).mul(BigNumber.from(10).pow(18));
-    const theoTarget = (((target / 2) / theoStartingPrice) * 10**9).toString();
+async function adjustUniswapTVLToTarget(target: number, targetRatio: number) {
+    const targetRatio = BigNumber.from(0); // TODO: Add parameter
+    const ethPrice = 1759.53; // TODO: query live price
+    const govSigner = await ethers.getSigner(governorAddress);
+    const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, govSigner);
+    const token0Address = await uniswapV3Pool.token0();
+    const token1Address = await uniswapV3Pool.token1();
+
+    const token0 = ERC20__factory.connect(token0Address, govSigner);
+    const token1 = ERC20__factory.connect(token1Address, govSigner);
+    const weth = (await token0.symbol()) === 'WETH' ? token0 : token1;
+    const theo = (await token0.symbol()) === 'WETH' ? token1 : token0;
+    const wethBalance = await weth.balanceOf(UNISWAP_POOL_ADDRESS);
+
+    const actualETHValueLocked = wethBalance.div(BigNumber.from(10).pow(ETH_DECIMALS)).mul(ethPrice);
+    const deltaNeeded = BigNumber.from(target/2).sub(actualETHValueLocked); // half of liquidity is supplied with WETH
+    const deltaETH = deltaNeeded.div(ethPrice).mul(BigNumber.from(10).pow(ETH_DECIMALS));
+    const wethTarget = wethBalance.add(deltaETH);
+    const theoTarget = wethTarget.div(targetRatio);
 
     //Impersonate treasury and mint THEO to Governor address
     await hre.network.provider.request({
@@ -231,11 +242,9 @@ async function adjustUniswapTVLToTarget(target: number, signer: SignerWithAddres
         params: [governorAddress],
     });
 
-    const govSigner = await ethers.getSigner(governorAddress);
     const weth9 = new ethers.Contract(WETH9.address, WETH9.abi, govSigner);
     await weth9.deposit(wethTarget);
 
-    const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, govSigner);
     //Remove initial liquidity positions and add liquidity evenly across range in multicall
     const deadline = await helpers.time.latest() + 28800;
     const removeArgs1 = [
