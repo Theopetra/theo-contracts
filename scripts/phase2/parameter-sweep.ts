@@ -72,6 +72,7 @@ async function runAnalysis() {
     const parameters = {
         startingTVL: [50000, 180000, 5000, 20000, 360000, 1000000],
         liquidityRatio: [
+            // 0.0001805883567
             [
                 1805883567, // numerator
                 10000000000000 // denominator
@@ -217,20 +218,15 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     const token1 = ERC20__factory.connect(token1Address, govSigner);
     const weth = (await token0.symbol()) === 'WETH' ? token0 : token1;
     const theo = (await token0.symbol()) === 'WETH' ? token1 : token0;
-    const wethBalance = await weth.balanceOf(UNISWAP_POOL_ADDRESS);
-
-    const actualETHValueLocked = wethBalance.div(BigNumber.from(10).pow(ETH_DECIMALS)).mul(ethPrice);
-    const deltaNeeded = BigNumber.from(target/2).sub(actualETHValueLocked); // half of liquidity is supplied with WETH
-    const deltaETH = deltaNeeded.div(ethPrice).mul(BigNumber.from(10).pow(ETH_DECIMALS));
-
-    const wethTarget = wethBalance.add(deltaETH);
+    // const actualETHValueLocked = wethBalance.div(BigNumber.from(10).pow(ETH_DECIMALS)).mul(ethPrice);
+    // half of liquidity is supplied with WETH
+    const wethTarget = BigNumber.from(target/2).div(ethPrice).mul(BigNumber.from(10).pow(ETH_DECIMALS));
     const denom = BigNumber.from(1);
 
     const theoTargetNumerator = wethTarget.mul(ratioDenominator);
     const theoTargetDenominator = denom.mul(ratioNumerator);
 
     const theoTarget = theoTargetNumerator.div(theoTargetDenominator);
-    console.log(theoTarget.div(BigNumber.from(10).pow(THEO_DECIMALS)).toString(), wethTarget.div(BigNumber.from(10).pow(ETH_DECIMALS)).toString())
     //Impersonate treasury and mint THEO to Governor address
     await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
