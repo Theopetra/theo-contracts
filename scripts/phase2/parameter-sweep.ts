@@ -39,6 +39,7 @@ const ETH_DECIMALS = 18;
 
 const product = (_ as any).product; // stupid typescript doesn't recognize `product` on lodash >.>
 const BigNumber = ethers.BigNumber;
+const FixedNumber = ethers.FixedNumber;
 
 /*
     Yield reporter is called on an interval to report yields, using reportYield function, yields are then used by the treasury to inform deltaTreasuryYield
@@ -70,7 +71,12 @@ async function runAnalysis() {
 
     const parameters = {
         startingTVL: [50000, 180000, 5000, 20000, 360000, 1000000],
-        liquidityRatio: [0.5],
+        liquidityRatio: [
+            [
+                1805883567, // numerator
+                10000000000000 // denominator
+            ]
+        ],
         drY: [0, 0.01, 0.025, 0.0375, 0.05, 1],
         drB: [0, 0.01, 0.025, 0.0375, 0.05, 1],
         yieldReports: [
@@ -200,9 +206,8 @@ function generateBondPurchases() {
     return range(txnCount).map(() => getNormallyDistributedRandomNumber(valueDist));
 }
 
-async function adjustUniswapTVLToTarget(target: number, targetRatio: number) {
-    const targetRatio = BigNumber.from(0); // TODO: Add parameter
-    const ethPrice = 1759.53; // TODO: query live price
+async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDenominator]: number[]) {
+    const ethPrice = BigNumber.from(1759); // TODO: query live price
     const govSigner = await ethers.getSigner(governorAddress);
     const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, govSigner);
     const token0Address = await uniswapV3Pool.token0();
@@ -217,9 +222,15 @@ async function adjustUniswapTVLToTarget(target: number, targetRatio: number) {
     const actualETHValueLocked = wethBalance.div(BigNumber.from(10).pow(ETH_DECIMALS)).mul(ethPrice);
     const deltaNeeded = BigNumber.from(target/2).sub(actualETHValueLocked); // half of liquidity is supplied with WETH
     const deltaETH = deltaNeeded.div(ethPrice).mul(BigNumber.from(10).pow(ETH_DECIMALS));
-    const wethTarget = wethBalance.add(deltaETH);
-    const theoTarget = wethTarget.div(targetRatio);
 
+    const wethTarget = wethBalance.add(deltaETH);
+    const denom = BigNumber.from(1);
+
+    const theoTargetNumerator = wethTarget.mul(ratioDenominator);
+    const theoTargetDenominator = denom.mul(ratioNumerator);
+
+    const theoTarget = theoTargetNumerator.div(theoTargetDenominator);
+    console.log(theoTarget.div(BigNumber.from(10).pow(THEO_DECIMALS)).toString(), wethTarget.div(BigNumber.from(10).pow(ETH_DECIMALS)).toString())
     //Impersonate treasury and mint THEO to Governor address
     await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
