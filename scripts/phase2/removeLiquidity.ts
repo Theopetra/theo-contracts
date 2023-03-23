@@ -1,7 +1,7 @@
-import { hexZeroPad } from 'ethers/lib/utils';
+import { AbiCoder, hexZeroPad } from 'ethers/lib/utils';
 import { ethers } from 'hardhat';
 import hre from 'hardhat';
-import BigNumber from 'ethers';
+const BigNumber = ethers.BigNumber;
 import helpers from '@nomicfoundation/hardhat-network-helpers';
 
 import THEOERC20_MAINNET_DEPLOYMENT from '../../deployments/mainnet/TheopetraERC20Token.json';
@@ -88,33 +88,44 @@ async function main() {
 
                     let impersonatedSigner = await ethers.getSigner(fromAddrs[i]);
                     UNISWAP_POOL_CONTRACT.connect(impersonatedSigner);
-                    
-                    let removeArgs = [
-                        "0x0c49ccbe",
-                        id,
-                        positionInfo.liquidity,
-                        "0",
-                        "0",
-                        deadline,
+
+                    const removeData = [
+                        { type: 'uint256', value: id },
+                        { type: 'uint128', value: positionInfo.liquidity },
+                        { type: 'uint256', value: "0" },
+                        { type: 'uint256', value: "0" },
+                        { type: 'uint256', value: deadline }
                     ];
 
-                    let collectArgs = [
-                        "0x4f1eb3d8",
-                        fromAddrs[i],
-                        positionInfo.tickLower,
-                        positionInfo.tickUpper,
-                        "170141183460469231731687303715884105727",
-                        "170141183460469231731687303715884105727",
-                    ];
+                    const collectData = [
+                        { type: 'address', value: fromAddrs[i] },
+                        { type: 'int24', value: positionInfo.tickLower },
+                        { type: 'int24', value: positionInfo.tickUpper },
+                        { type: 'uint128', value: "170141183460469231731687303715884105727" },
+                      ];
+                      
+                      let collectSignature = ['0x4f1eb3d8'];
+                      let removeSignature = ['0x0c49ccbe'];
+                      const encodedCollectData = collectData.map(encodeValue);
+                      const collectBytes = Promise.all(collectSignature.concat(encodedCollectData));
+                      const encodedRemoveData = removeData.map(encodeValue);
+                      const removeBytes = Promise.all(removeSignature.concat(encodedRemoveData));
 
-                    console.log(removeArgs, collectArgs);
+                    collectBytes.then((collectBytes) => removeBytes.then((removeBytes) => console.log(removeBytes, collectBytes)));
+
+                    console.log(removeBytes, collectBytes);
                     console.log(positionInfo);
 
-                    await UNISWAP_FACTORY_CONTRACT.multicall(collectArgs, removeArgs);
+                    await UNISWAP_FACTORY_CONTRACT.multicall(encodedCollectData, encodedRemoveData);
                     // console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick);
                 }
             })
         })
     }
+
+    // Function to encode a single value based on its type
+    function encodeValue(element: any) {
+        return ethers.utils.defaultAbiCoder.encode([element.type], [element.value]);
+      }
 
 main();
