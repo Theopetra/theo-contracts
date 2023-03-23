@@ -1,6 +1,7 @@
 import { ethers, network } from 'hardhat';
+import { hexZeroPad } from 'ethers/lib/utils';
 import hre from 'hardhat';
-import  helpers from '@nomicfoundation/hardhat-network-helpers';
+import helpers from '@nomicfoundation/hardhat-network-helpers';
 import type {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import 'lodash.product';
 import _ from 'lodash';
@@ -15,6 +16,7 @@ import {
 
 import UNISWAP_SWAP_ROUTER_ABI from './UniswapSwapRouter.json';
 import UNISWAP_POOL_ABI from './UniswapV3PoolAbi.json';
+import UNISWAP_FACTORY_ABI from './NonFungiblePositionManager.json';
 import THEOERC20_MAINNET_DEPLOYMENT from '../../deployments/mainnet/TheopetraERC20Token.json';
 import MAINNET_YIELD_REPORTER from '../../deployments/mainnet/TheopetraYieldReporter.json';
 import MAINNET_BOND_DEPO from '../../deployments/mainnet/TheopetraBondDepository.json';
@@ -26,6 +28,7 @@ import {waitFor} from "../../test/utils";
 
 const UNISWAP_SWAP_ROUTER_ADDRESS = "";
 const UNISWAP_POOL_ADDRESS = "0x1fc037ac35af9b940e28e97c2faf39526fbb4556";
+const UNISWAP_FACTORY_ADDRESS = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
 const governorAddress = '0xb0D6fb365d04FbB7351b2C2796d895eBFDfC422A';
 
 const RPC_URL = process.env.ETH_NODE_URI_MAINNET;
@@ -252,23 +255,63 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     const weth9 = new ethers.Contract(WETH9.address, WETH9.abi, govSigner);
     await weth9.deposit(wethTarget);
 
-    //Remove initial liquidity positions and add liquidity evenly across range in multicall
+    /*  
+        Token IDs are reported in Transfer events from the Uniswap factory address, 
+        but don't indicate the pool they belong to.
+
+        Mint events in the pool contract are delegated through the factory contract, 
+        but the sender can be found through the transaction logs for the event.
+
+        By filtering for the Mint events, accessing the tx hash property and querying the transaction, 
+        we can find the sender address and use it to filter transfer events in the factory contract to list all LP position token IDs for the given pool.
+    */
+   
+    let mintFilter = {
+        address: UNISWAP_POOL_ADDRESS,
+        topics: [
+            '0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde',
+        ],
+        fromBlock: 15460378
+    }
+
     const deadline = await helpers.time.latest() + 28800;
-    const removeArgs1 = [
-        "0x0c49ccbe",
-        "457460",
-        "0",
-        "1_045_574_999_999_999",
-        deadline,
-    ]
-    const removeArgs2 = [
-        "0x0c49ccbe",
-        "457448",
-        "2_999_999_999_999_999_999",
-        "1_045_574_999_999_999",
-        deadline
-    ]
-    //Calls mint to create new position across the full range with the target liquidity
+    let provider = ethers.providers.getDefaultProvider();
+
+    let logPromise = provider.getLogs(mintFilter);
+    logPromise.then(function(logs) {
+        let txlist = Promise.all(logs.map((log) => (provider.getTransaction(log.transactionHash))));
+        
+        txlist.then(function(txs) {
+            let fromAddrs = Promise.all(txs.map(async (transaction) => transaction.from));
+
+            fromAddrs.then(async (fromAddrs) => {
+            // fromAddrs.forEach(item => console.log(item.toString()));
+
+            let eventsList = await Promise.all(fromAddrs.map(fromAddr => {
+                    
+                let transferFilter = {
+                    address: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
+                    topics: [
+                    '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', 
+                    null, 
+                    hexZeroPad(fromAddr, 32)],
+                    fromBlock: 15460379                    
+                };
+
+                let eventPromise = provider.getLogs(transferFilter);
+                return eventPromise;
+            }));
+            
+            // eventsList.forEach(item => console.log(item.toString()));
+            let tokenIdsForAddr = Promise.all(eventsList.map(async (event) => Promise.all(event.map(async (event) => event.topics[3]))));
+            tokenIdsForAddr.then(async (tokenIds) => 
+            removeAllLiquidity(tokenIds, fromAddrs, govSigner, deadline).then(() => 
+            console.log("Liquidity removed from pool.")));
+            });
+        });    
+    });
+
+    //Once pool is empty, call mint to create new position across the full range with the target liquidity
     const addArgs = [
         "0x88316456",
         THEOERC20_MAINNET_DEPLOYMENT.address,
@@ -285,7 +328,52 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     ]
     await weth9.approve(uniswapV3Pool, wethTarget);
     await theoERC20.approve(uniswapV3Pool, theoTarget);
-    await uniswapV3Pool.multicall(removeArgs1, removeArgs2, addArgs);
+    await uniswapV3Pool.multicall(addArgs);
+}
+
+async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], signer: SignerWithAddress, deadline: number) {
+    const UNISWAP_FACTORY_CONTRACT = new ethers.Contract(UNISWAP_FACTORY_ADDRESS, UNISWAP_FACTORY_ABI, signer);
+    const UNISWAP_POOL_CONTRACT = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
+    
+    // tokenIds.forEach(item => console.log(item.toString()));
+    tokenIds.forEach(async (id, i) => {
+        id.forEach(async (id) => {
+
+            let positionInfo = await UNISWAP_FACTORY_CONTRACT.positions(id);
+            // console.log(positionInfo);
+
+            if (positionInfo.token0 == THEOERC20_MAINNET_DEPLOYMENT.address || positionInfo.token1 == THEOERC20_MAINNET_DEPLOYMENT.address) {
+                await hre.network.provider.request({
+                    method: "hardhat_impersonateAccount",
+                    params: [fromAddrs[i]],
+                });
+
+                let impersonatedSigner = await ethers.getSigner(fromAddrs[i]);
+                UNISWAP_POOL_CONTRACT.connect(impersonatedSigner);
+                
+                let removeArgs = [
+                    "0x0c49ccbe",
+                    id,
+                    positionInfo.liquidity,
+                    "0",
+                    "0",
+                    deadline,
+                ];
+
+                let collectArgs = [
+                    "0x4f1eb3d8",
+                    fromAddrs[i],
+                    positionInfo.tickLower,
+                    positionInfo.tickUpper,
+                    "170141183460469231731687303715884105727",
+                    "170141183460469231731687303715884105727",
+                ];
+
+                await UNISWAP_FACTORY_CONTRACT.multicall(collectArgs, removeArgs);
+                // console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick);
+            }
+        })
+    })   
 }
 
 async function executeUniswapTransactions(transactions: Array<Array<(number|Direction)>>, signer: SignerWithAddress) {
@@ -299,7 +387,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
         const tokenInDecimals = direction === Direction.buy ? ETH_DECIMALS : THEO_DECIMALS;
         const tokenOutDecimals = direction === Direction.buy ? THEO_DECIMALS : ETH_DECIMALS;
         const sqrtPriceLimitX96 = 0;
-        const fee = 500; // TODO: verify fee
+        const fee = 10000; // TODO: verify fee
 
         const Erc20 = Direction.buy ? IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer) : IERC20__factory.connect(WETH9.address, signer);
         const deadline = await helpers.time.latest() + 28800;
