@@ -351,29 +351,38 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                 let impersonatedSigner = await ethers.getSigner(fromAddrs[i]);
                 UNISWAP_POOL_CONTRACT.connect(impersonatedSigner);
                 
-                let removeArgs = [
-                    "0x0c49ccbe",
-                    id,
-                    positionInfo.liquidity,
-                    "0",
-                    "0",
-                    deadline,
+                const removeData = [
+                    { type: 'bytes4', value: '0x0c49ccbe' },
+                    { type: 'uint256', value: id },
+                    { type: 'uint128', value: positionInfo.liquidity },
+                    { type: 'uint256', value: "0" },
+                    { type: 'uint256', value: "0" },
+                    { type: 'uint256', value: deadline }
                 ];
 
-                let collectArgs = [
-                    "0x4f1eb3d8",
-                    fromAddrs[i],
-                    positionInfo.tickLower,
-                    positionInfo.tickUpper,
-                    "170141183460469231731687303715884105727",
-                    "170141183460469231731687303715884105727",
-                ];
+                const collectData = [
+                    { type: 'bytes4', value: '0x4f1eb3d8' },
+                    { type: 'address', value: fromAddrs[i] },
+                    { type: 'int24', value: positionInfo.tickLower },
+                    { type: 'int24', value: positionInfo.tickUpper },
+                    { type: 'uint128', value: "170141183460469231731687303715884105727" },
+                  ];
+                  
+                  let collectSignature = '0x4f1eb3d8';
+                  let removeSignature = '0x0c49ccbe';
+                  const encodedCollectData = collectData.map(encodeValue);
+                  const encodedRemoveData = removeData.map(encodeValue);
 
-                await UNISWAP_FACTORY_CONTRACT.multicall(collectArgs, removeArgs);
+                await UNISWAP_FACTORY_CONTRACT.multicall(encodedCollectData, encodedRemoveData);
                 // console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick);
             }
         })
     })   
+}
+
+// Function to encode a single value based on its type
+function encodeValue(element: any) {
+    return ethers.utils.defaultAbiCoder.encode([element.type], [element.value]);
 }
 
 async function executeUniswapTransactions(transactions: Array<Array<(number|Direction)>>, signer: SignerWithAddress) {
