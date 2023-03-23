@@ -368,10 +368,12 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                     { type: 'uint128', value: "170141183460469231731687303715884105727" },
                   ];
                   
-                  let collectSignature = '0x4f1eb3d8';
-                  let removeSignature = '0x0c49ccbe';
-                  const encodedCollectData = collectData.map(encodeValue);
-                  const encodedRemoveData = removeData.map(encodeValue);
+                const collectSignature = ['0x4f1eb3d8'];
+                const removeSignature = ['0x0c49ccbe'];
+                const encodedCollectData = collectData.map(encodeValue);
+                const collectBytes = Promise.all(collectSignature.concat(encodedCollectData));
+                const encodedRemoveData = removeData.map(encodeValue);
+                const removeBytes = Promise.all(removeSignature.concat(encodedRemoveData));
 
                 await UNISWAP_FACTORY_CONTRACT.multicall(encodedCollectData, encodedRemoveData);
                 // console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick);
