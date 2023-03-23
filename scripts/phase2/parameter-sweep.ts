@@ -211,8 +211,16 @@ function generateBondPurchases() {
 }
 
 async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDenominator]: number[]) {
+    //Impersonate Governor wallet and wrap ETH
+    await hre.network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [governorAddress],
+    });
+
+    const provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545/');
+
     const ethPrice = BigNumber.from(1759); // TODO: query live price
-    const govSigner = await ethers.getSigner(governorAddress);
+    const govSigner = provider.getSigner(governorAddress);
     const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, govSigner);
     const token0Address = await uniswapV3Pool.token0();
     const token1Address = await uniswapV3Pool.token1();
@@ -241,20 +249,15 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
         wethTarget.toHexString(),
     ]);
 
-    const provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545/');
     const treasurySigner = provider.getSigner(MAINNET_TREASURY_DEPLOYMENT.address);
     const theoERC20 = new ethers.Contract(THEOERC20_MAINNET_DEPLOYMENT.address, THEOERC20_MAINNET_DEPLOYMENT.abi, treasurySigner);
     await theoERC20.mint(governorAddress, BigNumber.from(theoTarget));
     //mintTheoToSigners(signer, treasurySigner);
 
-    //Impersonate Governor wallet and wrap ETH
-    await hre.network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [governorAddress],
-    });
 
     const weth9 = new ethers.Contract(WETH9.address, WETH9.abi, govSigner);
-    await weth9.deposit(wethTarget);
+
+    await weth9.deposit({ value: wethTarget });
 
     /*  
         Token IDs are reported in Transfer events from the Uniswap factory address, 
@@ -310,7 +313,6 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
             });
         });    
     });
-
     //Once pool is empty, call mint to create new position across the full range with the target liquidity
     const addArgs = [
         "0x88316456",
@@ -331,7 +333,7 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     await uniswapV3Pool.multicall(addArgs);
 }
 
-async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], signer: SignerWithAddress, deadline: number) {
+async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], signer: any, deadline: number) {
     const UNISWAP_FACTORY_CONTRACT = new ethers.Contract(UNISWAP_FACTORY_ADDRESS, UNISWAP_FACTORY_ABI, signer);
     const UNISWAP_POOL_CONTRACT = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
     
