@@ -87,7 +87,7 @@ async function main() {
                     });
 
                     let impersonatedSigner = await ethers.getSigner(fromAddrs[i]);
-                    UNISWAP_POOL_CONTRACT.connect(impersonatedSigner);
+                    UNISWAP_FACTORY_CONTRACT.connect(impersonatedSigner);
 
                     const removeData = [
                         { type: 'uint256', value: id },
@@ -111,12 +111,14 @@ async function main() {
                       const encodedRemoveData = removeData.map(encodeValue);
                       const removeBytes = Promise.all(removeSignature.concat(encodedRemoveData));
 
-                    collectBytes.then((collectBytes) => removeBytes.then((removeBytes) => console.log(removeBytes, collectBytes)));
+                    collectBytes.then((collectBytes) => removeBytes.then(async (removeBytes) => { 
+                        const encodedBytes = encodeValue({ type: 'bytes[]', value: collectBytes.concat(removeBytes)});
+                        console.log(encodedBytes);
+                        console.log(removeBytes, collectBytes);
+                        await UNISWAP_FACTORY_CONTRACT.multicall([encodedBytes]);
+                    }));
 
-                    console.log(removeBytes, collectBytes);
-                    console.log(positionInfo);
-
-                    await UNISWAP_FACTORY_CONTRACT.multicall(encodedCollectData, encodedRemoveData);
+                    
                     // console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick);
                 }
             })

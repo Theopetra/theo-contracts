@@ -13,6 +13,7 @@ const doTheTest = async () => {
     let symbol = await contract.symbol();
     let supply = await contract.totalSupply();
     let decimals = await contract.decimals();
+
     console.log(`${name}: ${symbol}`);
     console.log(`totalSupply ${supply}, decimals: ${decimals}`);
 };

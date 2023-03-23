@@ -223,6 +223,7 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     const ethPrice = BigNumber.from(1759); // TODO: query live price
     const govSigner = provider.getSigner(governorAddress);
     const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, govSigner);
+    const uniswapV3Factory = new ethers.Contract(UNISWAP_FACTORY_ADDRESS, UNISWAP_FACTORY_ABI, govSigner);
     const token0Address = await uniswapV3Pool.token0();
     const token1Address = await uniswapV3Pool.token1();
 
@@ -339,9 +340,9 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
         governorAddress,
         deadline
     ]
-    await weth9.approve(uniswapV3Pool, wethTarget);
-    await theoERC20.approve(uniswapV3Pool, theoTarget);
-    await uniswapV3Pool.multicall(addArgs);
+    await weth9.approve(uniswapV3Pool.address, wethTarget);
+    await theoERC20.approve(uniswapV3Pool.address, theoTarget);
+    await uniswapV3Factory.multicall(addArgs);
 }
 
 async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], signer: any, deadline: number) {
@@ -362,10 +363,9 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                 });
 
                 let impersonatedSigner = await ethers.getSigner(fromAddrs[i]);
-                UNISWAP_POOL_CONTRACT.connect(impersonatedSigner);
+                UNISWAP_FACTORY_CONTRACT.connect(impersonatedSigner);
                 
                 const removeData = [
-                    { type: 'bytes4', value: '0x0c49ccbe' },
                     { type: 'uint256', value: id },
                     { type: 'uint128', value: positionInfo.liquidity },
                     { type: 'uint256', value: "0" },
@@ -374,7 +374,6 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                 ];
 
                 const collectData = [
-                    { type: 'bytes4', value: '0x4f1eb3d8' },
                     { type: 'address', value: fromAddrs[i] },
                     { type: 'int24', value: positionInfo.tickLower },
                     { type: 'int24', value: positionInfo.tickUpper },
@@ -389,9 +388,13 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                 const removeBytes = Promise.all(removeSignature.concat(encodedRemoveData));
                 console.log('hello');
 
-                collectBytes.then((collectBytes) => removeBytes.then(async (removeBytes) => 
-                await UNISWAP_FACTORY_CONTRACT.multicall(collectBytes, removeBytes)
-                ));
+                collectBytes.then((collectBytes) => removeBytes.then(async (removeBytes) => {
+                    const multicallBytes = collectBytes.concat(removeBytes);
+                    const encodedBytes = encodeValue({ type: 'bytes[]', value: multicallBytes});
+                    console.log(encodedBytes);
+                    console.log(removeBytes, collectBytes);
+                    await UNISWAP_FACTORY_CONTRACT.multicall([encodedBytes]);
+                }));
                 // console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick);
             }
         })
