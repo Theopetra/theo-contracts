@@ -13,6 +13,7 @@ import {
     TheopetraTreasury__factory,
     STheopetra__factory, IERC20__factory, ERC20__factory
 } from '../../typechain-types';
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 import UNISWAP_SWAP_ROUTER_ABI from './UniswapSwapRouter.json';
 import UNISWAP_POOL_ABI from './UniswapV3PoolAbi.json';
@@ -245,8 +246,18 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     });
 
     await hre.network.provider.send("hardhat_setBalance", [
-        MAINNET_TREASURY_DEPLOYMENT.address,
+        governorAddress,
         wethTarget.toHexString(),
+    ]);
+
+    await hre.network.provider.send("hardhat_setBalance", [
+        governorAddress,
+        "0x152D02C7E14AF6800000",
+    ]);
+
+    await hre.network.provider.send("hardhat_setBalance", [
+        MAINNET_TREASURY_DEPLOYMENT.address,
+        "0x8ac7230489e80000",
     ]);
 
     const treasurySigner = provider.getSigner(MAINNET_TREASURY_DEPLOYMENT.address);
@@ -278,7 +289,7 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
         fromBlock: 15460378
     }
 
-    const deadline = await helpers.time.latest() + 28800;
+    const deadline = await time.latest() + 28800;
 
     let logPromise = provider.getLogs(mintFilter);
     logPromise.then(function(logs) {
@@ -406,7 +417,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
         const fee = 10000; // TODO: verify fee
 
         const Erc20 = Direction.buy ? IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer) : IERC20__factory.connect(WETH9.address, signer);
-        const deadline = await helpers.time.latest() + 28800;
+        const deadline = await time.latest() + 28800;
 
         if (direction == Direction.buy) {
             const amountOut = BigNumber.from((transactions[i][0])).mul(BigNumber.from(10).pow(tokenOutDecimals));
