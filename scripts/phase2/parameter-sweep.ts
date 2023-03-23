@@ -241,7 +241,8 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
         wethTarget.toHexString(),
     ]);
 
-    const treasurySigner = await ethers.getSigner(MAINNET_TREASURY_DEPLOYMENT.address);
+    const provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545/');
+    const treasurySigner = provider.getSigner(MAINNET_TREASURY_DEPLOYMENT.address);
     const theoERC20 = new ethers.Contract(THEOERC20_MAINNET_DEPLOYMENT.address, THEOERC20_MAINNET_DEPLOYMENT.abi, treasurySigner);
     await theoERC20.mint(governorAddress, BigNumber.from(theoTarget));
     //mintTheoToSigners(signer, treasurySigner);
@@ -275,7 +276,6 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     }
 
     const deadline = await helpers.time.latest() + 28800;
-    let provider = ethers.providers.getDefaultProvider();
 
     let logPromise = provider.getLogs(mintFilter);
     logPromise.then(function(logs) {
@@ -374,7 +374,7 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                 const collectBytes = Promise.all(collectSignature.concat(encodedCollectData));
                 const encodedRemoveData = removeData.map(encodeValue);
                 const removeBytes = Promise.all(removeSignature.concat(encodedRemoveData));
-
+                console.log('hello');
                 await UNISWAP_FACTORY_CONTRACT.multicall(encodedCollectData, encodedRemoveData);
                 // console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick);
             }
