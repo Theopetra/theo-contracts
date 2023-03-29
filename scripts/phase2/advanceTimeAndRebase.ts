@@ -5,8 +5,8 @@ import {address as stakingAddress, abi as stakingAbi} from '../../deployments/ma
 import {address as lockedStakingAddress, abi as lockedStakingAbi} from '../../deployments/mainnet/TheopetraStakingLocked.json';
 dotenv.config();
 
-const doTheTest = async () => {
-    const provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545/');
+const timeAndRebase = async () => {
+    const provider = new ethers.providers.JsonRpcProvider('https://e9ec-2600-1702-6d0-ba00-b113-f34b-8a32-38b2.ngrok.io');
     let [signer, ...signers] =  await ethers.getSigners();
     let unlockedStakingContract = await ethers.getContractAt(stakingAbi, stakingAddress, signer);
     let lockedStakingContract = await ethers.getContractAt(lockedStakingAbi, lockedStakingAddress, signer);
@@ -26,12 +26,12 @@ const doTheTest = async () => {
 
 };
 
-const testIt = async () => {
+const main = async () => {
     try {
-        await doTheTest();
+        await timeAndRebase();
     } catch (err) {
         console.log(err);
     }
 };
 
-testIt();
+main();
