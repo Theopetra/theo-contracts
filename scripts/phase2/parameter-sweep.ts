@@ -292,39 +292,26 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
 
     const deadline = await time.latest() + 28800;
 
-    let logPromise = provider.getLogs(mintFilter);
-    logPromise.then(function(logs) {
-        let txlist = Promise.all(logs.map((log) => (provider.getTransaction(log.transactionHash))));
-        
-        txlist.then(function(txs) {
-            let fromAddrs = Promise.all(txs.map(async (transaction) => transaction.from));
+    const logs = await provider.getLogs(mintFilter);
+    const txs = await Promise.all(logs.map((log) => (provider.getTransaction(log.transactionHash))));
+    const fromAddrs = await Promise.all(txs.map(async (transaction) => transaction.from));
+    const eventsList = await Promise.all(fromAddrs.map(fromAddr => {
+        const transferFilter = {
+            address: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
+            topics: [
+                '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+                null,
+                hexZeroPad(fromAddr, 32)],
+            fromBlock: 15460379
+        };
+        return provider.getLogs(transferFilter);
+    }));
 
-            fromAddrs.then(async (fromAddrs) => {
-            // fromAddrs.forEach(item => console.log(item.toString()));
+    // eventsList.forEach(item => console.log(item.toString()));
+    const tokenIds = await Promise.all(eventsList.map(async (event) => Promise.all(event.map(async (event) => event.topics[3]))));
+    await removeAllLiquidity(tokenIds, fromAddrs, govSigner, deadline);
+    console.log('Liquidity removed from LP');
 
-            let eventsList = await Promise.all(fromAddrs.map(fromAddr => {
-                    
-                let transferFilter = {
-                    address: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
-                    topics: [
-                    '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', 
-                    null, 
-                    hexZeroPad(fromAddr, 32)],
-                    fromBlock: 15460379                    
-                };
-
-                let eventPromise = provider.getLogs(transferFilter);
-                return eventPromise;
-            }));
-            
-            // eventsList.forEach(item => console.log(item.toString()));
-            let tokenIdsForAddr = Promise.all(eventsList.map(async (event) => Promise.all(event.map(async (event) => event.topics[3]))));
-            tokenIdsForAddr.then(async (tokenIds) => 
-            removeAllLiquidity(tokenIds, fromAddrs, govSigner, deadline).then(() => 
-            console.log("Liquidity removed from pool.")));
-            });
-        });    
-    });
     //Once pool is empty, call mint to create new position across the full range with the target liquidity
     const addArgs = [
         "0x88316456",
