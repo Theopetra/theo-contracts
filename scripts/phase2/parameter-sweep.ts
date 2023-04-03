@@ -335,12 +335,11 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
 async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], signer: any, deadline: number) {
     const UNISWAP_FACTORY_CONTRACT = new ethers.Contract(UNISWAP_FACTORY_ADDRESS, UNISWAP_FACTORY_ABI, signer);
     const UNISWAP_POOL_CONTRACT = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
-    
-    // tokenIds.forEach(item => console.log(item.toString()));
-    tokenIds.forEach(async (id, i) => {
-        id.forEach(async (id) => {
 
-            let positionInfo = await UNISWAP_FACTORY_CONTRACT.positions(id);
+    for (let i = 0; i < tokenIds.length; i++) {
+        for (let j = 0; j < tokenIds[i].length; j++) {
+            const id = tokenIds[i][j];
+            const positionInfo = await UNISWAP_FACTORY_CONTRACT.positions(id);
             // console.log(positionInfo);
 
             if (positionInfo.token0 == THEOERC20_MAINNET_DEPLOYMENT.address || positionInfo.token1 == THEOERC20_MAINNET_DEPLOYMENT.address) {
@@ -349,44 +348,44 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                     params: [fromAddrs[i]],
                 });
 
-                let impersonatedSigner = await ethers.getSigner(fromAddrs[i]);
+                const impersonatedSigner = await ethers.getSigner(fromAddrs[i]);
                 UNISWAP_FACTORY_CONTRACT.connect(impersonatedSigner);
-                
+
                 const removeData = [
-                    { type: 'uint256', value: id },
-                    { type: 'uint128', value: positionInfo.liquidity },
-                    { type: 'uint256', value: "0" },
-                    { type: 'uint256', value: "0" },
-                    { type: 'uint256', value: deadline }
+                    {type: 'uint256', value: id},
+                    {type: 'uint128', value: positionInfo.liquidity},
+                    {type: 'uint256', value: "0"},
+                    {type: 'uint256', value: "0"},
+                    {type: 'uint256', value: deadline}
                 ];
 
                 const collectData = [
-                    { type: 'address', value: fromAddrs[i] },
-                    { type: 'int24', value: positionInfo.tickLower },
-                    { type: 'int24', value: positionInfo.tickUpper },
-                    { type: 'uint128', value: "170141183460469231731687303715884105727" },
-                  ];
-                  
+                    {type: 'address', value: fromAddrs[i]},
+                    {type: 'int24', value: positionInfo.tickLower},
+                    {type: 'int24', value: positionInfo.tickUpper},
+                    {type: 'uint128', value: "170141183460469231731687303715884105727"},
+                ];
+
                 const collectSignature = ['0x4f1eb3d8'];
                 const removeSignature = ['0x0c49ccbe'];
                 const encodedCollectData = collectData.map(encodeValue);
-                const collectBytes = Promise.all(collectSignature.concat(encodedCollectData));
-                const encodedRemoveData = removeData.map(encodeValue);
-                const removeBytes = Promise.all(removeSignature.concat(encodedRemoveData));
-                console.log('hello');
+                const collectBytes = collectSignature.concat(encodedCollectData);
 
-                collectBytes.then((collectBytes) => removeBytes.then(async (removeBytes) => {
-                    const multicallBytes = collectBytes.concat(removeBytes);
-                    const encodedBytes = encodeValue({ type: 'bytes[]', value: multicallBytes});
-                    console.log(encodedBytes);
-                    console.log(removeBytes, collectBytes);
-                    await UNISWAP_FACTORY_CONTRACT.multicall([encodedBytes]);
-                }));
-                // console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick);
+                const encodedRemoveData = removeData.map(encodeValue);
+                const removeBytes = removeSignature.concat(encodedRemoveData);
+
+                const multicallBytes = collectBytes.concat(removeBytes);
+                const encodedBytes = encodeValue({type: 'bytes[]', value: multicallBytes});
+
+                console.log(encodedBytes);
+                console.log(removeBytes, collectBytes);
+                await UNISWAP_FACTORY_CONTRACT.multicall([encodedBytes]);
+                console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick());
             }
-        })
-    })   
+        }
+    }
 }
+
 
 // Function to encode a single value based on its type
 function encodeValue(element: any) {
