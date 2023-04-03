@@ -6,7 +6,7 @@ import {address as lockedStakingAddress, abi as lockedStakingAbi} from '../../de
 dotenv.config();
 
 const timeAndRebase = async () => {
-    const provider = new ethers.providers.JsonRpcProvider('https://e9ec-2600-1702-6d0-ba00-b113-f34b-8a32-38b2.ngrok.io');
+    const provider = new ethers.providers.JsonRpcProvider('https://mainnet-fork-endpoint-x1gi.onrender.com');
     let [signer, ...signers] =  await ethers.getSigners();
     let unlockedStakingContract = await ethers.getContractAt(stakingAbi, stakingAddress, signer);
     let lockedStakingContract = await ethers.getContractAt(lockedStakingAbi, lockedStakingAddress, signer);
