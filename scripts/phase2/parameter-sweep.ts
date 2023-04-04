@@ -379,27 +379,22 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                 ];
 
                 const calldata = [];
-                const fee = 0;
+                // const fee = 10000;
                 // const t0 = new Token(1, 'address', 18, 't0', 'ETH');
-                const token1 = new Token(1, 'address', 9, 't1', 'THEO');
-                const pool_1_weth = new Pool(token1, WETH9[1], fee, encodeSqrtRatioX96(1, 1).toString(), 0, 0, [])
+                // const token1 = new Token(1, 'address', 9, 't1', 'THEO');
+                // const pool_1_weth = new Pool(token1, WETH9[1], fee, encodeSqrtRatioX96(1, 1).toString(), 0, 0, [])
 
                 const p0 = NonfungiblePositionManager.removeCallParameters(
-                    new Position({
-                        pool: pool_1_weth,
-                        tickLower: positionInfo.tickLower,
-                        tickUpper: positionInfo.tickUpper,
-                        liquidity: 0
-                    }),
+                    new Position({positionInfo}),
                     {
-                        tokenId,
-                        liquidityPercentage: new Percent(1),
-                        slippageTolerance,
+                        id,
+                        liquidityPercentage: new Percent(100),
+                        slippageTolerance: new Percent(100),
                         deadline,
                         collectOptions: {
                             expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(t0, 0),
                             expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(t1, 0),
-                            recipient: '',
+                            recipient: fromAddrs[i],
                         }
                     }
                 );
