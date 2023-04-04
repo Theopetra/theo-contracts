@@ -34,7 +34,7 @@ import {
     encodeSqrtRatioX96,
     Pool
 } from '@uniswap/v3-sdk';
-import {Currency, CurrencyAmount, Token, WETH9} from '@uniswap/sdk-core';
+import {Currency, CurrencyAmount, Token, WETH9, Percent} from '@uniswap/sdk-core';
 
 import {waitFor} from "../../test/utils";
 
@@ -279,7 +279,7 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     //mintTheoToSigners(signer, treasurySigner);
 
 
-    const weth9 = new ethers.Contract(WETH9.address, WETH9.abi, govSigner);
+    const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, govSigner);
 
     await weth9.deposit({ value: wethTarget });
 
@@ -294,7 +294,7 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
         we can find the sender address and use it to filter transfer events in the factory contract to list all LP position token IDs for the given pool.
     */
    
-    let mintFilter = {
+    const mintFilter = {
         address: UNISWAP_POOL_ADDRESS,
         topics: [
             '0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde',
@@ -325,10 +325,11 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     console.log('Liquidity removed from LP');
 
     //Once pool is empty, call mint to create new position across the full range with the target liquidity
+    //If this fails it's because of tick spacing, adjust fee, or adjust tick to amount divisible by 200
     const addArgs = [
         "0x88316456",
         THEOERC20_MAINNET_DEPLOYMENT.address,
-        WETH9.address,
+        WETH9[1].address,
         "10000",
         BigNumber.from(wethTarget),
         BigNumber.from(theoTarget),
@@ -380,21 +381,21 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
 
                 const calldata = [];
                 // const fee = 10000;
-                // const t0 = new Token(1, 'address', 18, 't0', 'ETH');
-                // const token1 = new Token(1, 'address', 9, 't1', 'THEO');
+                const t0 = WETH9[1];
+                const t1 = new Token(1, THEOERC20_MAINNET_DEPLOYMENT.address, 9, 't1', 'THEO');
                 // const pool_1_weth = new Pool(token1, WETH9[1], fee, encodeSqrtRatioX96(1, 1).toString(), 0, 0, [])
 
                 const p0 = NonfungiblePositionManager.removeCallParameters(
-                    new Position({positionInfo}),
+                    new Position(positionInfo),
                     {
-                        id,
+                        tokenId: id,
                         liquidityPercentage: new Percent(100),
                         slippageTolerance: new Percent(100),
                         deadline,
                         collectOptions: {
-                            expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(t0, 0),
-                            expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(t1, 0),
-                            recipient: fromAddrs[i],
+                            expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(t0, 170141183460469231731687303715884105727),
+                            expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(t1, 170141183460469231731687303715884105727),
+                            recipient: fromAddrs[i]
                         }
                     }
                 );
@@ -434,14 +435,14 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
 
     for (const i in transactions) {
         const direction: Direction = (transactions[i][1] as Direction);
-        const tokenIn = direction === Direction.buy ? WETH9.address : THEOERC20_MAINNET_DEPLOYMENT.address;
-        const tokenOut = direction === Direction.buy ? THEOERC20_MAINNET_DEPLOYMENT.address : WETH9.address;
+        const tokenIn = direction === Direction.buy ? WETH9[1].address : THEOERC20_MAINNET_DEPLOYMENT.address;
+        const tokenOut = direction === Direction.buy ? THEOERC20_MAINNET_DEPLOYMENT.address : WETH9[1].address;
         const tokenInDecimals = direction === Direction.buy ? ETH_DECIMALS : THEO_DECIMALS;
         const tokenOutDecimals = direction === Direction.buy ? THEO_DECIMALS : ETH_DECIMALS;
         const sqrtPriceLimitX96 = 0;
         const fee = 10000; // TODO: verify fee
 
-        const Erc20 = Direction.buy ? IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer) : IERC20__factory.connect(WETH9.address, signer);
+        const Erc20 = Direction.buy ? IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer) : IERC20__factory.connect(WETH9[1].address, signer);
         const deadline = await time.latest() + 28800;
 
         if (direction == Direction.buy) {
