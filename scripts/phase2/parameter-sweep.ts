@@ -23,7 +23,18 @@ import MAINNET_YIELD_REPORTER from '../../deployments/mainnet/TheopetraYieldRepo
 import MAINNET_BOND_DEPO from '../../deployments/mainnet/TheopetraBondDepository.json';
 import MAINNET_BOND_CALC from '../../deployments/mainnet/NewBondingCalculatorMock.json';
 import MAINNET_TREASURY_DEPLOYMENT from '../../deployments/mainnet/TheopetraTreasury.json';
-import WETH9 from './WETH9.json';
+import WETH9_ABI from './WETH9.json';
+import { Interface } from '@ethersproject/abi'
+import IMulticall from '@uniswap/v3-periphery/artifacts/contracts/interfaces/IMulticall.sol/IMulticall.json'
+import {
+    Multicall,
+    NonfungiblePositionManager,
+    CollectOptions,
+    Position,
+    encodeSqrtRatioX96,
+    Pool
+} from '@uniswap/v3-sdk';
+import {Currency, CurrencyAmount, Token, WETH9} from '@uniswap/sdk-core';
 
 import {waitFor} from "../../test/utils";
 
@@ -44,6 +55,7 @@ const ETH_DECIMALS = 18;
 const product = (_ as any).product; // stupid typescript doesn't recognize `product` on lodash >.>
 const BigNumber = ethers.BigNumber;
 const FixedNumber = ethers.FixedNumber;
+
 
 /*
     Yield reporter is called on an interval to report yields, using reportYield function, yields are then used by the treasury to inform deltaTreasuryYield
@@ -366,8 +378,37 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                     {type: 'uint128', value: "170141183460469231731687303715884105727"},
                 ];
 
-                const collectSignature = ['0x4f1eb3d8'];
-                const removeSignature = ['0x0c49ccbe'];
+                const calldata = [];
+                const fee = 0;
+                // const t0 = new Token(1, 'address', 18, 't0', 'ETH');
+                const token1 = new Token(1, 'address', 9, 't1', 'THEO');
+                const pool_1_weth = new Pool(token1, WETH9[1], fee, encodeSqrtRatioX96(1, 1).toString(), 0, 0, [])
+
+                const p0 = NonfungiblePositionManager.removeCallParameters(
+                    new Position({
+                        pool: pool_1_weth,
+                        tickLower: positionInfo.tickLower,
+                        tickUpper: positionInfo.tickUpper,
+                        liquidity: 0
+                    }),
+                    {
+                        tokenId,
+                        liquidityPercentage: new Percent(1),
+                        slippageTolerance,
+                        deadline,
+                        collectOptions: {
+                            expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(t0, 0),
+                            expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(t1, 0),
+                            recipient: '',
+                        }
+                    }
+                );
+
+                calldata.push(p0.calldata);
+
+
+                const collectSignature = [hexZeroPad('0x4f1eb3d8', 32)];
+                const removeSignature = [hexZeroPad('0x0c49ccbe', 32)];
                 const encodedCollectData = collectData.map(encodeValue);
                 const collectBytes = collectSignature.concat(encodedCollectData);
 
