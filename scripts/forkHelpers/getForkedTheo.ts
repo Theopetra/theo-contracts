@@ -30,7 +30,7 @@ const getForkedTheo = async () => {
         "0x8ac7230489e80000",
     ]);
     
-    const provider = new ethers.providers.JsonRpcProvider('https://e9ec-2600-1702-6d0-ba00-b113-f34b-8a32-38b2.ngrok.io');
+    const provider = new ethers.providers.JsonRpcProvider('https://mainnet-fork-endpoint-x1gi.onrender.com');
 
     let signer = provider.getSigner(treasuryAddress);
     let contract = await ethers.getContractAt(abi, address, signer);

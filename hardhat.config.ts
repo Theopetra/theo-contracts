@@ -102,8 +102,8 @@ const config: HardhatUserConfig = {
       accounts: accounts(),
     },
     staging: {
-      url: node_url('rinkeby'),
-      accounts: accounts('rinkeby'),
+      url: 'https://mainnet-fork-endpoint-x1gi.onrender.com',
+      accounts: accounts('mainnet'),
     },
     production: {
       url: node_url('mainnet'),
