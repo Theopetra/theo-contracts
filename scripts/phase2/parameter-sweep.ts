@@ -38,6 +38,7 @@ import {Currency, CurrencyAmount, Token, WETH9, Percent} from '@uniswap/sdk-core
 
 import {waitFor} from "../../test/utils";
 import {BigNumberish} from "ethers";
+import JSBI from "jsbi";
 
 const UNISWAP_SWAP_ROUTER_ADDRESS = "";
 const UNISWAP_POOL_ADDRESS = "0x1fc037ac35af9b940e28e97c2faf39526fbb4556";
@@ -356,7 +357,7 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
             const positionInfo = await UNISWAP_FACTORY_CONTRACT.positions(id);
             const poolInfo = await getPoolInfo();
 
-            if (positionInfo.token0 == THEOERC20_MAINNET_DEPLOYMENT.address || positionInfo.token1 == THEOERC20_MAINNET_DEPLOYMENT.address) {
+            if (positionInfo.liquidity > 0 && (positionInfo.token0 == THEOERC20_MAINNET_DEPLOYMENT.address || positionInfo.token1 == THEOERC20_MAINNET_DEPLOYMENT.address)) {
                 await hre.network.provider.request({
                     method: "hardhat_impersonateAccount",
                     params: [fromAddrs[i]],
