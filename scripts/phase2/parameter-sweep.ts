@@ -37,6 +37,7 @@ import {
 import {Currency, CurrencyAmount, Token, WETH9, Percent} from '@uniswap/sdk-core';
 
 import {waitFor} from "../../test/utils";
+import {BigNumberish} from "ethers";
 
 const UNISWAP_SWAP_ROUTER_ADDRESS = "";
 const UNISWAP_POOL_ADDRESS = "0x1fc037ac35af9b940e28e97c2faf39526fbb4556";
@@ -353,7 +354,7 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
         for (let j = 0; j < tokenIds[i].length; j++) {
             const id = tokenIds[i][j];
             const positionInfo = await UNISWAP_FACTORY_CONTRACT.positions(id);
-            // console.log(positionInfo);
+            const poolInfo = await getPoolInfo();
 
             if (positionInfo.token0 == THEOERC20_MAINNET_DEPLOYMENT.address || positionInfo.token1 == THEOERC20_MAINNET_DEPLOYMENT.address) {
                 await hre.network.provider.request({
@@ -379,50 +380,37 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                     {type: 'uint128', value: "170141183460469231731687303715884105727"},
                 ];
 
+
                 const calldata = [];
                 // const fee = 10000;
                 const t0 = WETH9[1];
                 const t1 = new Token(1, THEOERC20_MAINNET_DEPLOYMENT.address, 9, 't1', 'THEO');
-                // const pool_1_weth = new Pool(token1, WETH9[1], fee, encodeSqrtRatioX96(1, 1).toString(), 0, 0, [])
+
+                const {liquidity, tickLower, tickUpper, fee} = positionInfo;
+                const pool = new Pool(t0, t1, fee, poolInfo.sqrtPriceX96.toString(), poolInfo.liquidity.toString(), poolInfo.tick);
+                const position = new Position({ pool, liquidity, tickLower, tickUpper });
 
                 const p0 = NonfungiblePositionManager.removeCallParameters(
-                    new Position(positionInfo),
+                    position,
                     {
                         tokenId: id,
-                        liquidityPercentage: new Percent(100),
-                        slippageTolerance: new Percent(100),
+                        liquidityPercentage: new Percent(100, 1),
+                        slippageTolerance: new Percent(100, 1),
                         deadline,
                         collectOptions: {
-                            expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(t0, 170141183460469231731687303715884105727),
-                            expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(t1, 170141183460469231731687303715884105727),
+                            expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(t0, '170141183460469231731687303715884105727'),
+                            expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(t1, '170141183460469231731687303715884105727'),
                             recipient: fromAddrs[i]
                         }
                     }
                 );
 
-                calldata.push(p0.calldata);
-
-
-                const collectSignature = [hexZeroPad('0x4f1eb3d8', 32)];
-                const removeSignature = [hexZeroPad('0x0c49ccbe', 32)];
-                const encodedCollectData = collectData.map(encodeValue);
-                const collectBytes = collectSignature.concat(encodedCollectData);
-
-                const encodedRemoveData = removeData.map(encodeValue);
-                const removeBytes = removeSignature.concat(encodedRemoveData);
-
-                const multicallBytes = collectBytes.concat(removeBytes);
-                const encodedBytes = encodeValue({type: 'bytes[]', value: multicallBytes});
-
-                console.log(encodedBytes);
-                console.log(removeBytes, collectBytes);
-                await UNISWAP_FACTORY_CONTRACT.multicall([encodedBytes]);
+                await UNISWAP_FACTORY_CONTRACT.multicall(p0.calldata);
                 console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick());
             }
         }
     }
 }
-
 
 // Function to encode a single value based on its type
 function encodeValue(element: any) {
@@ -493,6 +481,58 @@ async function executeBondTransactions(transactions: number[], signer: SignerWit
         const maxPrice = BigNumber.from(1).mul(BigNumber.from(10).pow(18));
         const theoToBond = BigNumber.from(transactions[l]);
         await waitFor(TheopetraBondDepository.deposit(BOND_MARKET_ID, theoToBond, maxPrice, signer.address, signer.address, false));
+    }
+}
+
+interface PoolInfo {
+    token0: string
+    token1: string
+    fee: number
+    tickSpacing: number
+    sqrtPriceX96: BigNumberish
+    liquidity: BigNumberish
+    tick: number
+}
+
+async function getPoolInfo(): Promise<PoolInfo> {
+    const provider = ethers.provider;
+    if (!provider) {
+        throw new Error('No provider')
+    }
+
+    // const currentPoolAddress = computePoolAddress({
+    //     factoryAddress: POOL_FACTORY_CONTRACT_ADDRESS,
+    //     tokenA: CurrentConfig.tokens.token0,
+    //     tokenB: CurrentConfig.tokens.token1,
+    //     fee: CurrentConfig.tokens.poolFee,
+    // })
+
+    const currentPoolAddress = UNISWAP_POOL_ADDRESS;
+
+    const poolContract = new ethers.Contract(
+        currentPoolAddress,
+        UNISWAP_POOL_ABI,
+        provider
+    )
+
+    const [token0, token1, fee, tickSpacing, liquidity, slot0] =
+        await Promise.all([
+            poolContract.token0(),
+            poolContract.token1(),
+            poolContract.fee(),
+            poolContract.tickSpacing(),
+            poolContract.liquidity(),
+            poolContract.slot0(),
+        ])
+
+    return {
+        token0,
+        token1,
+        fee,
+        tickSpacing,
+        liquidity,
+        sqrtPriceX96: slot0[0],
+        tick: slot0[1],
     }
 }
 
