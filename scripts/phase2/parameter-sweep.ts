@@ -27,14 +27,11 @@ import WETH9_ABI from './WETH9.json';
 import { Interface } from '@ethersproject/abi'
 import IMulticall from '@uniswap/v3-periphery/artifacts/contracts/interfaces/IMulticall.sol/IMulticall.json'
 import {
-    Multicall,
     NonfungiblePositionManager,
-    CollectOptions,
     Position,
-    encodeSqrtRatioX96,
     Pool
 } from '@uniswap/v3-sdk';
-import {Currency, CurrencyAmount, Token, WETH9, Percent} from '@uniswap/sdk-core';
+import {CurrencyAmount, Token, WETH9, Percent} from '@uniswap/sdk-core';
 
 import {waitFor} from "../../test/utils";
 import {BigNumberish} from "ethers";
@@ -387,7 +384,12 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                 const t0 = WETH9[1];
                 const t1 = new Token(1, THEOERC20_MAINNET_DEPLOYMENT.address, 9, 't1', 'THEO');
 
-                const {liquidity, tickLower, tickUpper, fee} = positionInfo;
+                // const {liquidity, tickLower, tickUpper, fee} = positionInfo;
+                const liquidity = positionInfo.liquidity.toString();
+                const tickLower = Number(positionInfo.tickLower.toString());
+                const tickUpper = Number(positionInfo.tickUpper.toString());
+                const fee = positionInfo.fee;
+
                 const pool = new Pool(t0, t1, fee, poolInfo.sqrtPriceX96.toString(), poolInfo.liquidity.toString(), poolInfo.tick);
                 const position = new Position({ pool, liquidity, tickLower, tickUpper });
 
