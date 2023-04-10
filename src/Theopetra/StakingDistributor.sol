@@ -119,19 +119,22 @@ contract StakingDistributor is IDistributor, TheopetraAccessControlled {
      */
     function distribute() external override onlyStaking {
         for (uint256 i = 0; i < info.length; i++) {
-            uint256 _rate = nextRewardRate(i);
-            if (_rate > 0) {
-                uint256 reward = nextRewardAt(_rate, info[i].recipient);
-                ITreasury(treasury).mint(info[i].recipient, reward);
-                emit Distribute(reward, _rate, info[i].recipient);
-            }
-            if (info[i].nextEpochTime <= block.timestamp) {
-                if (info[i].locked == false && info[i].start > 20_000_000) {
-                    info[i].start = info[i].start.sub(5_000_000);
-                } else if (info[i].locked == true && info[i].start > 60_000_000) {
-                    info[i].start = info[i].start.sub(15_000_000);
+            if (msg.sender == info[i].recipient) {
+                uint256 _rate = nextRewardRate(i);
+                if (_rate > 0) {
+                    uint256 reward = nextRewardAt(_rate, info[i].recipient);
+                    ITreasury(treasury).mint(info[i].recipient, reward);
+                    emit Distribute(reward, _rate, info[i].recipient);
                 }
-                info[i].nextEpochTime = uint48(uint256(info[i].nextEpochTime).add(uint256(epochLength)));
+                if (info[i].nextEpochTime <= block.timestamp) {
+                    if (info[i].locked == false && info[i].start > 20_000_000) {
+                        info[i].start = info[i].start.sub(5_000_000);
+                    } else if (info[i].locked == true && info[i].start > 60_000_000) {
+                        info[i].start = info[i].start.sub(15_000_000);
+                    }
+                    info[i].nextEpochTime = uint48(uint256(info[i].nextEpochTime).add(uint256(epochLength)));
+                }
+                break;
             }
         }
     }
