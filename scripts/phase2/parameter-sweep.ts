@@ -391,7 +391,7 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                     }
                 );
 
-                await UNISWAP_FACTORY_CONTRACT.multicall(p0.calldata);
+                await UNISWAP_FACTORY_CONTRACT.multicall([p0.calldata]);
                 console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick());
             }
         }
