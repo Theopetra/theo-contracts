@@ -347,6 +347,7 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
 async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], signer: any, deadline: number) {
     const UNISWAP_FACTORY_CONTRACT = new ethers.Contract(UNISWAP_FACTORY_ADDRESS, UNISWAP_FACTORY_ABI, signer);
     const UNISWAP_POOL_CONTRACT = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
+    const provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545/');
 
     for (let i = 0; i < tokenIds.length; i++) {
         for (let j = 0; j < tokenIds[i].length; j++) {
@@ -360,8 +361,8 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                     params: [fromAddrs[i]],
                 });
 
-                const impersonatedSigner = await ethers.getSigner(fromAddrs[i]);
-                UNISWAP_FACTORY_CONTRACT.connect(impersonatedSigner);
+                const impersonatedSigner = provider.getSigner(fromAddrs[i]);
+                const UNISWAP_FACTORY_IMPERSONATOR = new ethers.Contract(UNISWAP_FACTORY_ADDRESS, UNISWAP_FACTORY_ABI, impersonatedSigner);
 
                 const calldata = [];
                 // const fee = 10000;
@@ -390,8 +391,12 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                         }
                     }
                 );
-
-                await UNISWAP_FACTORY_CONTRACT.multicall([p0.calldata]);
+                console.log(fromAddrs[i]);
+                console.log(positionInfo);
+                console.log(impersonatedSigner);
+                console.log([p0.calldata]);
+                console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick());
+                await UNISWAP_FACTORY_IMPERSONATOR.multicall([p0.calldata]);
                 console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick());
             }
         }
