@@ -362,7 +362,6 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                 });
 
                 const impersonatedSigner = provider.getSigner(fromAddrs[i]);
-                const UNISWAP_FACTORY_IMPERSONATOR = new ethers.Contract(UNISWAP_FACTORY_ADDRESS, UNISWAP_FACTORY_ABI, impersonatedSigner);
 
                 const calldata = [];
                 // const fee = 10000;
@@ -391,12 +390,10 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                         }
                     }
                 );
-                console.log(fromAddrs[i]);
-                console.log(positionInfo);
-                console.log(impersonatedSigner);
-                console.log([p0.calldata]);
-                console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick());
-                await UNISWAP_FACTORY_IMPERSONATOR.multicall([p0.calldata]);
+                
+                await UNISWAP_FACTORY_CONTRACT
+                .connect(impersonatedSigner)
+                .multicall([p0.calldata]);
                 console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick());
             }
         }
