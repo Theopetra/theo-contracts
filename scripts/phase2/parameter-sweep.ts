@@ -363,28 +363,11 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                 const impersonatedSigner = await ethers.getSigner(fromAddrs[i]);
                 UNISWAP_FACTORY_CONTRACT.connect(impersonatedSigner);
 
-                const removeData = [
-                    {type: 'uint256', value: id},
-                    {type: 'uint128', value: positionInfo.liquidity},
-                    {type: 'uint256', value: "0"},
-                    {type: 'uint256', value: "0"},
-                    {type: 'uint256', value: deadline}
-                ];
-
-                const collectData = [
-                    {type: 'address', value: fromAddrs[i]},
-                    {type: 'int24', value: positionInfo.tickLower},
-                    {type: 'int24', value: positionInfo.tickUpper},
-                    {type: 'uint128', value: "170141183460469231731687303715884105727"},
-                ];
-
-
                 const calldata = [];
                 // const fee = 10000;
-                const t0 = WETH9[1];
-                const t1 = new Token(1, THEOERC20_MAINNET_DEPLOYMENT.address, 9, 't1', 'THEO');
+                const t0 = new Token(1, THEOERC20_MAINNET_DEPLOYMENT.address, 9, 't1', 'THEO');
+                const t1 = WETH9[1];
 
-                // const {liquidity, tickLower, tickUpper, fee} = positionInfo;
                 const liquidity = positionInfo.liquidity.toString();
                 const tickLower = Number(positionInfo.tickLower.toString());
                 const tickUpper = Number(positionInfo.tickUpper.toString());
@@ -397,8 +380,8 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                     position,
                     {
                         tokenId: id,
-                        liquidityPercentage: new Percent(100, 1),
-                        slippageTolerance: new Percent(100, 1),
+                        liquidityPercentage: new Percent(1, 1),
+                        slippageTolerance: new Percent(1, 1),
                         deadline,
                         collectOptions: {
                             expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(t0, '170141183460469231731687303715884105727'),
@@ -408,7 +391,7 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                     }
                 );
 
-                await UNISWAP_FACTORY_CONTRACT.multicall(p0.calldata);
+                await UNISWAP_FACTORY_CONTRACT.multicall([p0.calldata]);
                 console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick());
             }
         }
