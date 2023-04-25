@@ -41,6 +41,8 @@ const UNISWAP_SWAP_ROUTER_ADDRESS = "";
 const UNISWAP_POOL_ADDRESS = "0x1fc037ac35af9b940e28e97c2faf39526fbb4556";
 const UNISWAP_FACTORY_ADDRESS = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
 const governorAddress = '0xb0D6fb365d04FbB7351b2C2796d895eBFDfC422A';
+const policyAddress = '0x3a051657830b6baadd4523d35061a84ec7ce636a';
+const managerAddress = '0xf4abccd90596c8d11a15986240dcad09eb9d6049';
 
 const RPC_URL = process.env.ETH_NODE_URI_MAINNET;
 const BLOCK_NUMBER = 1111111111; // CHANGE ME
@@ -77,12 +79,41 @@ const FixedNumber = ethers.FixedNumber;
  */
 
 async function runAnalysis() {
-    const [signer] = await ethers.getSigners();
+    const provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545/');
+    await hre.network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [managerAddress],
+    });
+    await hre.network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [policyAddress],
+    });
+
+    await hre.network.provider.send("hardhat_setBalance", [
+        managerAddress,
+        BigNumber.from(10).mul(BigNumber.from(10).pow(18)).toHexString(),
+    ]);
+
+    await hre.network.provider.send("hardhat_setBalance", [
+        policyAddress,
+        BigNumber.from(10).mul(BigNumber.from(10).pow(18)).toHexString(),
+    ]);
+
+    await hre.network.provider.send("hardhat_setBalance", [
+        MAINNET_TREASURY_DEPLOYMENT.address,
+        "0x8ac7230489e80000",
+    ]);
+
+    const govSigner = provider.getSigner(governorAddress);
+    const managerSigner = provider.getSigner(managerAddress);
+    const policySigner = provider.getSigner(policyAddress);
+
     if (!RPC_URL) throw Error("ETH_NODE_URI_MAINNET not set");
-    const TheopetraYieldReporter = TheopetraYieldReporter__factory.connect(MAINNET_YIELD_REPORTER.address, signer);
-    const TheopetraBondDepository = TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer);
-    const STheopetra = STheopetra__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer);
-    const TheopetraTreasury = TheopetraTreasury__factory.connect(MAINNET_TREASURY_DEPLOYMENT.address, signer);
+    const TheopetraYieldReporter = TheopetraYieldReporter__factory.connect(MAINNET_YIELD_REPORTER.address, managerSigner);
+    const TheopetraBondDepository = TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, policySigner);
+
+    const STheopetra = STheopetra__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, govSigner);
+    const TheopetraTreasury = TheopetraTreasury__factory.connect(MAINNET_TREASURY_DEPLOYMENT.address, govSigner);
 
     const parameters = {
         startingTVL: [50000, 180000, 5000, 20000, 360000, 1000000],
@@ -126,9 +157,9 @@ async function runAnalysis() {
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
             // report yield, set drY and drB
-            await waitFor(TheopetraYieldReporter.reportYield(yieldReport));
-            await waitFor(TheopetraBondDepository.setDiscountRateBond(BOND_MARKET_ID, drB));
-            await waitFor(TheopetraBondDepository.setDiscountRateYield(BOND_MARKET_ID, drY));
+            await waitFor(TheopetraYieldReporter.reportYield(yieldReport)); // onlyManager
+            await waitFor(TheopetraBondDepository.setDiscountRateBond(BOND_MARKET_ID, drB)); // onlyPolicy
+            await waitFor(TheopetraBondDepository.setDiscountRateYield(BOND_MARKET_ID, drY)); // onlyPolicy
             console.log('Protocol parameters set.')
 
             for (let k = 0; k < EPOCHS_PER_YIELD_REPORT; k++) {
@@ -140,7 +171,7 @@ async function runAnalysis() {
                 const uniswapTxnsThisEpoch = uniswapTxns[j][k];
 
                 // b. Execute transactions against pool
-                await executeUniswapTransactions(uniswapTxnsThisEpoch, signer);
+                await executeUniswapTransactions(uniswapTxnsThisEpoch, govSigner);
                 console.log('Executing trades against pool.')
 
                 // c. Execute tokenPerformanceUpdate
@@ -148,7 +179,7 @@ async function runAnalysis() {
 
                 // d. execute bond transactions
                 const bondPurchasesThisEpoch = bondPurchases[j][k];
-                await executeBondTransactions(bondPurchasesThisEpoch, signer);
+                await executeBondTransactions(bondPurchasesThisEpoch, govSigner);
                 console.log('Executing bond transactions.')
 
                 // e. Collect deltaTokenPrice, marketPrice, bondRateVariable, marketPrice, epoch number
@@ -418,7 +449,7 @@ function encodeValue(element: any) {
     return ethers.utils.defaultAbiCoder.encode([element.type], [element.value]);
 }
 
-async function executeUniswapTransactions(transactions: Array<Array<(number|Direction)>>, signer: SignerWithAddress) {
+async function executeUniswapTransactions(transactions: Array<Array<(number|Direction)>>, signer: any) {
     const uniswapV3Router = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, signer);
     const recipient = await signer.getAddress();
 
@@ -475,7 +506,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
     }
 }
 
-async function executeBondTransactions(transactions: number[], signer: SignerWithAddress) {
+async function executeBondTransactions(transactions: number[], signer: any) {
     const TheopetraBondDepository = TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer);
     for (let l = 0; l < transactions.length; l++) {
         // TODO: Figure out a sensible value for maxPrice
