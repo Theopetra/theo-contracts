@@ -29,9 +29,9 @@ import IMulticall from '@uniswap/v3-periphery/artifacts/contracts/interfaces/IMu
 import {
     NonfungiblePositionManager,
     Position,
-    Pool
+    Pool,
 } from '@uniswap/v3-sdk';
-import {CurrencyAmount, Token, WETH9, Percent} from '@uniswap/sdk-core';
+import {CurrencyAmount, Token, WETH9, Percent, BigintIsh,} from '@uniswap/sdk-core';
 
 import {waitFor} from "../../test/utils";
 import {BigNumberish} from "ethers";
@@ -122,13 +122,14 @@ async function runAnalysis() {
         const [startingTvl, liquidityRatio, drY, drB, yieldReports] = runSet[i];
         // set starting TVL
         await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
-
+        console.log('UniswapTVL adjusted to target.')
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
             // report yield, set drY and drB
             await waitFor(TheopetraYieldReporter.reportYield(yieldReport));
             await waitFor(TheopetraBondDepository.setDiscountRateBond(BOND_MARKET_ID, drB));
             await waitFor(TheopetraBondDepository.setDiscountRateYield(BOND_MARKET_ID, drY));
+            console.log('Protocol parameters set.')
 
             for (let k = 0; k < EPOCHS_PER_YIELD_REPORT; k++) {
                 const logRebaseFilter = STheopetra.filters["LogRebase(uint256,uint256,uint256)"]();
@@ -140,6 +141,7 @@ async function runAnalysis() {
 
                 // b. Execute transactions against pool
                 await executeUniswapTransactions(uniswapTxnsThisEpoch, signer);
+                console.log('Executing trades against pool.')
 
                 // c. Execute tokenPerformanceUpdate
                 await waitFor(TheopetraTreasury.tokenPerformanceUpdate());
@@ -147,6 +149,7 @@ async function runAnalysis() {
                 // d. execute bond transactions
                 const bondPurchasesThisEpoch = bondPurchases[j][k];
                 await executeBondTransactions(bondPurchasesThisEpoch, signer);
+                console.log('Executing bond transactions.')
 
                 // e. Collect deltaTokenPrice, marketPrice, bondRateVariable, marketPrice, epoch number
                 runResults.push({
@@ -240,8 +243,13 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
 
     const token0 = ERC20__factory.connect(token0Address, govSigner);
     const token1 = ERC20__factory.connect(token1Address, govSigner);
-    const weth = (await token0.symbol()) === 'WETH' ? token0 : token1;
-    const theo = (await token0.symbol()) === 'WETH' ? token1 : token0;
+    const token0symbol = await token0.symbol();
+    const token1symbol = await token1.symbol();
+
+    const weth = token0symbol === 'WETH' ? token0 : token1;
+    const theo = token1symbol === 'WETH' ? token1 : token0;
+    console.log(`token0: ${token0symbol} | token1 ${token1symbol}`);
+
     // const actualETHValueLocked = wethBalance.div(BigNumber.from(10).pow(ETH_DECIMALS)).mul(ethPrice);
     // half of liquidity is supplied with WETH
     const wethTarget = BigNumber.from(target/2).div(ethPrice).mul(BigNumber.from(10).pow(ETH_DECIMALS));
@@ -274,13 +282,13 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
 
     const treasurySigner = provider.getSigner(MAINNET_TREASURY_DEPLOYMENT.address);
     const theoERC20 = new ethers.Contract(THEOERC20_MAINNET_DEPLOYMENT.address, THEOERC20_MAINNET_DEPLOYMENT.abi, treasurySigner);
-    await theoERC20.mint(governorAddress, BigNumber.from(theoTarget));
+    await theoERC20.mint(governorAddress, BigNumber.from(theoTarget.add(theoTarget.div(10))));
     //mintTheoToSigners(signer, treasurySigner);
 
 
     const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, govSigner);
 
-    await weth9.deposit({ value: wethTarget });
+    await weth9.deposit({ value: wethTarget.add(wethTarget.div(10)) });
 
     /*  
         Token IDs are reported in Transfer events from the Uniswap factory address, 
@@ -323,25 +331,31 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     await removeAllLiquidity(tokenIds, fromAddrs, govSigner, deadline);
     console.log('Liquidity removed from LP');
 
-    //Once pool is empty, call mint to create new position across the full range with the target liquidity
-    //If this fails it's because of tick spacing, adjust fee, or adjust tick to amount divisible by 200
-    const addArgs = [
-        "0x88316456",
-        THEOERC20_MAINNET_DEPLOYMENT.address,
-        WETH9[1].address,
-        "10000",
-        BigNumber.from(wethTarget),
-        BigNumber.from(theoTarget),
-        "887272",
-        "-887272",
-        "0",
-        "0",
-        governorAddress,
-        deadline
-    ]
-    await weth9.approve(uniswapV3Pool.address, wethTarget);
-    await theoERC20.approve(uniswapV3Pool.address, theoTarget);
-    await uniswapV3Factory.multicall(addArgs);
+    const calldatas = [];
+
+    calldatas.push(
+        //Once pool is empty, call mint to create new position across the full range with the target liquidity
+        NonfungiblePositionManager.INTERFACE.encodeFunctionData('mint', [
+            {
+                token0: WETH9[1].address,
+                token1: THEOERC20_MAINNET_DEPLOYMENT.address,
+                fee: 10000,
+                tickLower: -887200,
+                tickUpper: 887200,
+                amount0Desired: toHex(wethTarget.toString()),
+                amount1Desired: toHex(theoTarget.toString()),
+                amount0Min: toHex(0),
+                amount1Min: toHex(0),
+                recipient: governorAddress,
+                deadline
+            }
+        ])
+    )
+
+    await weth9.connect(govSigner).approve(uniswapV3Factory.address, wethTarget);
+    await theoERC20.connect(govSigner).approve(uniswapV3Factory.address, theoTarget);
+    await uniswapV3Factory.multicall(calldatas);
+    console.log('mint liquidity done')
 }
 
 async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], signer: any, deadline: number) {
@@ -392,9 +406,8 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                 );
                 
                 await UNISWAP_FACTORY_CONTRACT
-                .connect(impersonatedSigner)
-                .multicall([p0.calldata]);
-                console.log(await UNISWAP_POOL_CONTRACT.maxLiquidityPerTick());
+                    .connect(impersonatedSigner)
+                    .multicall([p0.calldata]);
             }
         }
     }
@@ -522,6 +535,15 @@ async function getPoolInfo(): Promise<PoolInfo> {
         sqrtPriceX96: slot0[0],
         tick: slot0[1],
     }
+}
+
+export function toHex(bigintIsh: BigintIsh) {
+    const bigInt = JSBI.BigInt(bigintIsh)
+    let hex = bigInt.toString(16)
+    if (hex.length % 2 !== 0) {
+        hex = `0${hex}`
+    }
+    return `0x${hex}`
 }
 
 const range = (length: number) => Array.from({ length }, (value, index) => index);
