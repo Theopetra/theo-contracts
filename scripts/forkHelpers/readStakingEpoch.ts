@@ -14,7 +14,7 @@ const getEpoch = async () => {
     const blockTime = (await ethers.provider.getBlock(provider._lastBlockNumber)).timestamp;
     
     console.log(`Unlocked Epoch details: ${epoch}.`);
-    console.log(`Unlocked Epoch details: ${lockedEpoch}.`);
+    console.log(`Locked Epoch details: ${lockedEpoch}.`);
     console.log(`Current timestamp is ${blockTime}`);
 
 };
