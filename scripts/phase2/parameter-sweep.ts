@@ -121,8 +121,8 @@ async function runAnalysis() {
         liquidityRatio: [
             // 0.0001805883567
             [
-                1805883567, // numerator
-                10000000000000 // denominator
+                10000000000000, // numerator
+                1805883567 // denominator
             ]
         ],
         drY: [0, 0.01, 0.025, 0.0375, 0.05, 1],
@@ -135,7 +135,21 @@ async function runAnalysis() {
         ]
     };
 
-    createBondMarket(TheopetraBondDepository, parameters.liquidityRatio);
+    /*
+        Initialize bond market.
+        Quote token is in USDC. Initial discount set at 5%, max discount at 20%. 
+        Total capacity is $6,000,000 in ETH over 1 year, at a deposit and tuning interval of 8 hours.
+        The implied funding rate is $5,479.45 or roughly 3 ETH per 8 hour period. Volume lower than this will cause the discount rate to drop, above will cause it to rise.
+    */
+
+    await TheopetraBondDepository.create(
+        "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", 
+        [BigNumber.from(3334), BigNumber.from(Math.floor(parameters.liquidityRatio[0][0] / parameters.liquidityRatio[0][1])), BigNumber.from(10000)],
+        [true, true],
+        [1209600, 1714092686],
+        [5000000000, 20000000000, 0, 0],
+        [28800, 28800]
+    );
 
     // four dimensional array
     // 1st dimension: yield reports
@@ -507,37 +521,6 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
             await waitFor(uniswapV3Router.exactInputSingle(params));
         }
     }
-}
-
-async function createBondMarket(BondDepo: TheopetraBondDepository, liquidityRatio: number[][]) {
-    
-    /*
-        Quote token is in USDC
-        Total capacity is 6,000,000 $USDC over 1 year, at a deposit and tuning interval of 8 hours.
-        The implied funding rate is $5,479.45 per 8 hour period. Volume lower than this will cause the discount rate to drop, above will cause it to rise.
-    */
-
-    let marketParameters: [string, [BigNumberish, BigNumberish, BigNumberish], [boolean, boolean], [BigNumberish, BigNumberish], [BigNumberish, BigNumberish, BigNumberish, BigNumberish], [BigNumberish, BigNumberish]]
-    
-        marketParameters = [
-            "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-            [BigNumber.from(6000000000000), BigNumber.from(liquidityRatio[0][0] / liquidityRatio[0][1]), BigNumber.from(10000)],
-            [true, true],
-            [1209600, 1714092686],
-            [5000000000, 20000000000, 0, 0],
-            [28800, 28800]
-        ]
-    
-    await BondDepo.create(marketParameters[0], marketParameters[1], marketParameters[2], marketParameters[3], marketParameters[4], marketParameters[5])
-
-    // await BondDepo.create(
-    //     "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", 
-    //     [BigNumber.from(6000000000000), BigNumber.from(liquidityRatio[0][0] / liquidityRatio[0][1]), BigNumber.from(10000)],
-    //     [true, true],
-    //     [1209600, 1714092686],
-    //     [5000000000, 20000000000, 0, 0],
-    //     [28800, 28800]
-    // );
 }
 
 async function executeBondTransactions(transactions: number[], signer: any) {
