@@ -144,12 +144,14 @@ async function runAnalysis() {
 
     await TheopetraBondDepository.create(
         "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", 
-        [BigNumber.from(3334), BigNumber.from(Math.floor(parameters.liquidityRatio[0][0] / parameters.liquidityRatio[0][1])), BigNumber.from(10000)],
+        [BigNumber.from("3334000000000000000000"), BigNumber.from(Math.floor(parameters.liquidityRatio[0][0] / parameters.liquidityRatio[0][1])), BigNumber.from(10000)],
         [true, true],
         [1209600, 1714092686],
         [5000000000, 20000000000, 0, 0],
         [28800, 28800]
     );
+
+    console.log("Market created, active ids:", await TheopetraBondDepository.getMarkets());
 
     // four dimensional array
     // 1st dimension: yield reports
