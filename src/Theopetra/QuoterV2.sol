@@ -283,14 +283,4 @@ contract QuoterV2 is IQuoterV2, IUniswapV3SwapCallback, PeripheryImmutableState 
             }
         }
     }
-
-
-    function test(QuoteExactInputSingleParams memory params) public  {
-        IUniswapV3Pool pool = getPool(params.tokenIn, params.tokenOut, params.fee);
-
-        string memory s = "test";
-        console.log(s);
-        console.log("test %s", s);
-        console.log("pool %s", address(pool));
-    }
 }
