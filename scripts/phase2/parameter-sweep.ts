@@ -609,7 +609,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
 }
 
 async function executeBondTransactions(transactions: number[], signer: any) {
-    const ERC20 = IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer);
+    const ERC20 = IERC20__factory.connect(WETH9[1].address, signer);
 
     const TheopetraBondDepository = TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer);
     const signerAddress = await signer.getAddress();
@@ -619,8 +619,16 @@ async function executeBondTransactions(transactions: number[], signer: any) {
         // TODO: Figure out a sensible value for maxPrice
         const maxPrice = BigNumber.from(1).mul(BigNumber.from(10).pow(18));
         const theoToBond = ethers.utils.parseUnits(transactions[l].toFixed(9), 9);
-        await waitFor(ERC20.approve(TheopetraBondDepository.address, theoToBond));
-        await waitFor(TheopetraBondDepository.deposit(BOND_MARKET_ID, theoToBond, maxPrice, signerAddress, signerAddress, false));
+        try {
+
+            await waitFor(ERC20.approve(TheopetraBondDepository.address, theoToBond));
+            await waitFor(TheopetraBondDepository.deposit(BOND_MARKET_ID, theoToBond, maxPrice, signerAddress, signerAddress, false));
+        } catch (e) {
+            console.log(e);
+            const currentBalance = await ERC20.balanceOf(signerAddress);
+            console.log("currentBalance", currentBalance.toString());
+            console.log("theoToBond", theoToBond.toString());
+        }
     }
 }
 
