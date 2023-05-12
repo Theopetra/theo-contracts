@@ -129,6 +129,12 @@ async function runAnalysis() {
         "0x8ac7230489e80000",
     ]);
 
+    await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
+        governorAddress,
+        "0x8ac7230489e80000",
+    ]);
+
+
     const govSigner = provider.getSigner(governorAddress);
     const managerSigner = provider.getSigner(managerAddress);
     const policySigner = provider.getSigner(policyAddress);
@@ -220,11 +226,13 @@ async function runAnalysis() {
 
                 // c. Execute tokenPerformanceUpdate
                 await waitFor(TheopetraTreasury.tokenPerformanceUpdate());
+                console.log("Updated Token Performance");
 
                 // d. execute bond transactions
                 const bondPurchasesThisEpoch = bondPurchases[j][k];
-                await executeBondTransactions(bondPurchasesThisEpoch, govSigner);
                 console.log('Executing bond transactions.')
+                await executeBondTransactions(bondPurchasesThisEpoch, policySigner);
+                console.log("Executed Bond Transactions");
 
                 // e. Collect deltaTokenPrice, marketPrice, bondRateVariable, marketPrice, epoch number
                 runResults.push({
@@ -288,7 +296,7 @@ function generateUniswapTransactions() {
     const valueDist: Distribution       = { mean: 1000, stddev: 800 };
     const directionDist: Distribution   = { mean: 0,    stddev: 1 }; // Gaussian distribution centered around 0, greater than 0 is BUY, less than 0 is SELL
     const txnCount = getNormallyDistributedRandomNumber(countDist);
-    const txnValues = range(txnCount).map(() => getNormallyDistributedRandomNumber(valueDist));
+    const txnValues = range(txnCount).map(() => Math.abs(getNormallyDistributedRandomNumber(valueDist)));
     const txnDirections = range(txnCount).map(() => getNormallyDistributedRandomNumber(directionDist) > 0 ? Direction.buy : Direction.sell);
     return range(txnCount).map(i => [txnValues[i], txnDirections[i]]);
 }
@@ -297,7 +305,7 @@ function generateBondPurchases() {
     const countDist: Distribution       = { mean: 5,    stddev: 0 };
     const valueDist: Distribution       = { mean: 1000, stddev: 800 };
     const txnCount = getNormallyDistributedRandomNumber(countDist);
-    return range(txnCount).map(() => getNormallyDistributedRandomNumber(valueDist));
+    return range(txnCount).map(() => Math.abs(getNormallyDistributedRandomNumber(valueDist)));
 }
 
 async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDenominator]: number[]) {
@@ -514,86 +522,61 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
     console.log("test2")
 
     for (const i in transactions) {
-        const direction: Direction = Direction.buy; // (transactions[i][1] as Direction);
+        const direction: Direction = (transactions[i][1] as Direction);
         const value: number = (transactions[i][0] as number);
         const signerAddress = await signer.getAddress();
 
-        // @ts-ignore
-        let tokenIn = direction === Direction.buy ? WETH9[1].address : THEOERC20_MAINNET_DEPLOYMENT.address;
-        // @ts-ignore
-        let tokenOut = direction === Direction.buy ? THEOERC20_MAINNET_DEPLOYMENT.address : WETH9[1].address;
-        // @ts-ignore
+        const tokenIn = direction === Direction.buy ? WETH9[1].address : THEOERC20_MAINNET_DEPLOYMENT.address;
+        const tokenOut = direction === Direction.buy ? THEOERC20_MAINNET_DEPLOYMENT.address : WETH9[1].address;
         const tokenInDecimals = direction === Direction.buy ? ETH_DECIMALS : THEO_DECIMALS;
-        // @ts-ignore
         const tokenOutDecimals = direction === Direction.buy ? THEO_DECIMALS : ETH_DECIMALS;
-        // @ts-ignore
         const Erc20 =  direction === Direction.buy ?  IERC20__factory.connect(WETH9[1].address, signer) : IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer);
 
         const fee = 10000;
         const deadline = await time.latest() + 28800;
         const erc20Balance = await Erc20.balanceOf(signerAddress);
 
-        // @ts-ignore
         if (direction === Direction.buy) {
-            console.log("buy")
-            console.log("tokenIn", tokenIn, "tokenOut", tokenOut);
-            console.log("Theo", THEOERC20_MAINNET_DEPLOYMENT.address, "WETH", WETH9[1].address);
-            console.log("ERC20", Erc20.address);
-            console.log("ERC20 Balance", (erc20Balance).toString());
+            const amountOut = ethers.utils.parseUnits(value.toFixed(tokenOutDecimals), tokenOutDecimals); //.mul(BigNumber.from(10).pow(tokenOutDecimals));
+            console.log("amountOut", amountOut.toString(), value)
 
-            const amountOut = BigNumber.from(Math.floor(value)).mul(BigNumber.from(10).pow(tokenOutDecimals));
-            console.log("test5")
-
+            const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({tokenIn, tokenOut, amount: amountOut, fee, sqrtPriceLimitX96: 0 });
             const {
-                amountIn,
+                amountOut: newOut,
                 sqrtPriceX96After,
-                initializedTicksCrossed,
-                gasEstimate,
-            }  = await quoter.callStatic.quoteExactOutputSingle({tokenIn, tokenOut, amount: amountOut, fee, sqrtPriceLimitX96: 0 });
+            } = await quoter.callStatic.quoteExactInputSingle({
+                tokenIn,
+                tokenOut,
+                amountIn,
+                fee,
+                sqrtPriceLimitX96: 0
+            });
 
-            /*
-                struct ExactOutputSingleParams {
-                    address tokenIn;
-                    address tokenOut;
-                    uint24 fee;
-                    address recipient;
-                    uint256 deadline;
-                    uint256 amountOut;
-                    uint256 amountInMaximum;
-                    uint160 sqrtPriceLimitX96;
-                }
-             */
+            if (amountIn.gt(erc20Balance)) {
+                console.log("insufficient ETH balance to buy THEO");
+                console.log((await Erc20.balanceOf(signerAddress)).toString());
+                console.log("amountIn", amountIn.toString());
+            }
 
             const params = {
                 tokenIn,
                 tokenOut,
-                fee,
+                fee: BigNumber.from(fee),
                 recipient,
-                deadline,
-                amountOut,
-                amountInMaximum: amountIn.add(ethers.utils.parseUnits("0.2", "ether")),
-                sqrtPriceLimitX96: toHex(sqrtPriceX96After.toString())
+                deadline: BigNumber.from(deadline),
+                amountIn,
+                amountOutMinimum: amountOut,
+                sqrtPriceLimitX96: toHex(sqrtPriceX96After.toString()),
             };
 
-            if (amountIn.gt(erc20Balance)) {
-                console.log("insufficient balance");
-            }
-
             await waitFor(Erc20.approve(uniswapV3Router.address, amountIn));
-            console.log("quote", { amountIn: amountIn.toString(), sqrtPriceX96After: sqrtPriceX96After.toString(), initializedTicksCrossed, gasEstimate });
-            await waitFor(uniswapV3Router.exactOutputSingle(params, { gasLimit: 100000 }));
+            await waitFor(uniswapV3Router.exactInputSingle(params, { gasLimit: 1000000 }));
 
         } else {
-            console.log("sell")
             const amountIn = BigNumber.from(Math.floor(100)).mul(BigNumber.from(10).pow(tokenInDecimals));
-            tokenIn = THEOERC20_MAINNET_DEPLOYMENT.address;
-            tokenOut = WETH9[1].address;
-
             const {
                 amountOut,
                 sqrtPriceX96After,
-                initializedTicksCrossed,
-                gasEstimate
             } = await quoter.callStatic.quoteExactInputSingle({
                 tokenIn,
                 tokenOut,
@@ -613,6 +596,10 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
                 sqrtPriceLimitX96: toHex(sqrtPriceX96After.toString()),
             };
 
+            if (amountIn.gt(erc20Balance)) {
+                console.log("insufficient THEO balance to sell for ETH");
+            }
+
             await waitFor(Erc20.approve(uniswapV3Router.address, amountIn));
             await waitFor(uniswapV3Router.exactInputSingle(params, { gasLimit: 1000000 }));
         }
@@ -620,12 +607,18 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
 }
 
 async function executeBondTransactions(transactions: number[], signer: any) {
+    const ERC20 = IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer);
+
     const TheopetraBondDepository = TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer);
+    const signerAddress = await signer.getAddress();
+
+    console.log(TheopetraBondDepository.address);
     for (let l = 0; l < transactions.length; l++) {
         // TODO: Figure out a sensible value for maxPrice
         const maxPrice = BigNumber.from(1).mul(BigNumber.from(10).pow(18));
-        const theoToBond = BigNumber.from(Math.floor(transactions[l]));
-        await waitFor(TheopetraBondDepository.deposit(BOND_MARKET_ID, theoToBond, maxPrice, signer.address, signer.address, false));
+        const theoToBond = ethers.utils.parseUnits(transactions[l].toFixed(9), 9);
+        await waitFor(ERC20.approve(TheopetraBondDepository.address, theoToBond));
+        await waitFor(TheopetraBondDepository.deposit(BOND_MARKET_ID, theoToBond, maxPrice, signerAddress, signerAddress, false));
     }
 }
 
