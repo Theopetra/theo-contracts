@@ -50,7 +50,7 @@ const policyAddress = '0x3a051657830b6baadd4523d35061a84ec7ce636a';
 const managerAddress = '0xf4abccd90596c8d11a15986240dcad09eb9d6049';
 
 const RPC_URL = process.env.ETH_NODE_URI_MAINNET;
-const BLOCK_NUMBER = 1111111111; // CHANGE ME
+const BLOCK_NUMBER = 17237000; // CHANGE ME
 const EPOCH_LENGTH = 8 * 60 * 60;
 const EPOCHS_PER_YIELD_REPORT = 3*30; // 3 per day, 30 days a month
 const BOND_MARKET_ID = 0; // TODO: Get actual market ID
@@ -203,7 +203,8 @@ async function runAnalysis() {
     for (const i in runSet) {
         const [startingTvl, liquidityRatio, drY, drB, yieldReports] = runSet[i];
         // set starting TVL
-        // await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
+        await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
+
         console.log('UniswapTVL adjusted to target.')
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
