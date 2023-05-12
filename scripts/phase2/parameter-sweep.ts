@@ -90,6 +90,8 @@ const SET_BALANCE_RPC_CALL = USING_TENDERLY ? "tenderly_setBalance" : "hardhat_s
 let quoter: any;
 
 async function runAnalysis() {
+    tracer.enabled = true;
+
     const QuoterV2 = await ethers.getContractFactory('QuoterV2');
     quoter = await QuoterV2.deploy(UNISWAP_FACTORY_ADDRESS, WETH9[1].address);
     await quoter.deployed();

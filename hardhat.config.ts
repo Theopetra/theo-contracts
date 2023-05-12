@@ -7,6 +7,7 @@ import 'hardhat-gas-reporter';
 import '@typechain/hardhat';
 import 'solidity-coverage';
 import 'hardhat-contract-sizer';
+import 'hardhat-tracer'
 
 import { node_url, accounts } from './utils/network';
 
@@ -59,6 +60,15 @@ const config: HardhatUserConfig = {
         },
       },
       {
+        version: '0.7.6',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 2000,
+          },
+        },
+      },
+      {
         version: '>=0.7.5 <=0.8.10',
         settings: {
           optimizer: {
@@ -95,7 +105,7 @@ const config: HardhatUserConfig = {
     },
     tenderly: {
       chainId: 1, //Mainnet fork on Tenderly
-      url: 'https://rpc.tenderly.co/fork/64503dfb-3b89-4569-bbad-17121697d7bb'
+      url: 'https://rpc.tenderly.co/fork/f5321ad1-69fb-4f39-b880-b6d0bb9fa896'
     },
     localhost: {
       url: node_url('localhost'),
