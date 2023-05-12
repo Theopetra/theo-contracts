@@ -177,7 +177,7 @@ async function runAnalysis() {
         [BigNumber.from("3334000000000000000000"), BigNumber.from(Math.floor(parameters.liquidityRatio[0][0] / parameters.liquidityRatio[0][1])), BigNumber.from(10000)],
         [true, true],
         [1209600, 1714092686],
-        [5000000000, 20000000000, 0, 0],
+        [500000, 20000000000, 0, 0],
         [28800, 28800]
     );
 
