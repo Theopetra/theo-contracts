@@ -1,19 +1,19 @@
-import { ethers, network } from 'hardhat';
-import { hexZeroPad } from 'ethers/lib/utils';
-import hre from 'hardhat';
-import helpers from '@nomicfoundation/hardhat-network-helpers';
-import type {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
+import hre, {ethers, network, tracer} from 'hardhat';
+import {hexZeroPad} from 'ethers/lib/utils';
+import helpers, {time} from '@nomicfoundation/hardhat-network-helpers';
 import 'lodash.product';
 import _ from 'lodash';
-import { writeToStream } from "fast-csv";
+import {writeToStream} from "fast-csv";
 import fs from 'fs';
 import {
+    ERC20__factory,
+    IERC20__factory,
+    STheopetra__factory,
     TheopetraBondDepository__factory,
-    TheopetraYieldReporter__factory,
     TheopetraTreasury__factory,
-    STheopetra__factory, IERC20__factory, ERC20__factory, TheopetraBondDepository
+    TheopetraYieldReporter__factory,
+    QuoterV2__factory
 } from '../../typechain-types';
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 import UNISWAP_SWAP_ROUTER_ABI from './UniswapSwapRouter.json';
 import UNISWAP_POOL_ABI from './UniswapV3PoolAbi.json';
@@ -21,25 +21,30 @@ import UNISWAP_FACTORY_ABI from './NonFungiblePositionManager.json';
 import THEOERC20_MAINNET_DEPLOYMENT from '../../deployments/mainnet/TheopetraERC20Token.json';
 import MAINNET_YIELD_REPORTER from '../../deployments/mainnet/TheopetraYieldReporter.json';
 import MAINNET_BOND_DEPO from '../../deployments/mainnet/TheopetraBondDepository.json';
-import MAINNET_BOND_CALC from '../../deployments/mainnet/NewBondingCalculatorMock.json';
 import MAINNET_TREASURY_DEPLOYMENT from '../../deployments/mainnet/TheopetraTreasury.json';
 import WETH9_ABI from './WETH9.json';
-import { Interface } from '@ethersproject/abi'
-import IMulticall from '@uniswap/v3-periphery/artifacts/contracts/interfaces/IMulticall.sol/IMulticall.json'
 import {
     NonfungiblePositionManager,
-    Position,
     Pool,
+    Position,
+    Route,
+    tickToPrice,
+    Trade,
+    SwapRouter,
+    nearestUsableTick, TickMath, FeeAmount,
+
 } from '@uniswap/v3-sdk';
-import {CurrencyAmount, Token, WETH9, Percent, BigintIsh,} from '@uniswap/sdk-core';
+import {BigintIsh, CurrencyAmount, Fraction, Percent, sqrt, Token, TradeType, WETH9,} from '@uniswap/sdk-core';
 
 import {waitFor} from "../../test/utils";
 import {BigNumberish} from "ethers";
 import JSBI from "jsbi";
 
-const UNISWAP_SWAP_ROUTER_ADDRESS = "";
+const SWAP_ROUTER_ADDRESS = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
+const NON_FUNGIBLE_POSITION_MANAGER_ADDRESS = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
 const UNISWAP_POOL_ADDRESS = "0x1fc037ac35af9b940e28e97c2faf39526fbb4556";
-const UNISWAP_FACTORY_ADDRESS = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
+const UNISWAP_NFPM = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
+const UNISWAP_FACTORY_ADDRESS = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
 const governorAddress = '0xb0D6fb365d04FbB7351b2C2796d895eBFDfC422A';
 const policyAddress = '0x3a051657830b6baadd4523d35061a84ec7ce636a';
 const managerAddress = '0xf4abccd90596c8d11a15986240dcad09eb9d6049';
@@ -56,7 +61,7 @@ const ETH_DECIMALS = 18;
 const product = (_ as any).product; // stupid typescript doesn't recognize `product` on lodash >.>
 const BigNumber = ethers.BigNumber;
 const FixedNumber = ethers.FixedNumber;
-
+const Contract = ethers.Contract;
 
 /*
     Yield reporter is called on an interval to report yields, using reportYield function, yields are then used by the treasury to inform deltaTreasuryYield
@@ -78,29 +83,43 @@ const FixedNumber = ethers.FixedNumber;
         ii. Reset Simulation State for next collection of parameters
  */
 
-async function runAnalysis() {
-    const provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545/');
-    await hre.network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [managerAddress],
-    });
-    
-    await hre.network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [policyAddress],
-    });
+const USING_TENDERLY = false;
+const JSON_RPC_URL = USING_TENDERLY ? 'https://rpc.tenderly.co/fork/9b04bcf4-0150-481b-8be9-a5a48779964c' : 'http://127.0.0.1:8545/';
+const SET_BALANCE_RPC_CALL = USING_TENDERLY ? "tenderly_setBalance" : "hardhat_setBalance";
 
-    await hre.network.provider.send("hardhat_setBalance", [
+let quoter: any;
+
+async function runAnalysis() {
+    const QuoterV2 = await ethers.getContractFactory('QuoterV2');
+    quoter = await QuoterV2.deploy(UNISWAP_FACTORY_ADDRESS, WETH9[1].address);
+    await quoter.deployed();
+
+
+    const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
+    if (!USING_TENDERLY) {
+        await hre.network.provider.request({
+            method: "hardhat_impersonateAccount",
+            params: [managerAddress],
+        });
+
+        await hre.network.provider.request({
+            method: "hardhat_impersonateAccount",
+            params: [policyAddress],
+        });
+    }
+
+
+    await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
         managerAddress,
         BigNumber.from(10).mul(BigNumber.from(10).pow(18)).toHexString(),
     ]);
 
-    await hre.network.provider.send("hardhat_setBalance", [
+    await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
         policyAddress,
         BigNumber.from(10).mul(BigNumber.from(10).pow(18)).toHexString(),
     ]);
 
-    await hre.network.provider.send("hardhat_setBalance", [
+    await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
         MAINNET_TREASURY_DEPLOYMENT.address,
         "0x8ac7230489e80000",
     ]);
@@ -171,7 +190,7 @@ async function runAnalysis() {
     for (const i in runSet) {
         const [startingTvl, liquidityRatio, drY, drB, yieldReports] = runSet[i];
         // set starting TVL
-        await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
+        // await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
         console.log('UniswapTVL adjusted to target.')
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
@@ -184,14 +203,15 @@ async function runAnalysis() {
             for (let k = 0; k < EPOCHS_PER_YIELD_REPORT; k++) {
                 const logRebaseFilter = STheopetra.filters["LogRebase(uint256,uint256,uint256)"]();
                 const rebaseEvents = await STheopetra.queryFilter(logRebaseFilter);
-                const currentEpoch = rebaseEvents.map((i: any) => i.epoch).reduce((p,c) => (c > p ? c : p));
+                const currentEpoch = rebaseEvents.map((i: any) => i.epoch).reduce((p,c) => (c > p ? c : p), 0);
 
                 // a. Get set of transactions to execute on uniswap pool
                 const uniswapTxnsThisEpoch = uniswapTxns[j][k];
 
                 // b. Execute transactions against pool
+                console.log('Executing trades against pool.');
                 await executeUniswapTransactions(uniswapTxnsThisEpoch, govSigner);
-                console.log('Executing trades against pool.')
+                console.log('Execute trades against pool.');
 
                 // c. Execute tokenPerformanceUpdate
                 await waitFor(TheopetraTreasury.tokenPerformanceUpdate());
@@ -276,23 +296,25 @@ function generateBondPurchases() {
 }
 
 async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDenominator]: number[]) {
+    console.log("Adjusting TVL to Target");
     //Impersonate Governor wallet and wrap ETH
-    await hre.network.provider.request({
+    if (!USING_TENDERLY) await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [governorAddress],
     });
 
-    const provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545/');
+    const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
 
     const ethPrice = BigNumber.from(1759); // TODO: query live price
     const govSigner = provider.getSigner(governorAddress);
     const uniswapV3Pool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, govSigner);
-    const uniswapV3Factory = new ethers.Contract(UNISWAP_FACTORY_ADDRESS, UNISWAP_FACTORY_ABI, govSigner);
+    const uniswapV3Factory = new ethers.Contract(UNISWAP_NFPM, UNISWAP_FACTORY_ABI, govSigner);
     const token0Address = await uniswapV3Pool.token0();
     const token1Address = await uniswapV3Pool.token1();
 
     const token0 = ERC20__factory.connect(token0Address, govSigner);
     const token1 = ERC20__factory.connect(token1Address, govSigner);
+
     const token0symbol = await token0.symbol();
     const token1symbol = await token1.symbol();
 
@@ -310,22 +332,22 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
 
     const theoTarget = theoTargetNumerator.div(theoTargetDenominator);
     //Impersonate treasury and mint THEO to Governor address
-    await hre.network.provider.request({
+    if (!USING_TENDERLY) await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [MAINNET_TREASURY_DEPLOYMENT.address],
     });
 
-    await hre.network.provider.send("hardhat_setBalance", [
+    await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
         governorAddress,
         wethTarget.toHexString(),
     ]);
 
-    await hre.network.provider.send("hardhat_setBalance", [
+    await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
         governorAddress,
         "0x152D02C7E14AF6800000",
     ]);
 
-    await hre.network.provider.send("hardhat_setBalance", [
+    await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
         MAINNET_TREASURY_DEPLOYMENT.address,
         "0x8ac7230489e80000",
     ]);
@@ -335,7 +357,7 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     await theoERC20.mint(governorAddress, BigNumber.from(theoTarget.add(theoTarget.div(10))));
     //mintTheoToSigners(signer, treasurySigner);
 
-
+    console.log("test1");
     const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, govSigner);
 
     await weth9.deposit({ value: wethTarget.add(wethTarget.div(10)) });
@@ -360,7 +382,7 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     }
 
     const deadline = await time.latest() + 28800;
-
+    console.log("test2");
     const logs = await provider.getLogs(mintFilter);
     const txs = await Promise.all(logs.map((log) => (provider.getTransaction(log.transactionHash))));
     const fromAddrs = await Promise.all(txs.map(async (transaction) => transaction.from));
@@ -380,6 +402,10 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     const tokenIds = await Promise.all(eventsList.map(async (event) => Promise.all(event.map(async (event) => event.topics[3]))));
     await removeAllLiquidity(tokenIds, fromAddrs, govSigner, deadline);
     console.log('Liquidity removed from LP');
+
+    const uniswapPool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, govSigner);
+    const liquidity = await uniswapPool.liquidity();
+    console.log('liquidity after removing:', liquidity.toString());
 
     const calldatas = [];
 
@@ -409,18 +435,19 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
 }
 
 async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], signer: any, deadline: number) {
-    const UNISWAP_FACTORY_CONTRACT = new ethers.Contract(UNISWAP_FACTORY_ADDRESS, UNISWAP_FACTORY_ABI, signer);
+    console.log("Removing all liquidity from LP")
+    const UNISWAP_NFPM_CONTRACT = new ethers.Contract(UNISWAP_NFPM, UNISWAP_FACTORY_ABI, signer);
     const UNISWAP_POOL_CONTRACT = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
-    const provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545/');
+    const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
 
     for (let i = 0; i < tokenIds.length; i++) {
         for (let j = 0; j < tokenIds[i].length; j++) {
             const id = tokenIds[i][j];
-            const positionInfo = await UNISWAP_FACTORY_CONTRACT.positions(id);
+            const positionInfo = await UNISWAP_NFPM_CONTRACT.positions(id);
             const poolInfo = await getPoolInfo();
 
             if (positionInfo.liquidity > 0 && (positionInfo.token0 == THEOERC20_MAINNET_DEPLOYMENT.address || positionInfo.token1 == THEOERC20_MAINNET_DEPLOYMENT.address)) {
-                await hre.network.provider.request({
+                if (!USING_TENDERLY) await hre.network.provider.request({
                     method: "hardhat_impersonateAccount",
                     params: [fromAddrs[i]],
                 });
@@ -429,8 +456,8 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
 
                 const calldata = [];
                 // const fee = 10000;
-                const t0 = new Token(1, THEOERC20_MAINNET_DEPLOYMENT.address, 9, 't1', 'THEO');
-                const t1 = WETH9[1];
+                const t0 = WETH9[1];
+                const t1 = new Token(1, THEOERC20_MAINNET_DEPLOYMENT.address, 9, 't1', 'THEO');
 
                 const liquidity = positionInfo.liquidity.toString();
                 const tickLower = Number(positionInfo.tickLower.toString());
@@ -455,7 +482,7 @@ async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], sig
                     }
                 );
                 
-                await UNISWAP_FACTORY_CONTRACT
+                await UNISWAP_NFPM_CONTRACT
                     .connect(impersonatedSigner)
                     .multicall([p0.calldata]);
             }
@@ -469,27 +496,98 @@ function encodeValue(element: any) {
 }
 
 async function executeUniswapTransactions(transactions: Array<Array<(number|Direction)>>, signer: any) {
-    const uniswapV3Router = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, signer);
+    console.log("executing uniswap txns")
+    const uniswapPool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
+
+    const uniswapV3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, signer);
     const recipient = await signer.getAddress();
+    console.log("test2")
 
     for (const i in transactions) {
         const direction: Direction = (transactions[i][1] as Direction);
-        const tokenIn = direction === Direction.buy ? WETH9[1].address : THEOERC20_MAINNET_DEPLOYMENT.address;
-        const tokenOut = direction === Direction.buy ? THEOERC20_MAINNET_DEPLOYMENT.address : WETH9[1].address;
+        const value: number = (transactions[i][0] as number);
+        const poolInfo = await getPoolInfo();
+
+        let tokenIn = direction === Direction.buy ? WETH9[1].address : THEOERC20_MAINNET_DEPLOYMENT.address;
+        let tokenOut = direction === Direction.buy ? THEOERC20_MAINNET_DEPLOYMENT.address : WETH9[1].address;
+
         const tokenInDecimals = direction === Direction.buy ? ETH_DECIMALS : THEO_DECIMALS;
         const tokenOutDecimals = direction === Direction.buy ? THEO_DECIMALS : ETH_DECIMALS;
-        const sqrtPriceLimitX96 = 0;
-        const fee = 10000; // TODO: verify fee
-
+        const sqrtPriceLimitX96 = poolInfo.sqrtPriceX96;
+        const fee = 10000;
+        console.log("test3")
         const Erc20 = Direction.buy ? IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer) : IERC20__factory.connect(WETH9[1].address, signer);
+        console.log("test4")
         const deadline = await time.latest() + 28800;
 
-        if (direction == Direction.buy) {
-            const amountOut = BigNumber.from((transactions[i][0])).mul(BigNumber.from(10).pow(tokenOutDecimals));
-            const amountInMaximum = BigNumber.from(10).mul(BigNumber.from(10).pow(10));
+        console.log ((await IERC20__factory.connect(WETH9[1].address, signer).balanceOf(recipient)).div(BigNumber.from(10).pow(ETH_DECIMALS)).toString(), "WETH");
+        if (false) {
+            console.log("buy")
 
-            await waitFor(Erc20.approve(UNISWAP_SWAP_ROUTER_ADDRESS, amountInMaximum));
+            const amountOut = BigNumber.from(Math.floor(10)).mul(BigNumber.from(10).pow(tokenOutDecimals));
+            const amountInMaximum = BigNumber.from(1).mul(BigNumber.from(10).pow(tokenInDecimals));
+            console.log("test5")
 
+            await waitFor(Erc20.approve(SWAP_ROUTER_ADDRESS, amountInMaximum));
+
+            console.log("test6")
+
+            // const t0 = WETH9[1];
+            // const t1 = new Token(1, THEOERC20_MAINNET_DEPLOYMENT.address, 9, 't1', 'THEO');
+            //
+            // const slippageTolerance = new Percent(100, 1);
+            // const liquidity = await uniswapPool.liquidity();
+            // const minTick = getMinTick(poolInfo.tickSpacing);
+            // const maxTick = getMaxTick(poolInfo.tickSpacing);
+            //
+            // const pool = new Pool(t0, t1, fee, poolInfo.sqrtPriceX96.toString(), poolInfo.liquidity.toString(), poolInfo.tick, [
+            //     {
+            //         index: nearestUsableTick(TickMath.MIN_TICK, TICK_SPACINGS[fee]),
+            //         liquidityNet: liquidity,
+            //         liquidityGross: liquidity
+            //     },
+            //     {
+            //         index: nearestUsableTick(TickMath.MAX_TICK, TICK_SPACINGS[fee]),
+            //         liquidityNet: -liquidity,
+            //         liquidityGross: liquidity
+            //     }
+            // ]);
+
+            // const route = new Route([pool], t0, t1);
+            //
+            // const trade = await Trade.fromRoute(
+            //     route,
+            //     CurrencyAmount.fromRawAmount(t0, 100),
+            //     TradeType.EXACT_INPUT
+            // );
+            //
+            // const { calldata, value } = SwapRouter.swapCallParameters(trade, {
+            //     slippageTolerance,
+            //     recipient,
+            //     deadline
+            // })
+
+            // from IQuoterV2.sol
+            // struct QuoteExactOutputSingleParams {
+            //     address tokenIn;
+            //     address tokenOut;
+            //     uint256 amount;
+            //     uint24 fee;
+            //     uint160 sqrtPriceLimitX96;
+            // }
+
+
+            // from ISwapRouter.sol
+            // struct ExactOutputSingleParams {
+            //     address tokenIn;
+            //     address tokenOut;
+            //     uint24 fee;
+            //     address recipient;
+            //     uint256 deadline;
+            //     uint256 amountOut;
+            //     uint256 amountInMaximum;
+            //     uint160 sqrtPriceLimitX96;
+            // }
             const params = {
                 tokenIn,
                 tokenOut,
@@ -498,29 +596,88 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
                 deadline,
                 amountOut,
                 amountInMaximum,
-                sqrtPriceLimitX96
+                sqrtPriceLimitX96: 0
             };
+            console.log('quoting txn');
+            const {
+                amountIn,
+                sqrtPriceX96After,
+                initializedTicksCrossed,
+                gasEstimate,
+            }  = await quoter.callStatic.quoteExactOutputSingle({tokenIn, tokenOut, amount: amountOut, fee, sqrtPriceLimitX96: 0 });
 
+            console.log("quoted txn", {
+                amountIn,
+                sqrtPriceX96After,
+                initializedTicksCrossed,
+                gasEstimate,
+            } );
+
+            console.log('executing txn');
+            // await waitFor(uniswapV3Router.multicall([calldata], { value, gasLimit: 1000000 }));
             await waitFor(uniswapV3Router.exactOutputSingle(params));
+            console.log('executed txn');
         } else {
+            console.log("sell")
             // TODO: Is something better than 0 need for testing?
-            const amountOutMin = 0;
-            const amountIn = BigNumber.from((transactions[i][0])).mul(BigNumber.from(10).pow(tokenInDecimals));
+            const amountOutMin = ethers.utils.parseUnits("0", tokenOutDecimals);
+            const amountIn = BigNumber.from(Math.floor(100)).mul(BigNumber.from(10).pow(tokenInDecimals));
+            // await waitFor(Erc20.approve(UNISWAP_POOL_ADDRESS, amountIn));
+            console.log('tokenIn', tokenIn, 'theo address:', THEOERC20_MAINNET_DEPLOYMENT.address);
+            console.log('tokenOut', tokenOut, 'WETH address:', WETH9[1].address);
 
-            await waitFor(Erc20.approve(UNISWAP_SWAP_ROUTER_ADDRESS, amountIn));
+            tokenIn = THEOERC20_MAINNET_DEPLOYMENT.address;
+            tokenOut = WETH9[1].address;
+
+            const {
+                amountOut,
+                sqrtPriceX96After,
+                initializedTicksCrossed,
+                gasEstimate
+            } = await quoter.callStatic.quoteExactInputSingle({
+                tokenIn,
+                tokenOut,
+                amountIn,
+                fee,
+                sqrtPriceLimitX96: 0
+            });
+
+            /*
+                struct ExactInputSingleParams {
+                    address tokenIn;
+                    address tokenOut;
+                    uint24 fee;
+                    address recipient;
+                    uint256 deadline;
+                    uint256 amountIn;
+                    uint256 amountOutMinimum;
+                    uint160 sqrtPriceLimitX96;
+                }
+             */
 
             const params = {
                 tokenIn,
                 tokenOut,
-                fee,
+                fee: BigNumber.from(fee),
                 recipient,
-                deadline,
+                deadline: BigNumber.from(deadline),
                 amountIn,
-                amountOutMin,
-                sqrtPriceLimitX96
+                amountOutMinimum: amountOut,
+                sqrtPriceLimitX96: BigNumber.from(0),
             };
 
+            console.log("Quote results", {
+                amountIn: amountIn.toString(),
+                amountOut: amountOut.toString(),
+                sqrtPriceX96After: sqrtPriceX96After.toString(),
+                initializedTicksCrossed: initializedTicksCrossed.toString(),
+                gasEstimate: gasEstimate.toString()
+            });
+
+            console.log('executing txn', params);
+
             await waitFor(uniswapV3Router.exactInputSingle(params));
+            console.log('executed txn');
         }
     }
 }
@@ -603,9 +760,84 @@ function saveResults(rows: any[]) {
     writeToStream(fsStream, rows);
 }
 
+async function getPositionsForPool(poolAddress: string, provider: any) {
+    // Instantiate NonFungiblePositionManager contract
+    const nonFungiblePositionManager = new Contract(NON_FUNGIBLE_POSITION_MANAGER_ADDRESS, NonfungiblePositionManager.INTERFACE, provider);
+
+    // Get the total number of positions
+    const totalSupply = await nonFungiblePositionManager.totalSupply();
+
+    const positions = [];
+
+    // Iterate through all token IDs
+    for (let tokenId = 1; tokenId <= totalSupply; tokenId++) {
+        // Get position details
+        const position = await nonFungiblePositionManager.positions(tokenId);
+
+        // Check if the position is for the desired pool
+        if (position.pool === poolAddress && !position.liquidity.isZero()) {
+            positions.push(position);
+        }
+    }
+
+    return positions;
+}
+
+async function checkLiquidity(poolAddress: string, desiredOutputAmount: BigNumberish, outputTokenIndex: number, tickLower: number, tickUpper:number, provider:any) {
+    const positions = await getPositionsForPool(poolAddress, provider);
+    let totalLiquidity = ethers.BigNumber.from(0);
+
+    // Iterate through positions and sum the liquidity within the given tick range
+    for (const position of positions) {
+        if (position.tickLower < tickUpper && position.tickUpper > tickLower) {
+            totalLiquidity = totalLiquidity.add(position.liquidity);
+        }
+    }
+
+    // TODO: Calculate the amount of tokens available for outputTokenIndex using the totalLiquidity value,
+    // taking into account the price range and the pool's current price.
+
+    // Check if there's enough liquidity for exactOutputSingle transaction
+    // const hasEnoughLiquidity = outputLiquidity.gte(desiredOutputAmount);
+
+    // return hasEnoughLiquidity;
+}
+
+async function getAmountsForLiquidity(token0:Token, token1: Token, outputTokenIndex: number, liquidity: BigintIsh, tickLower: number, tickUpper: number, provider: any) {
+    const poolContract = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, provider);
+    const slot0 = await poolContract.slot0();
+    const tickLowerPrice = tickToPrice(token0, token1, tickLower);
+    const tickUpperPrice = tickToPrice(token0, token1, tickUpper);
+
+    // Calculate the maximum amount of output tokens for the liquidity and price range
+    if (outputTokenIndex === 0) {
+        // Token0 is the output token
+        const temp = tickUpperPrice.divide(tickLowerPrice);
+        // const maxRatio = sqrt(JSBI.divide(temp.numerator, temp.denominator));
+        const maxRatio = new Fraction(sqrt(temp.numerator), sqrt(temp.denominator));
+        return  CurrencyAmount.fromRawAmount(token0, liquidity).multiply(maxRatio);
+    } else {
+        // Token1 is the output token
+        const temp = tickLowerPrice.divide(tickUpperPrice);
+        const maxRatio = new Fraction(sqrt(temp.numerator), sqrt(temp.denominator));
+        return CurrencyAmount.fromRawAmount(token1, liquidity).multiply(maxRatio);
+    }
+}
+export const TICK_SPACINGS: { [amount in FeeAmount]: number } = {
+    [FeeAmount.LOWEST]: 1,
+    [FeeAmount.LOW]: 10,
+    [FeeAmount.MEDIUM]: 60,
+    [FeeAmount.HIGH]: 200
+}
+
+const getMinTick = (tickSpacing: number) => Math.ceil(-887272 / tickSpacing) * tickSpacing
+const getMaxTick = (tickSpacing: number) => Math.floor(887272 / tickSpacing) * tickSpacing
+
+
+
 main()
     .then(() => process.exit(0))
     .catch((e) => {
-        console.log(e);
+        console.log('the error is', e);
         process.exit(1)
     });
