@@ -133,7 +133,7 @@ async function runAnalysis() {
 
     await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
         governorAddress,
-        "0x8ac7230489e80000",
+        BigNumber.from(100_000).mul(BigNumber.from(10).pow(18)).toHexString(),
     ]);
 
 
@@ -234,7 +234,7 @@ async function runAnalysis() {
                 // d. execute bond transactions
                 const bondPurchasesThisEpoch = bondPurchases[j][k];
                 console.log('Executing bond transactions.')
-                await executeBondTransactions(bondPurchasesThisEpoch, policySigner);
+                await executeBondTransactions(bondPurchasesThisEpoch, govSigner);
                 console.log("Executed Bond Transactions");
 
                 // e. Collect deltaTokenPrice, marketPrice, bondRateVariable, marketPrice, epoch number
@@ -258,6 +258,12 @@ async function runAnalysis() {
         }
         // reset fork
         await helpers.reset(RPC_URL, BLOCK_NUMBER);
+        // refill ETH balance
+        await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
+            governorAddress,
+            BigNumber.from(100_000).mul(BigNumber.from(10).pow(18)).toHexString(),
+        ]);
+
     }
 
     saveResults(runResults);
@@ -373,7 +379,6 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     await theoERC20.mint(governorAddress, BigNumber.from(theoTarget.add(theoTarget.div(10))));
     //mintTheoToSigners(signer, treasurySigner);
 
-    console.log("test1");
     const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, govSigner);
 
     await weth9.deposit({ value: wethTarget.add(wethTarget.div(10)) });
@@ -398,7 +403,6 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     }
 
     const deadline = await time.latest() + 28800;
-    console.log("test2");
     const logs = await provider.getLogs(mintFilter);
     const txs = await Promise.all(logs.map((log) => (provider.getTransaction(log.transactionHash))));
     const fromAddrs = await Promise.all(txs.map(async (transaction) => transaction.from));
@@ -522,7 +526,6 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
     const uniswapPool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signatore);
     const uniswapV3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, signatore);
 
-    console.log("test2")
 
     for (const i in transactions) {
         const direction: Direction = (transactions[i][1] as Direction);
@@ -541,7 +544,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
 
         if (direction === Direction.buy) {
             const amountOut = ethers.utils.parseUnits(value.toFixed(tokenOutDecimals), tokenOutDecimals); //.mul(BigNumber.from(10).pow(tokenOutDecimals));
-            console.log("amountOut", amountOut.toString(), value)
+            console.log("amountOut", amountOut.toString(), value, "THEO")
 
             const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({tokenIn, tokenOut, amount: amountOut, fee, sqrtPriceLimitX96: 0 });
             const {
@@ -559,6 +562,14 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
                 console.log("insufficient ETH balance to buy THEO");
                 console.log((await Erc20.balanceOf(signerAddress)).toString());
                 console.log("amountIn", amountIn.toString());
+
+                await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
+                    signerAddress,
+                    BigNumber.from(100_000).mul(BigNumber.from(10).pow(18)).toHexString(),
+                ]);
+
+                const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, signer);
+                await weth9.deposit({ value: BigNumber.from(100_000).mul(BigNumber.from(10).pow(18)) });
             }
 
             const params = {
@@ -615,13 +626,11 @@ async function executeBondTransactions(transactions: number[], signer: any) {
     const TheopetraBondDepository = TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer);
     const signerAddress = await signer.getAddress();
 
-    console.log(TheopetraBondDepository.address);
     for (let l = 0; l < transactions.length; l++) {
         // TODO: Figure out a sensible value for maxPrice
         const maxPrice = BigNumber.from(1).mul(BigNumber.from(10).pow(18));
         const theoToBond = ethers.utils.parseUnits(transactions[l].toFixed(9), 9);
         try {
-
             await waitFor(ERC20.approve(TheopetraBondDepository.address, theoToBond));
             await waitFor(TheopetraBondDepository.deposit(BOND_MARKET_ID, theoToBond, maxPrice, signerAddress, signerAddress, false));
         } catch (e) {
