@@ -10,6 +10,12 @@ const main = async () => {
     const provider = new ethers.providers.JsonRpcProvider('https://mainnet-fork-endpoint-x1gi.onrender.com');
     const policyAddress = "0x3A051657830B6baadD4523d35061A84eC7Ce636A";
 
+    let id = 0;
+
+    if ((process.argv.slice(2)[0])) {
+        id = parseInt(process.argv.slice(2)[0]);
+    };
+
     await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [policyAddress],
@@ -19,14 +25,7 @@ const main = async () => {
       
     const TheopetraBondDepository = new ethers.Contract(address, abi, signer);
 
-    await TheopetraBondDepository.create(
-        "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", 
-        [BigNumber.from("3334000000000000000000"), BigNumber.from("55374555"), BigNumber.from(10000)],
-        [true, true],
-        [1209600, 1714092686],
-        [500000, 20000000000, 0, 0],
-        [28800, 28800]
-    );
+    await TheopetraBondDepository.close(id);
 
     const markets = await TheopetraBondDepository.liveMarkets();
 
