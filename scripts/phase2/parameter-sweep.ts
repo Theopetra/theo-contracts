@@ -89,8 +89,27 @@ const SET_BALANCE_RPC_CALL = USING_TENDERLY ? "tenderly_setBalance" : "hardhat_s
 
 let quoter: any;
 
+// const parameters = {
+//     startingTVL: [50000, 180000, 5000, 20000, 360000, 1000000],
+//     liquidityRatio: [
+//         // 0.0001805883567
+//         [
+//             10000000000000, // numerator
+//             1805883567 // denominator
+//         ]
+//     ],
+//     drY: [0, 0.01*10**9, 0.025*10**9, 0.0375*10**9, 0.05*10**9, 10**9],
+//     drB: [0, 0.01*10**9, 0.025*10**9, 0.0375*10**9, 0.05*10**9, 10**9],
+//     yieldReports: [
+//         [2400, 2400, 2400, 2400],
+//         [2400, 2400, 2400, 2400, 2400, 2400, 2400, 2400],
+//         [2400, 4800, 8200, 10600],
+//         [2400, 4800, 9600, 19200]
+//     ]
+// };
+
 const parameters = {
-    startingTVL: [50000, 180000, 5000, 20000, 360000, 1000000],
+    startingTVL: [500000, 100000],
     liquidityRatio: [
         // 0.0001805883567
         [
@@ -98,13 +117,10 @@ const parameters = {
             1805883567 // denominator
         ]
     ],
-    drY: [0, 0.01*10**9, 0.025*10**9, 0.0375*10**9, 0.05*10**9, 10**9],
-    drB: [0, 0.01*10**9, 0.025*10**9, 0.0375*10**9, 0.05*10**9, 10**9],
+    drY: [0.01*10**9],
+    drB: [0.01*10**9],
     yieldReports: [
-        [2400, 2400, 2400, 2400],
-        [2400, 2400, 2400, 2400, 2400, 2400, 2400, 2400],
-        [2400, 4800, 8200, 10600],
-        [2400, 4800, 9600, 19200]
+        [20020, 20020, 20020, 20020, 40040, 40040, 40040, 40040]
     ]
 };
 
@@ -267,13 +283,17 @@ async function runAnalysis() {
     const uniswapTxns = range(maxYieldReportLength)
         .map(() => range(EPOCHS_PER_YIELD_REPORT).map(() => generateUniswapTransactions()));
 
+    console.log("Swap transactions generated");
+
     // TODO: fine tune generateBondPurchases
     const bondPurchases = range(maxYieldReportLength)
         .map(() => range(EPOCHS_PER_YIELD_REPORT).map(() => generateBondPurchases()));
 
+    console.log("Bond transactions generated");
+
     let runResults = [];
     const runSet = product(parameters.startingTVL, parameters.liquidityRatio, parameters.drY, parameters.drB, parameters.yieldReports);
-    const skipUntil = 86;
+    const skipUntil = 0;
 
     for (const i in runSet) {
         if (parseInt(i) <= skipUntil) continue;
@@ -314,7 +334,11 @@ async function runAnalysis() {
                     drY,
                     drB,
                     yieldReport,
-                    yieldReportIdx: j,
+                    yieldReportIdx: j, 
+                    // totalSwaps,
+                    // buySellRatio,
+                    // totalVolume,
+                    // totalBondVolume,
                     epochIdx: k,
                     epochNumber: currentEpoch,
                     deltaTokenPrice: await TheopetraTreasury.deltaTokenPrice(),
@@ -413,10 +437,11 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     const wethTarget = BigNumber.from(target/2).div(ethPrice).mul(BigNumber.from(10).pow(ETH_DECIMALS));
     const denom = BigNumber.from(1);
 
-    const theoTargetNumerator = wethTarget.mul(ratioDenominator);
-    const theoTargetDenominator = denom.mul(ratioNumerator);
+    const theoTargetNumerator = wethTarget.mul(BigNumber.from(ratioDenominator));
+    const theoTargetDenominator = denom.mul(BigNumber.from(ratioNumerator));
 
     const theoTarget = theoTargetNumerator.div(theoTargetDenominator);
+    console.log("Targets:", wethTarget, theoTarget)
     //Impersonate treasury and mint THEO to Governor address
     if (!USING_TENDERLY) await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
@@ -425,7 +450,7 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
 
     await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
         governorAddress,
-        wethTarget.toHexString(),
+        ethers.utils.hexStripZeros(wethTarget.toHexString()),
     ]);
 
     await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
@@ -488,6 +513,7 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
 
     const uniswapPool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, govSigner);
     const liquidity = await uniswapPool.liquidity();
+    console.log(`Liquidity in pool: ${liquidity}`);
 
     const calldatas = [];
 
@@ -582,98 +608,102 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
     const signatore = await provider.getSigner(recipient);
     const uniswapV3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, signatore);
 
+    //Sum all generated swap transactions into one transaction, subtract fee % to account for price impact
+    const buySwapSize = transactions.map((tx) => tx[1] === Direction.buy ? tx[0] as number : 0).reduce((p, c) => (c > p ? Math.floor(c * 0.99) : p), 0);
+    const sellSwapSize = transactions.map((tx) => tx[1] === Direction.sell ? tx[0] as number : 0).reduce((p, c) => (c > p ? Math.floor(c * 0.99) : p), 0);
+    const value = Math.abs(buySwapSize - sellSwapSize);
+    console.log("Swap sizes:", buySwapSize, sellSwapSize, value);
 
-    for (const i in transactions) {
-        const direction: Direction = (transactions[i][1] as Direction);
-        const value: number = (transactions[i][0] as number);
-        const signerAddress = await signer.getAddress();
+    // for (const i in transactions) {
+        // const direction: Direction = (transactions[i][1] as Direction);
+        // const value: number = (transactions[i][0] as number);
+    const signerAddress = await signer.getAddress();
 
-        const tokenIn = direction === Direction.buy ? WETH9[1].address : THEOERC20_MAINNET_DEPLOYMENT.address;
-        const tokenOut = direction === Direction.buy ? THEOERC20_MAINNET_DEPLOYMENT.address : WETH9[1].address;
-        const tokenInDecimals = direction === Direction.buy ? ETH_DECIMALS : THEO_DECIMALS;
-        const tokenOutDecimals = direction === Direction.buy ? THEO_DECIMALS : ETH_DECIMALS;
-        const Erc20 =  direction === Direction.buy ?  IERC20__factory.connect(WETH9[1].address, signer) : IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer);
+    const tokenIn = buySwapSize > sellSwapSize ? WETH9[1].address : THEOERC20_MAINNET_DEPLOYMENT.address;
+    const tokenOut = buySwapSize > sellSwapSize ? THEOERC20_MAINNET_DEPLOYMENT.address : WETH9[1].address;
+    const tokenInDecimals = buySwapSize > sellSwapSize ? ETH_DECIMALS : THEO_DECIMALS;
+    const tokenOutDecimals = buySwapSize > sellSwapSize ? THEO_DECIMALS : ETH_DECIMALS;
+    const Erc20 =  buySwapSize > sellSwapSize ?  IERC20__factory.connect(WETH9[1].address, signer) : IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer);
 
-        const fee = 10000;
-        const deadline = await time.latest() + 28800;
-        const erc20Balance = await Erc20.balanceOf(signerAddress);
+    const fee = 10000;
+    const deadline = await time.latest() + 28800;
+    const erc20Balance = await Erc20.balanceOf(signerAddress);
 
-        if (direction === Direction.buy) {
-            const amountOut = ethers.utils.parseUnits(value.toFixed(tokenOutDecimals), tokenOutDecimals); //.mul(BigNumber.from(10).pow(tokenOutDecimals));
-            const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({tokenIn, tokenOut, amount: amountOut, fee, sqrtPriceLimitX96: 0 });
-            const {
-                amountOut: newOut,
-                sqrtPriceX96After,
-            } = await quoter.callStatic.quoteExactInputSingle({
-                tokenIn,
-                tokenOut,
-                amountIn,
-                fee,
-                sqrtPriceLimitX96: 0
-            });
+    if (buySwapSize > sellSwapSize) {
+        const amountOut = ethers.utils.parseUnits(value.toFixed(tokenOutDecimals), tokenOutDecimals); //.mul(BigNumber.from(10).pow(tokenOutDecimals));
+        const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({tokenIn, tokenOut, amount: amountOut, fee, sqrtPriceLimitX96: 0 });
+        const {
+            amountOut: newOut,
+            sqrtPriceX96After,
+        } = await quoter.callStatic.quoteExactInputSingle({
+            tokenIn,
+            tokenOut,
+            amountIn,
+            fee,
+            sqrtPriceLimitX96: 0
+        });
 
-            if (amountIn.gt(erc20Balance)) {
-                await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
-                    signerAddress,
-                    BigNumber.from(100_010).mul(BigNumber.from(10).pow(18)).toHexString(),
-                ]);
+        if (amountIn.gt(erc20Balance)) {
+            await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
+                signerAddress,
+                BigNumber.from(100_010).mul(BigNumber.from(10).pow(18)).toHexString(),
+            ]);
 
-                await wait(200);
+            await wait(200);
 
-                const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, signer);
-                await weth9.deposit({ value: BigNumber.from(100_000).mul(BigNumber.from(10).pow(18)) });
-            }
+            const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, signer);
+            await weth9.deposit({ value: BigNumber.from(100_000).mul(BigNumber.from(10).pow(18)) });
+        }
 
-            const params = {
-                tokenIn,
-                tokenOut,
-                fee: BigNumber.from(fee),
-                recipient,
-                deadline: BigNumber.from(deadline),
-                amountIn,
-                amountOutMinimum: amountOut,
-                sqrtPriceLimitX96: toHex(sqrtPriceX96After.toString()),
-            };
+        const params = {
+            tokenIn,
+            tokenOut,
+            fee: BigNumber.from(fee),
+            recipient,
+            deadline: BigNumber.from(deadline),
+            amountIn,
+            amountOutMinimum: amountOut,
+            sqrtPriceLimitX96: toHex(sqrtPriceX96After.toString()),
+        };
 
+        await waitFor(Erc20.approve(uniswapV3Router.address, amountIn));
+        await waitFor(uniswapV3Router.exactInputSingle(params, { gasLimit: 1000000 }));
+
+    } else {
+        const amountIn = ethers.utils.parseUnits(value.toFixed(tokenInDecimals), tokenInDecimals);
+
+        const {
+            amountOut,
+            sqrtPriceX96After,
+        } = await quoter.callStatic.quoteExactInputSingle({
+            tokenIn,
+            tokenOut,
+            amountIn,
+            fee,
+            sqrtPriceLimitX96: 0
+        });
+
+        const params = {
+            tokenIn,
+            tokenOut,
+            fee: BigNumber.from(fee),
+            recipient,
+            deadline: BigNumber.from(deadline),
+            amountIn,
+            amountOutMinimum: amountOut,
+            sqrtPriceLimitX96: toHex(sqrtPriceX96After.toString()),
+        };
+
+        if (amountIn.gt(erc20Balance)) {
+            console.log("insufficient THEO balance to sell for ETH");
+        }
+
+        try {
             await waitFor(Erc20.approve(uniswapV3Router.address, amountIn));
             await waitFor(uniswapV3Router.exactInputSingle(params, { gasLimit: 1000000 }));
-
-        } else {
-            const amountIn = ethers.utils.parseUnits(value.toFixed(tokenInDecimals), tokenInDecimals);
-
-            const {
-                amountOut,
-                sqrtPriceX96After,
-            } = await quoter.callStatic.quoteExactInputSingle({
-                tokenIn,
-                tokenOut,
-                amountIn,
-                fee,
-                sqrtPriceLimitX96: 0
-            });
-
-            const params = {
-                tokenIn,
-                tokenOut,
-                fee: BigNumber.from(fee),
-                recipient,
-                deadline: BigNumber.from(deadline),
-                amountIn,
-                amountOutMinimum: amountOut,
-                sqrtPriceLimitX96: toHex(sqrtPriceX96After.toString()),
-            };
-
-            if (amountIn.gt(erc20Balance)) {
-                console.log("insufficient THEO balance to sell for ETH");
-            }
-
-            try {
-                await waitFor(Erc20.approve(uniswapV3Router.address, amountIn));
-                await waitFor(uniswapV3Router.exactInputSingle(params, { gasLimit: 1000000 }));
-            } catch (e) {
-                console.log(e);
-                console.log("potentially insufficient THEO balance to sell for ETH");
-            }
+        } catch (e) {
+            console.log(e);
+            console.log("potentially insufficient THEO balance to sell for ETH");
         }
     }
 }
