@@ -109,7 +109,7 @@ let quoter: any;
 // };
 
 const parameters = {
-    startingTVL: [500000, 100000],
+    startingTVL: [500000],
     liquidityRatio: [
         // 0.0001805883567
         [
@@ -117,10 +117,10 @@ const parameters = {
             1805883567 // denominator
         ]
     ],
-    drY: [0.01*10**9],
-    drB: [0.01*10**9],
+    drY: [0.01*10**9, 0.1*10**9],
+    drB: [0.01*10**9, 0.1*10**9],
     yieldReports: [
-        [20020, 20020, 20020, 20020, 40040, 40040, 40040, 40040]
+        [20020, 20020, 20020, 40040, 40040, 40040]
     ]
 };
 
@@ -318,14 +318,14 @@ async function runAnalysis() {
                 const uniswapTxnsThisEpoch = uniswapTxns[j][k];
 
                 // b. Execute transactions against pool
-                await executeUniswapTransactions(uniswapTxnsThisEpoch, govSigner);
+                const swapData = await executeUniswapTransactions(uniswapTxnsThisEpoch, govSigner);
 
                 // c. Execute tokenPerformanceUpdate
                 await waitFor(TheopetraTreasury.tokenPerformanceUpdate());
 
                 // d. execute bond transactions
                 const bondPurchasesThisEpoch = bondPurchases[j][k];
-                await executeBondTransactions(bondPurchasesThisEpoch, govSigner);
+                const bondData = await executeBondTransactions(bondPurchasesThisEpoch, govSigner);
 
                 // e. Collect deltaTokenPrice, marketPrice, bondRateVariable, marketPrice, epoch number
                 runResults.push({
@@ -335,10 +335,10 @@ async function runAnalysis() {
                     drB,
                     yieldReport,
                     yieldReportIdx: j, 
-                    // totalSwaps,
-                    // buySellRatio,
-                    // totalVolume,
-                    // totalBondVolume,
+                    totalVolume: swapData.swapVolume,
+                    buySellRatio: swapData.buySellRatio,
+                    totalSwaps: swapData.totalSwaps,
+                    totalDBVolume: bondData.bondVolume,
                     epochIdx: k,
                     epochNumber: currentEpoch,
                     deltaTokenPrice: await TheopetraTreasury.deltaTokenPrice(),
@@ -608,17 +608,13 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
     const signatore = await provider.getSigner(recipient);
     const uniswapV3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, signatore);
 
-    //Sum all generated swap transactions into one transaction, subtract fee % to account for price impact
-    const buySwapSize = transactions.map((tx) => tx[1] === Direction.buy ? tx[0] as number : 0).reduce((p, c) => (c > p ? Math.floor(c * 0.99) : p), 0);
-    const sellSwapSize = transactions.map((tx) => tx[1] === Direction.sell ? tx[0] as number : 0).reduce((p, c) => (c > p ? Math.floor(c * 0.99) : p), 0);
+    //Sum all generated swap transactions into one aggregate transaction, subtract fee % to account for price impact
+    const buySwapSize = transactions.map((tx) => tx[1] === Direction.buy ? tx[0] as number : 0).reduce((p, c) => (p + Math.floor(c * 0.99)), 0);
+    const sellSwapSize = transactions.map((tx) => tx[1] === Direction.sell ? tx[0] as number : 0).reduce((p, c) => (p + Math.floor(c * 0.99)), 0);
     const value = Math.abs(buySwapSize - sellSwapSize);
     console.log("Swap sizes:", buySwapSize, sellSwapSize, value);
 
-    // for (const i in transactions) {
-        // const direction: Direction = (transactions[i][1] as Direction);
-        // const value: number = (transactions[i][0] as number);
     const signerAddress = await signer.getAddress();
-
     const tokenIn = buySwapSize > sellSwapSize ? WETH9[1].address : THEOERC20_MAINNET_DEPLOYMENT.address;
     const tokenOut = buySwapSize > sellSwapSize ? THEOERC20_MAINNET_DEPLOYMENT.address : WETH9[1].address;
     const tokenInDecimals = buySwapSize > sellSwapSize ? ETH_DECIMALS : THEO_DECIMALS;
@@ -706,27 +702,35 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
             console.log("potentially insufficient THEO balance to sell for ETH");
         }
     }
+    const buyCount = transactions.reduce((p, c) => ( c[1] === Direction.buy ? p + 1 : p), 0)
+    return {
+        swapVolume: buySwapSize + sellSwapSize,
+        buySellRatio: buyCount / transactions.length,
+        totalSwaps: transactions.length
+    }
 }
 
 async function executeBondTransactions(transactions: number[], signer: any) {
     const ERC20 = IERC20__factory.connect(WETH9[1].address, signer);
 
+    const value = transactions.reduce((p, c) => (p + c), 0);
+
     const TheopetraBondDepository = TheopetraBondDepository__factory.connect(MAINNET_BOND_DEPO.address, signer);
     const signerAddress = await signer.getAddress();
-    for (let l = 0; l < transactions.length; l++) {
-        const value = transactions[l];
-        // TODO: Figure out a sensible value for maxPrice
-        const maxPrice = BigNumber.from(1).mul(BigNumber.from(10).pow(18));
-        try {
-            const theoToBond = ethers.utils.parseUnits(value.toFixed(9), 9);
-            await waitFor(ERC20.approve(TheopetraBondDepository.address, theoToBond));
-            await waitFor(TheopetraBondDepository.deposit(BOND_MARKET_ID, theoToBond, maxPrice, signerAddress, signerAddress, false));
-        } catch (e) {
-            console.log(e);
-            const currentBalance = await ERC20.balanceOf(signerAddress);
-            console.log("currentBalance", currentBalance.toString());
-            console.log("theoToBond", value.toString());
-        }
+    // TODO: Figure out a sensible value for maxPrice
+    const maxPrice = BigNumber.from(1).mul(BigNumber.from(10).pow(18));
+    try {
+        const theoToBond = ethers.utils.parseUnits(value.toFixed(9), 9);
+        await waitFor(ERC20.approve(TheopetraBondDepository.address, theoToBond));
+        await waitFor(TheopetraBondDepository.deposit(BOND_MARKET_ID, theoToBond, maxPrice, signerAddress, signerAddress, false));
+    } catch (e) {
+        console.log(e);
+        const currentBalance = await ERC20.balanceOf(signerAddress);
+        console.log("currentBalance", currentBalance.toString());
+        console.log("theoToBond", value.toString());
+    }
+    return {
+        bondVolume: value
     }
 }
 
