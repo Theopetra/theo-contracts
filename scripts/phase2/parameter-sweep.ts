@@ -311,7 +311,7 @@ async function runAnalysis(loop: number, sampleSize: number) {
             await waitFor(TheopetraBondDepository.setDiscountRateYield(BOND_MARKET_ID, drY)); // onlyPolicy
 
             for (let k = 0; k < EPOCHS_PER_YIELD_REPORT; k++) {
-                console.log(`Running Epoch ${k+1}/${EPOCHS_PER_YIELD_REPORT} in yield report ${j+1}/${yieldReports.length} in run ${parseInt(i)+1}/${runSet.length} out of ${loop}/${sampleSize} samples`);
+                console.log(`Running Epoch ${k+1}/${EPOCHS_PER_YIELD_REPORT} in yield report ${j+1}/${yieldReports.length} in run ${parseInt(i)+1}/${runSet.length} of ${loop + 1}/${sampleSize} samples`);
                 const logRebaseFilter = STheopetra.filters["LogRebase(uint256,uint256,uint256)"]();
                 const rebaseEvents = await STheopetra.queryFilter(logRebaseFilter);
                 const currentEpoch = rebaseEvents.map((i: any) => i.epoch).reduce((p,c) => (c > p ? c : p), 0);
