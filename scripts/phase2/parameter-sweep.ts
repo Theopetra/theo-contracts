@@ -54,6 +54,7 @@ const BLOCK_NUMBER = 17251681; // CHANGE ME
 const EPOCH_LENGTH = 8 * 60 * 60;
 const EPOCHS_PER_YIELD_REPORT = 3*30; // 3 per day, 30 days a month
 const BOND_MARKET_ID = 0; // TODO: Get actual market ID
+const sampleSize = 4; // # of simulation loops
 
 const THEO_DECIMALS = 9;
 const ETH_DECIMALS = 18;
@@ -108,6 +109,8 @@ let quoter: any;
 //     ]
 // };
 
+//For liquidity ratio, we could just query the live ETH and live THEO price and calculate the ratio
+
 const parameters = {
     startingTVL: [500000],
     liquidityRatio: [
@@ -117,8 +120,8 @@ const parameters = {
             1805883567 // denominator
         ]
     ],
-    drY: [0.01*10**9, 0.1*10**9],
-    drB: [0.01*10**9, 0.1*10**9],
+    drY: [0, 0.01*10**9, 0.02*10**9],
+    drB: [0, 0.01*10**9, 0.02*10**9],
     yieldReports: [
         [20020, 20020, 20020, 40040, 40040, 40040]
     ]
@@ -212,7 +215,7 @@ async function resetFork() {
     await weth9.deposit({ value: BigNumber.from(99_999).mul(BigNumber.from(10).pow(18)) });
 }
 
-async function runAnalysis() {
+async function runAnalysis(loop: number, sampleSize: number) {
     await resetFork();
 
     tracer.enabled = true;
@@ -283,23 +286,22 @@ async function runAnalysis() {
     const uniswapTxns = range(maxYieldReportLength)
         .map(() => range(EPOCHS_PER_YIELD_REPORT).map(() => generateUniswapTransactions()));
 
-    console.log("Swap transactions generated");
-
     // TODO: fine tune generateBondPurchases
     const bondPurchases = range(maxYieldReportLength)
         .map(() => range(EPOCHS_PER_YIELD_REPORT).map(() => generateBondPurchases()));
 
-    console.log("Bond transactions generated");
-
     let runResults = [];
     const runSet = product(parameters.startingTVL, parameters.liquidityRatio, parameters.drY, parameters.drB, parameters.yieldReports);
-    const skipUntil = 0;
+    const skipUntil = -1;
 
     for (const i in runSet) {
         if (parseInt(i) <= skipUntil) continue;
         const [startingTvl, liquidityRatio, drY, drB, yieldReports] = runSet[i];
+        console.log("Run parameters:", runSet[i]);
         // set starting TVL
         await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
+
+        //Add fixture for each unique startingTVL
 
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
@@ -309,7 +311,7 @@ async function runAnalysis() {
             await waitFor(TheopetraBondDepository.setDiscountRateYield(BOND_MARKET_ID, drY)); // onlyPolicy
 
             for (let k = 0; k < EPOCHS_PER_YIELD_REPORT; k++) {
-                console.log(`Running Epoch ${k+1}/${EPOCHS_PER_YIELD_REPORT} in yield report ${j+1}/${yieldReports.length} in run ${parseInt(i)+1}/${runSet.length}`);
+                console.log(`Running Epoch ${k+1}/${EPOCHS_PER_YIELD_REPORT} in yield report ${j+1}/${yieldReports.length} in run ${parseInt(i)+1}/${runSet.length} out of ${loop}/${sampleSize} samples`);
                 const logRebaseFilter = STheopetra.filters["LogRebase(uint256,uint256,uint256)"]();
                 const rebaseEvents = await STheopetra.queryFilter(logRebaseFilter);
                 const currentEpoch = rebaseEvents.map((i: any) => i.epoch).reduce((p,c) => (c > p ? c : p), 0);
@@ -360,11 +362,14 @@ async function runAnalysis() {
 }
 
 async function main() {
-    try {
-        await runAnalysis();
-    } catch (e) {
-        console.log(e);
-    }
+    for (let i=0; i < sampleSize; i++) {
+        try {
+            console.log(`Running loop #${i}`);
+            await runAnalysis(i, sampleSize);
+        } catch (e) {
+            console.log(e);
+        }
+    };
 }
 
 function boxMullerTransform() {
@@ -441,7 +446,6 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     const theoTargetDenominator = denom.mul(BigNumber.from(ratioNumerator));
 
     const theoTarget = theoTargetNumerator.div(theoTargetDenominator);
-    console.log("Targets:", wethTarget, theoTarget)
     //Impersonate treasury and mint THEO to Governor address
     if (!USING_TENDERLY) await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
@@ -472,44 +476,44 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
 
     await weth9.deposit({ value: wethTarget.add(wethTarget.div(10)) });
 
-    /*  
-        Token IDs are reported in Transfer events from the Uniswap factory address, 
-        but don't indicate the pool they belong to.
+    // /*  
+    //     Token IDs are reported in Transfer events from the Uniswap factory address, 
+    //     but don't indicate the pool they belong to.
 
-        Mint events in the pool contract are delegated through the factory contract, 
-        but the sender can be found through the transaction logs for the event.
+    //     Mint events in the pool contract are delegated through the factory contract, 
+    //     but the sender can be found through the transaction logs for the event.
 
-        By filtering for the Mint events, accessing the tx hash property and querying the transaction, 
-        we can find the sender address and use it to filter transfer events in the factory contract to list all LP position token IDs for the given pool.
-    */
+    //     By filtering for the Mint events, accessing the tx hash property and querying the transaction, 
+    //     we can find the sender address and use it to filter transfer events in the factory contract to list all LP position token IDs for the given pool.
+    // */
    
-    const mintFilter = {
-        address: UNISWAP_POOL_ADDRESS,
-        topics: [
-            '0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde',
-        ],
-        fromBlock: 15460378
-    }
+    // const mintFilter = {
+    //     address: UNISWAP_POOL_ADDRESS,
+    //     topics: [
+    //         '0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde',
+    //     ],
+    //     fromBlock: 15460378
+    // }
 
     const deadline = await time.latest() + 28800;
-    const logs = await provider.getLogs(mintFilter);
-    const txs = await Promise.all(logs.map((log) => (provider.getTransaction(log.transactionHash))));
-    const fromAddrs = await Promise.all(txs.map(async (transaction) => transaction.from));
-    const eventsList = await Promise.all(fromAddrs.map(fromAddr => {
-        const transferFilter = {
-            address: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
-            topics: [
-                '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
-                null,
-                hexZeroPad(fromAddr, 32)],
-            fromBlock: 15460379
-        };
-        return provider.getLogs(transferFilter);
-    }));
+    // const logs = await provider.getLogs(mintFilter);
+    // const txs = await Promise.all(logs.map((log) => (provider.getTransaction(log.transactionHash))));
+    // const fromAddrs = await Promise.all(txs.map(async (transaction) => transaction.from));
+    // const eventsList = await Promise.all(fromAddrs.map(fromAddr => {
+    //     const transferFilter = {
+    //         address: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
+    //         topics: [
+    //             '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+    //             null,
+    //             hexZeroPad(fromAddr, 32)],
+    //         fromBlock: 15460379
+    //     };
+    //     return provider.getLogs(transferFilter);
+    // }));
 
-    // eventsList.forEach(item => console.log(item.toString()));
-    const tokenIds = await Promise.all(eventsList.map(async (event) => Promise.all(event.map(async (event) => event.topics[3]))));
-    await removeAllLiquidity(tokenIds, fromAddrs, govSigner, deadline);
+    // // eventsList.forEach(item => console.log(item.toString()));
+    // const tokenIds = await Promise.all(eventsList.map(async (event) => Promise.all(event.map(async (event) => event.topics[3]))));
+    // await removeAllLiquidity(tokenIds, fromAddrs, govSigner, deadline);
 
     const uniswapPool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, govSigner);
     const liquidity = await uniswapPool.liquidity();
@@ -541,60 +545,60 @@ async function adjustUniswapTVLToTarget(target: number, [ratioNumerator, ratioDe
     await uniswapV3Factory.multicall(calldatas);
 }
 
-async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], signer: any, deadline: number) {
-    const UNISWAP_NFPM_CONTRACT = new ethers.Contract(UNISWAP_NFPM, UNISWAP_FACTORY_ABI, signer);
-    const UNISWAP_POOL_CONTRACT = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
-    const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
+// async function removeAllLiquidity(tokenIds: string[][], fromAddrs: string[], signer: any, deadline: number) {
+//     const UNISWAP_NFPM_CONTRACT = new ethers.Contract(UNISWAP_NFPM, UNISWAP_FACTORY_ABI, signer);
+//     const UNISWAP_POOL_CONTRACT = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, signer);
+//     const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
 
-    for (let i = 0; i < tokenIds.length; i++) {
-        for (let j = 0; j < tokenIds[i].length; j++) {
-            const id = tokenIds[i][j];
-            const positionInfo = await UNISWAP_NFPM_CONTRACT.positions(id);
-            const poolInfo = await getPoolInfo();
+//     for (let i = 0; i < tokenIds.length; i++) {
+//         for (let j = 0; j < tokenIds[i].length; j++) {
+//             const id = tokenIds[i][j];
+//             const positionInfo = await UNISWAP_NFPM_CONTRACT.positions(id);
+//             const poolInfo = await getPoolInfo();
 
-            if (positionInfo.liquidity > 0 && (positionInfo.token0 == THEOERC20_MAINNET_DEPLOYMENT.address || positionInfo.token1 == THEOERC20_MAINNET_DEPLOYMENT.address)) {
-                if (!USING_TENDERLY) await hre.network.provider.request({
-                    method: "hardhat_impersonateAccount",
-                    params: [fromAddrs[i]],
-                });
+//             if (positionInfo.liquidity > 0 && (positionInfo.token0 == THEOERC20_MAINNET_DEPLOYMENT.address || positionInfo.token1 == THEOERC20_MAINNET_DEPLOYMENT.address)) {
+//                 if (!USING_TENDERLY) await hre.network.provider.request({
+//                     method: "hardhat_impersonateAccount",
+//                     params: [fromAddrs[i]],
+//                 });
 
-                const impersonatedSigner = provider.getSigner(fromAddrs[i]);
+//                 const impersonatedSigner = provider.getSigner(fromAddrs[i]);
 
-                const calldata = [];
-                // const fee = 10000;
-                const t0 = WETH9[1];
-                const t1 = new Token(1, THEOERC20_MAINNET_DEPLOYMENT.address, 9, 't1', 'THEO');
+//                 const calldata = [];
+//                 // const fee = 10000;
+//                 const t0 = WETH9[1];
+//                 const t1 = new Token(1, THEOERC20_MAINNET_DEPLOYMENT.address, 9, 't1', 'THEO');
 
-                const liquidity = positionInfo.liquidity.toString();
-                const tickLower = Number(positionInfo.tickLower.toString());
-                const tickUpper = Number(positionInfo.tickUpper.toString());
-                const fee = positionInfo.fee;
+//                 const liquidity = positionInfo.liquidity.toString();
+//                 const tickLower = Number(positionInfo.tickLower.toString());
+//                 const tickUpper = Number(positionInfo.tickUpper.toString());
+//                 const fee = positionInfo.fee;
 
-                const pool = new Pool(t0, t1, fee, poolInfo.sqrtPriceX96.toString(), poolInfo.liquidity.toString(), poolInfo.tick);
-                const position = new Position({ pool, liquidity, tickLower, tickUpper });
+//                 const pool = new Pool(t0, t1, fee, poolInfo.sqrtPriceX96.toString(), poolInfo.liquidity.toString(), poolInfo.tick);
+//                 const position = new Position({ pool, liquidity, tickLower, tickUpper });
 
-                const p0 = NonfungiblePositionManager.removeCallParameters(
-                    position,
-                    {
-                        tokenId: id,
-                        liquidityPercentage: new Percent(1, 1),
-                        slippageTolerance: new Percent(1, 1),
-                        deadline,
-                        collectOptions: {
-                            expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(t0, '170141183460469231731687303715884105727'),
-                            expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(t1, '170141183460469231731687303715884105727'),
-                            recipient: fromAddrs[i]
-                        }
-                    }
-                );
+//                 const p0 = NonfungiblePositionManager.removeCallParameters(
+//                     position,
+//                     {
+//                         tokenId: id,
+//                         liquidityPercentage: new Percent(1, 1),
+//                         slippageTolerance: new Percent(1, 1),
+//                         deadline,
+//                         collectOptions: {
+//                             expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(t0, '170141183460469231731687303715884105727'),
+//                             expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(t1, '170141183460469231731687303715884105727'),
+//                             recipient: fromAddrs[i]
+//                         }
+//                     }
+//                 );
                 
-                await UNISWAP_NFPM_CONTRACT
-                    .connect(impersonatedSigner)
-                    .multicall([p0.calldata]);
-            }
-        }
-    }
-}
+//                 await UNISWAP_NFPM_CONTRACT
+//                     .connect(impersonatedSigner)
+//                     .multicall([p0.calldata]);
+//             }
+//         }
+//     }
+// }
 
 // Function to encode a single value based on its type
 function encodeValue(element: any) {
@@ -611,7 +615,8 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
     //Sum all generated swap transactions into one aggregate transaction, subtract fee % to account for price impact
     const buySwapSize = transactions.map((tx) => tx[1] === Direction.buy ? tx[0] as number : 0).reduce((p, c) => (p + Math.floor(c * 0.99)), 0);
     const sellSwapSize = transactions.map((tx) => tx[1] === Direction.sell ? tx[0] as number : 0).reduce((p, c) => (p + Math.floor(c * 0.99)), 0);
-    const value = Math.abs(buySwapSize - sellSwapSize);
+    const buyCount = transactions.reduce((p, c) => ( c[1] === Direction.buy ? p + 1 : p), 0)
+    let value = Math.abs(buySwapSize - sellSwapSize);
     console.log("Swap sizes:", buySwapSize, sellSwapSize, value);
 
     const signerAddress = await signer.getAddress();
@@ -624,6 +629,15 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
     const fee = 10000;
     const deadline = await time.latest() + 28800;
     const erc20Balance = await Erc20.balanceOf(signerAddress);
+
+    //Handle 0 case
+    if (value == 0) {
+        return {
+        swapVolume: buySwapSize + sellSwapSize,
+        buySellRatio: buyCount / transactions.length,
+        totalSwaps: transactions.length
+        }
+    };
 
     if (buySwapSize > sellSwapSize) {
         const amountOut = ethers.utils.parseUnits(value.toFixed(tokenOutDecimals), tokenOutDecimals); //.mul(BigNumber.from(10).pow(tokenOutDecimals));
@@ -702,7 +716,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
             console.log("potentially insufficient THEO balance to sell for ETH");
         }
     }
-    const buyCount = transactions.reduce((p, c) => ( c[1] === Direction.buy ? p + 1 : p), 0)
+    
     return {
         swapVolume: buySwapSize + sellSwapSize,
         buySellRatio: buyCount / transactions.length,
