@@ -62,7 +62,7 @@ const createMarket = async () => {
   // Arguments for creating market
   // const capacity = '10000000000000000000000'; // 1e22 -- Previously used for Rinkeby and Ropsten testnet deployments
   const capacity = '15000000000000000'; // 15e15
-  const initialPrice = 4e8; // This value could be changed to adjust targetDebt (and thereby maxPayout and maxDebt) if desired
+  const initialPrice = 30e14; // This value could be changed to adjust targetDebt (and thereby maxPayout and maxDebt) if desired
   const buffer = 1e4;
   const capacityInQuote = false;
   const fixedTerm = true;

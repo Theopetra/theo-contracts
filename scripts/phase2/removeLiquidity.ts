@@ -13,7 +13,7 @@ const UNISWAP_POOL_ADDRESS = "0x1fc037ac35af9b940e28e97c2faf39526fbb4556";
 
 async function main() {
 
-    let provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545/');
+    let provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8544/');
 
     let [signer, ...signers] =  await ethers.getSigners();
 
@@ -36,7 +36,8 @@ async function main() {
         we can find the sender address and use it to filter transfer events in the factory contract to list all LP position token IDs for the given pool.
     */
 
-    const deadline = 1679580036 + 288000;
+    const deadline = (await provider.getBlock(await provider.getBlockNumber())).timestamp + 28800;
+
     let logPromise = provider.getLogs(mintFilter);
     logPromise.then(function(logs) {
         let txlist = Promise.all(logs.map((log) => (provider.getTransaction(log.transactionHash))));
@@ -63,8 +64,8 @@ async function main() {
             }));    
 
             let tokenIdsForAddr = Promise.all(eventsList.map(async (event) => Promise.all(event.map(async (event) => event.topics[3]))))
-            tokenIdsForAddr.then((tokenIds) => 
-            removeAllLiquidity(tokenIds, fromAddrs, signer, deadline).then(() => 
+            tokenIdsForAddr.then(async (tokenIds) => 
+            await removeAllLiquidity(tokenIds, fromAddrs, signer, deadline).then(() => 
             console.log("Done")));
             });
         });    

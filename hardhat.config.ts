@@ -105,10 +105,14 @@ const config: HardhatUserConfig = {
     },
     tenderly: {
       chainId: 1, //Mainnet fork on Tenderly
-      url: 'https://rpc.tenderly.co/fork/f5321ad1-69fb-4f39-b880-b6d0bb9fa896'
+      url: 'https://rpc.tenderly.co/fork/c65d17db-4095-4d6b-a156-e46252bc36de'
     },
     localhost: {
       url: node_url('localhost'),
+      accounts: accounts(),
+    },
+    localhost2:{
+      url: 'http://127.0.0.1:8544/',
       accounts: accounts(),
     },
     staging: {

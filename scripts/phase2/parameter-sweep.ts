@@ -31,10 +31,10 @@ import {
     tickToPrice,
     Trade,
     SwapRouter,
-    nearestUsableTick, TickMath, FeeAmount,
+    nearestUsableTick, TickMath, FeeAmount, SqrtPriceMath
 
 } from '@uniswap/v3-sdk';
-import {BigintIsh, CurrencyAmount, Fraction, Percent, sqrt, Token, TradeType, WETH9,} from '@uniswap/sdk-core';
+import {BigintIsh, CurrencyAmount, Fraction, Percent, sqrt, Token, TradeType, WETH9, } from '@uniswap/sdk-core';
 
 import {waitFor} from "../../test/utils";
 import {BigNumberish} from "ethers";
@@ -54,7 +54,7 @@ const BLOCK_NUMBER = 17251681; // CHANGE ME
 const EPOCH_LENGTH = 8 * 60 * 60;
 const EPOCHS_PER_YIELD_REPORT = 3*30; // 3 per day, 30 days a month
 const BOND_MARKET_ID = 0; // TODO: Get actual market ID
-const sampleSize = 4; // # of simulation loops
+const sampleSize = 10; // # of simulation loops
 
 const THEO_DECIMALS = 9;
 const ETH_DECIMALS = 18;
@@ -116,14 +116,17 @@ const parameters = {
     liquidityRatio: [
         // 0.0001805883567
         [
-            10000000000000, // numerator
-            1805883567 // denominator
+            6746, // sqrtPriceX96 at slot0, squared then divided by 2 ^ 192, adjusted to THEO decimals and rounded down
+            1
+            // 10000000000000, // numerator
+            // 1805883567 // denominator
         ]
     ],
-    drY: [0, 0.01*10**9, 0.02*10**9],
-    drB: [0, 0.01*10**9, 0.02*10**9],
+    drY: [0.01*10**9, 0.001*10**9, 0.0001*10**9],
+    drB: [0.01*10**9, 0.001*10**9, 0.0001*10**9],
     yieldReports: [
-        [20020, 20020, 20020, 40040, 40040, 40040]
+        [3336, 6673, 10009, 13346, 16682, 20020],
+        [3336, 3336, 6673, 6673, 13346, 13346],
     ]
 };
 
@@ -189,7 +192,7 @@ async function resetFork() {
 
     /*
         Initialize bond market.
-        Quote token is in USDC. Initial discount set at 5%, max discount at 20%.
+        Quote token is in wETH. Initial discount set at 5%, max discount at 20%.
         Total capacity is $6,000,000 in ETH over 1 year, at a deposit and tuning interval of 8 hours.
         The implied funding rate is $5,479.45 or roughly 3 ETH per 8 hour period. Volume lower than this will cause the discount rate to drop, above will cause it to rise.
     */
