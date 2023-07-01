@@ -47,6 +47,8 @@ const doTheTest = async () => {
     await unlockedStake();
     await lockedStake();
 
+    console.log("$THEO Staked.")
+
 };
 
 const testIt = async () => {

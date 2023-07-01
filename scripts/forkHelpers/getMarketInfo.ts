@@ -15,6 +15,7 @@ const getInfo = async () => {
         for (const i in liveMarkets) {
             console.log(await contract.markets(liveMarkets[i]));
             console.log(await contract.terms(liveMarkets[i]));
+            console.log(await contract.marketPrice(liveMarkets[i]));
         }
     }
 
