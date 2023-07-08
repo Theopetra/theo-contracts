@@ -13,13 +13,12 @@ async function sortStakes() {
     let provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
     let signer = provider.getSigner();
 
-    let rebate = 0;
+    let rebate = BigInt(0);
     if (process.argv.slice(2)[0]) {
-            rebate = Number(process.argv.slice(2)[0]);
+            rebate = BigInt(process.argv.slice(2)[0]);
     }
     
     const iface = new ethers.utils.Interface(stakingAbi);
-    const stakingContract = new ethers.Contract(stakingAddress, stakingAbi, signer);
     const pTheo = new ethers.Contract(pTheoAddress, pTheoAbi, signer);
 
     //Filter for "Stake" event from block 17069365, parse logs, extract user list, remove staking contract address, and reduce to unique addresses only 
@@ -47,23 +46,37 @@ async function sortStakes() {
 
     const totalAmountStaked = userAmounts.reduce((p: string, c: string) => ((Number(p) + Number(c)).toString()), "0");
 
+    //Change providers to zkSync and instantiate batch withdrawal stakingContract
+    provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8544');
+    const rebateSigner = new ethers.Wallet(`${process.env.MAINNET_PRIVATE_KEY}`, provider)
+
+    // Goerli
+    // const paymentBatcher = new ethers.Contract("0x97D3aa40b1DB09F783C25C4b142A6D9446d50f07", batchWithdrawalAbi, rebateSigner)
+    // Mainnet
+    const paymentBatcher = new ethers.Contract(batchWithdrawalAddress, batchWithdrawalAbi, rebateSigner);
+    const feeData = await provider.getFeeData();
+
+    // Account for gas cost for current rebate and reduce rebate by that amount
+    const estimateProportions = (new Array(unique.length)).fill(1000);
+    const gas = (await provider.estimateGas(paymentBatcher.batch(unique, estimateProportions, {gasPrice: feeData.gasPrice}))).toBigInt();
+    rebate = rebate - gas * (feeData.gasPrice?.toBigInt() || BigInt(0));
+    console.log("Gas adjusted rebate:", rebate, gas, feeData.gasPrice);
+
     const userProportions = await Promise.all(
         unique.map(async (user: string, i) => {
-            return ((Number(userAmounts[i]) / Number(totalAmountStaked) * rebate) / 10**18) 
+            return ((((BigInt(userAmounts[i]) * BigInt(10**18)) / BigInt(totalAmountStaked) * rebate) / BigInt(10**18))) 
         })
     );
 
-    //Change providers to zkSync and instantiate batch withdrawal stakingContract
-    // provider = new ethers.providers.InfuraProvider( 324 , apikey );
+    await paymentBatcher.batch(unique, userProportions);
+    const winner = userProportions.reduce((m, e) => e > m ? e : m);
 
-    // const paymentBatcher = new ethers.Contract(batchWithdrawalAddress, batchWithdrawalAbi, signer);
-
-    // signer = getSigner()
-
-    // const success = await paymentBatcher.batch(users, userProportions)
-    const winner = Math.max(...userProportions);
-
-    return ["Amounts staked:", userAmounts, "Rebate amounts:", userProportions, "Total amount staked:", totalAmountStaked, "Addresses:", users, "Highest rebate:", winner]
+    return ["Amounts staked:", userAmounts,
+            "Rebate amounts:", userProportions, 
+            "Total amount staked:", totalAmountStaked, 
+            "Addresses:", unique, 
+            "Highest rebate:", winner,
+            "Gas Estimate:", gas]
 }
 
 const main = async () => {
@@ -77,12 +90,14 @@ const main = async () => {
 main();
 
 
-    // Unused, but here's how to get the staked balance from gons 
-    // const indexes: number[] = await stakingContract.indexesFor(user, false);
-            // (await Promise.all(
-            //     indexes.map(async (index: any) => {
-            //         const gons = await stakingContract.stakingInfo(user, index)
-            //         console.log(gons.gonsRemaining)
-            //         const bal = await pTheo.balanceForGons(gons.gonsRemaining as BigNumber)
-            //         return bal
-            //     }))).reduce((p,c) => (p+c));
+    /* Unused, but here's how to get the staked balance from gons 
+    const stakingContract = new ethers.Contract(stakingAddress, stakingAbi, signer);
+    const indexes: number[] = await stakingContract.indexesFor(user, false);
+            (await Promise.all(
+                indexes.map(async (index: any) => {
+                    const gons = await stakingContract.stakingInfo(user, index)
+                    console.log(gons.gonsRemaining)
+                    const bal = await pTheo.balanceForGons(gons.gonsRemaining as BigNumber)
+                    return bal
+                }))).reduce((p,c) => (p+c)); 
+    */
