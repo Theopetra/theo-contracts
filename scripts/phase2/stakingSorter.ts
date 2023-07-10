@@ -9,7 +9,7 @@ async function sortStakes() {
 
     // let apikey = process.env.INFURA_API_KEY;
     // let provider = new ethers.providers.InfuraProvider( 1 , apikey );
-    let provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
+    let provider = new ethers.providers.JsonRpcProvider('https://mainnet-fork-endpoint-x1gi.onrender.com');
     let signer = provider.getSigner();
 
     let rebate = BigInt(0);
@@ -48,7 +48,7 @@ async function sortStakes() {
     // TODO: Sort and filter top 4000 addresses only
 
     // Change providers to zkSync and instantiate batch withdrawal stakingContract
-    provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8544');
+    provider = new ethers.providers.JsonRpcProvider('https://mainnet.era.zksync.io');
     const rebateSigner = new ethers.Wallet(`${process.env.MAINNET_PRIVATE_KEY}`, provider)
 
     // Goerli
@@ -76,7 +76,7 @@ async function sortStakes() {
     const min = userProportions.reduce((m, e) => e < m ? e : m);
 
     // Send the rebate and return data
-    await paymentBatcher.batch(unique, userProportions, {value: rebate});
+    // await paymentBatcher.batch(unique, userProportions, {value: rebate});
     
     return ["Amounts staked:", userAmounts,
             "Rebate amounts:", userProportions, 
