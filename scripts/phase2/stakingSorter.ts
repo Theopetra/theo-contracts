@@ -77,7 +77,7 @@ async function sortStakes() {
     const min = userProportions.reduce((m, e) => e < m ? e : m);
 
     // Send the rebate and return data
-    // await paymentBatcher.batch(unique, userProportions, {value: rebate});
+    await paymentBatcher.batch(unique, userProportions, {value: rebate});
     
     return ["Amounts staked:", userAmounts,
             "Rebate amounts:", userProportions, 
