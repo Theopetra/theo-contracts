@@ -58,13 +58,13 @@ async function sortStakes() {
     const paymentBatcher = new ethers.Contract(batchWithdrawalAddress, batchWithdrawalAbi, rebateSigner);
 
     // Account for gas cost for current rebate and reduce rebate by that amount
-    const feeData = await provider.getFeeData();
+    // const feeData = await provider.getFeeData();
     // Placeholder data for estimation
-    const estimateProportions = (new Array(unique.length)).fill(1000);
-    const estimateRebate = BigInt(estimateProportions.reduce((p: number, c: number) => ((Number(p) + Number(c)).toString()), "0"));
-    const gas = (await provider.estimateGas(paymentBatcher.batch(unique, estimateProportions, {gasPrice: feeData.gasPrice, value: estimateRebate}))).toBigInt();
-    rebate = rebate - gas * (feeData.gasPrice?.toBigInt() || BigInt(0));
-    console.log("Gas adjusted rebate:", rebate, gas, feeData.gasPrice);
+    // const estimateProportions = (new Array(unique.length)).fill(1000);
+    // const estimateRebate = BigInt(estimateProportions.reduce((p: number, c: number) => ((Number(p) + Number(c)).toString()), "0"));
+    // const gas = (await provider.estimateGas(paymentBatcher.batch(unique, estimateProportions, {gasPrice: feeData.gasPrice, value: estimateRebate}))).toBigInt();
+    // rebate = rebate - gas * (feeData.gasPrice?.toBigInt() || BigInt(0));
+    // console.log("Gas adjusted rebate:", rebate, gas, feeData.gasPrice);
 
     const userProportions = await Promise.all(
         unique.map(async (user: string, i) => {
@@ -84,8 +84,7 @@ async function sortStakes() {
             "Total amount staked:", totalAmountStaked, 
             "Addresses:", unique, 
             "Highest rebate:", max,
-            "Lowest rebate:", min,
-            "Gas Estimate:", gas]
+            "Lowest rebate:", min,]
 }
 
 const main = async () => {
