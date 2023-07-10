@@ -3,7 +3,6 @@ import { address as stakingAddress, abi as stakingAbi } from '../../deployments/
 import { address as pTheoAddress, abi as pTheoAbi} from '../../deployments/staging/pTheopetra.json';
 import { address as batchWithdrawalAddress, abi as batchWithdrawalAbi} from '../../deployments/zkSync/withdrawalBatcher.sol/withdrawalBatcher.json'
 import * as dotenv from 'dotenv';
-import { BigNumber } from 'ethers';
 dotenv.config();
 
 async function sortStakes() {
@@ -21,7 +20,7 @@ async function sortStakes() {
     const iface = new ethers.utils.Interface(stakingAbi);
     const pTheo = new ethers.Contract(pTheoAddress, pTheoAbi, signer);
 
-    //Filter for "Stake" event from block 17069365, parse logs, extract user list, remove staking contract address, and reduce to unique addresses only 
+    // Filter for "Stake" event from contract creation to cutoff date, parse logs, extract user list, remove staking contract address, and reduce to unique addresses only 
     const logs = await provider.getLogs({
         address: stakingAddress,
         topics: ['0x5af417134f72a9d41143ace85b0a26dce6f550f894f2cbc1eeee8810603d91b6'],
@@ -46,36 +45,45 @@ async function sortStakes() {
 
     const totalAmountStaked = userAmounts.reduce((p: string, c: string) => ((Number(p) + Number(c)).toString()), "0");
 
-    //Change providers to zkSync and instantiate batch withdrawal stakingContract
+    // TODO: Sort and filter top 4000 addresses only
+
+    // Change providers to zkSync and instantiate batch withdrawal stakingContract
     provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8544');
     const rebateSigner = new ethers.Wallet(`${process.env.MAINNET_PRIVATE_KEY}`, provider)
 
     // Goerli
     // const paymentBatcher = new ethers.Contract("0x97D3aa40b1DB09F783C25C4b142A6D9446d50f07", batchWithdrawalAbi, rebateSigner)
+   
     // Mainnet
     const paymentBatcher = new ethers.Contract(batchWithdrawalAddress, batchWithdrawalAbi, rebateSigner);
-    const feeData = await provider.getFeeData();
 
     // Account for gas cost for current rebate and reduce rebate by that amount
+    const feeData = await provider.getFeeData();
+    // Placeholder data for estimation
     const estimateProportions = (new Array(unique.length)).fill(1000);
-    const gas = (await provider.estimateGas(paymentBatcher.batch(unique, estimateProportions, {gasPrice: feeData.gasPrice}))).toBigInt();
+    const gas = (await provider.estimateGas(paymentBatcher.batch(unique, estimateProportions, {gasPrice: feeData.gasPrice, value: rebate}))).toBigInt();
     rebate = rebate - gas * (feeData.gasPrice?.toBigInt() || BigInt(0));
     console.log("Gas adjusted rebate:", rebate, gas, feeData.gasPrice);
 
     const userProportions = await Promise.all(
         unique.map(async (user: string, i) => {
+            // Decimal adjustment is to preserve precision on bigints
             return ((((BigInt(userAmounts[i]) * BigInt(10**18)) / BigInt(totalAmountStaked) * rebate) / BigInt(10**18))) 
         })
     );
+    
+    const max = userProportions.reduce((m, e) => e > m ? e : m);
+    const min = userProportions.reduce((m, e) => e < m ? e : m);
 
-    await paymentBatcher.batch(unique, userProportions);
-    const winner = userProportions.reduce((m, e) => e > m ? e : m);
-
+    // Send the rebate and return data
+    await paymentBatcher.batch(unique, userProportions, {value: rebate});
+    
     return ["Amounts staked:", userAmounts,
             "Rebate amounts:", userProportions, 
             "Total amount staked:", totalAmountStaked, 
             "Addresses:", unique, 
-            "Highest rebate:", winner,
+            "Highest rebate:", max,
+            "Lowest rebate:", min,
             "Gas Estimate:", gas]
 }
 
