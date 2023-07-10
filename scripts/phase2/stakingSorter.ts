@@ -61,7 +61,8 @@ async function sortStakes() {
     const feeData = await provider.getFeeData();
     // Placeholder data for estimation
     const estimateProportions = (new Array(unique.length)).fill(1000);
-    const gas = (await provider.estimateGas(paymentBatcher.batch(unique, estimateProportions, {gasPrice: feeData.gasPrice, value: rebate}))).toBigInt();
+    const estimateRebate = BigInt(estimateProportions.reduce((p: number, c: number) => ((Number(p) + Number(c)).toString()), "0"));
+    const gas = (await provider.estimateGas(paymentBatcher.batch(unique, estimateProportions, {gasPrice: feeData.gasPrice, value: estimateRebate}))).toBigInt();
     rebate = rebate - gas * (feeData.gasPrice?.toBigInt() || BigInt(0));
     console.log("Gas adjusted rebate:", rebate, gas, feeData.gasPrice);
 
