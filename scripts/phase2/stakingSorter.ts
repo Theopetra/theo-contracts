@@ -3,19 +3,25 @@ import { address as stakingAddress, abi as stakingAbi } from '../../deployments/
 import { address as pTheoAddress, abi as pTheoAbi} from '../../deployments/staging/pTheopetra.json';
 import { address as batchWithdrawalAddress, abi as batchWithdrawalAbi} from '../../deployments/zkSync/withdrawalBatcher.sol/withdrawalBatcher.json'
 import * as dotenv from 'dotenv';
+import { BigNumber } from 'ethers';
 dotenv.config();
 
 async function sortStakes() {
 
     // let apikey = process.env.INFURA_API_KEY;
     // let provider = new ethers.providers.InfuraProvider( 1 , apikey );
-    let provider = new ethers.providers.JsonRpcProvider('https://mainnet-fork-endpoint-x1gi.onrender.com');
+    let provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
     let signer = provider.getSigner();
 
     let rebate = BigInt(0);
     if (process.argv.slice(2)[0]) {
             rebate = BigInt(process.argv.slice(2)[0]);
     }
+
+    await hre.network.provider.send("hardhat_setBalance", [
+        '0x06f3a31e675ddFEBafC87435686E63C156E2236C',
+        BigNumber.from(rebate).toHexString(),
+    ]);
     
     const iface = new ethers.utils.Interface(stakingAbi);
     const pTheo = new ethers.Contract(pTheoAddress, pTheoAbi, signer);
@@ -48,8 +54,13 @@ async function sortStakes() {
     // TODO: Sort and filter top 4000 addresses only
 
     // Change providers to zkSync and instantiate batch withdrawal stakingContract
-    provider = new ethers.providers.JsonRpcProvider('https://mainnet.era.zksync.io');
+    provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8544');
     const rebateSigner = new ethers.Wallet(`${process.env.MAINNET_PRIVATE_KEY}`, provider)
+
+    await provider.send("hardhat_setBalance", [
+        '0x06f3a31e675ddFEBafC87435686E63C156E2236C',
+        BigNumber.from(rebate + rebate).toHexString(),
+    ]);
 
     // Goerli
     // const paymentBatcher = new ethers.Contract("0x97D3aa40b1DB09F783C25C4b142A6D9446d50f07", batchWithdrawalAbi, rebateSigner)
@@ -58,13 +69,13 @@ async function sortStakes() {
     const paymentBatcher = new ethers.Contract(batchWithdrawalAddress, batchWithdrawalAbi, rebateSigner);
 
     // Account for gas cost for current rebate and reduce rebate by that amount
-    // const feeData = await provider.getFeeData();
+    const feeData = await provider.getFeeData();
     // Placeholder data for estimation
-    // const estimateProportions = (new Array(unique.length)).fill(1000);
-    // const estimateRebate = BigInt(estimateProportions.reduce((p: number, c: number) => ((Number(p) + Number(c)).toString()), "0"));
-    // const gas = (await provider.estimateGas(paymentBatcher.batch(unique, estimateProportions, {gasPrice: feeData.gasPrice, value: estimateRebate}))).toBigInt();
-    // rebate = rebate - gas * (feeData.gasPrice?.toBigInt() || BigInt(0));
-    // console.log("Gas adjusted rebate:", rebate, gas, feeData.gasPrice);
+    const estimateProportions = (new Array(unique.length)).fill(1000);
+    const estimateRebate = BigInt(estimateProportions.reduce((p: number, c: number) => ((Number(p) + Number(c)).toString()), "0"));
+    const gas = (await provider.estimateGas(paymentBatcher.batch(unique, estimateProportions, {gasPrice: feeData.gasPrice, value: estimateRebate}))).toBigInt();
+    rebate = rebate - gas * (feeData.gasPrice?.toBigInt() || BigInt(0));
+    console.log("Gas adjusted rebate:", rebate, gas, feeData.gasPrice);
 
     const userProportions = await Promise.all(
         unique.map(async (user: string, i) => {
@@ -75,6 +86,7 @@ async function sortStakes() {
     
     const max = userProportions.reduce((m, e) => e > m ? e : m);
     const min = userProportions.reduce((m, e) => e < m ? e : m);
+    const avg = (userProportions.reduce((p,c) => (p + c))) / BigInt(userProportions.length);
 
     // Send the rebate and return data
     await paymentBatcher.batch(unique, userProportions, {value: rebate});
@@ -84,7 +96,9 @@ async function sortStakes() {
             "Total amount staked:", totalAmountStaked, 
             "Addresses:", unique, 
             "Highest rebate:", max,
-            "Lowest rebate:", min,]
+            "Lowest rebate:", min,
+            "Average rebate:", avg,
+            "Gas Estimate:", gas]
 }
 
 const main = async () => {
