@@ -1,4 +1,5 @@
 import hre, {ethers} from 'hardhat';
+import { BigNumber } from 'ethers';
 import { address as theoAddress, abi as theoAbi} from '../../deployments/mainnet/TheopetraERC20Token.json';
 import { Network, Alchemy, Wallet } from 'alchemy-sdk';
 import _ from 'lodash';
@@ -9,8 +10,8 @@ dotenv.config();
 
 type data = { timestamp: number, userCount: number };
 
-let unique: string[] = [];
-let count = 0;
+let unique: string[] = ["0x1fc037ac35af9b940e28e97c2faf39526fbb4556"];
+let count = 1;
 let dataSet: data[] = [];
 
 async function fetchUserData() {
@@ -19,6 +20,7 @@ async function fetchUserData() {
     const settings = {
     apiKey: process.env.ALCHEMY_API_KEY, // Replace with your Alchemy API Key.
     network: Network.ETH_MAINNET, // Replace with your network.
+    maxRetries: 20
     };
 
     // Creating an instance to make requests
@@ -38,32 +40,36 @@ async function fetchUserData() {
         toBlock: 17885684             
     });
 
-    const events = await Promise.all(logs.map((log) => iface.parseLog(log)));
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
     // Construct timeline: For each transfer event, check the remaining balance of the sender and remove from list and count if it is 0
-    // Check if receiving address is unique and if so increment the user count and save the timestamp 
+    // Check if receiving address is unique and if so increment the user count, save the timestamp, and add to list of unique addresses 
 
-    // Fucks up at 100 because the loop is batched, need to batch address/events as well
     let i = 0;
-    const logSet = _.chunk(logs, 100);
+    const logSet = _.chunk(logs, 10);
     for (const logBatch of logSet) {
         console.log(`Sending batch ${i}...`);
-        await Promise.all(logBatch.map(async (log) => {
-            let address: string = events[i].args["from"];
-            if (address !== "0x0000000000000000000000000000000000000000" && 
-                await theo.balanceOf(address, {blockTag: log.blockNumber}) == 0) {
-                unique.splice(unique.indexOf(address), 1);
-                count--;
+        for (const log of logBatch) {
+            let event = iface.parseLog(log)
+            let address: string = event.args["from"];
+            if (address !== "0x0000000000000000000000000000000000000000" &&
+                address !== "0x1fc037ac35af9b940e28e97c2faf39526fbb4556") {
+                if (await theo.balanceOf(address, {blockTag: log.blockNumber}) == 0) {
+                    unique.splice(unique.indexOf(address), 1);
+                    count--;
+                };
             };
-            if (await uniqueAddress(events[i].args["to"])) {
-                unique.push(events[i].args["to"]);
+            if (await uniqueAddress(event.args["to"]) && event.args["value"] > BigNumber.from(0)) {
+                unique.push(event.args["to"]);
                 count++;
             };
             dataSet.push({ timestamp: log.blockNumber, userCount: count });
+            console.log("Count: ", count);
             i++;
-        }));
+        }
+        await sleep(2000);
     };
-
+    
     saveResults(dataSet);
     
     return  [ 
