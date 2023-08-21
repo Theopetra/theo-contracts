@@ -1,11 +1,15 @@
 import hre, {ethers} from 'hardhat';
 import { BigNumber } from 'ethers';
 import { address as theoAddress, abi as theoAbi} from '../../deployments/mainnet/TheopetraERC20Token.json';
+import { address as wlAddress} from '../../deployments/mainnet/WhitelistTheopetraBondDepository.json';
+import { address as plAddress} from '../../deployments/mainnet/PublicPreListBondDepository.json';
+import { address as mAddress} from '../../deployments/mainnet/TheopetraBondDepository.json';
 import { Network, Alchemy, Wallet } from 'alchemy-sdk';
 import _ from 'lodash';
 import * as dotenv from 'dotenv';
 import { writeToStream } from "fast-csv";
 import fs from 'fs';
+import { isAddress } from 'ethers/lib/utils';
 dotenv.config();
 
 type data = { timestamp: number, userCount: number };
@@ -18,9 +22,9 @@ async function fetchUserData() {
 
     // Configuring the Alchemy SDK
     const settings = {
-    apiKey: process.env.ALCHEMY_API_KEY, // Replace with your Alchemy API Key.
-    network: Network.ETH_MAINNET, // Replace with your network.
-    maxRetries: 20
+    apiKey: process.env.ALCHEMY_API_KEY, 
+    network: Network.ETH_MAINNET, 
+    maxRetries: 20 // If script fails due to timeout, increase retries here
     };
 
     // Creating an instance to make requests
@@ -32,24 +36,56 @@ async function fetchUserData() {
     const iface = new ethers.utils.Interface(theoAbi);
     const theo = new ethers.Contract(theoAddress, theoAbi, wallet);
 
-    // Filter for "Transfer" event from contract creation to cutoff date, parse logs, and extract events for the address list
-    const logs = await provider.core.getLogs({
-        address: theoAddress,
-        topics: ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
-        fromBlock: 15461791,
-        toBlock: 17885684             
+    // Account for presale and locked holders using "Bond" event
+    const mLogs = await provider.core.getLogs({
+        address: wlAddress,
+        topics: ['0x7880508a48fd3aee88f7e15917d85e39c3ad059e51ad4aca9bb46e7b4938b961'],
+        fromBlock: 15462213            
     });
 
-    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+    mLogs.concat(await provider.core.getLogs({
+        address: plAddress,
+        topics: ['0x7880508a48fd3aee88f7e15917d85e39c3ad059e51ad4aca9bb46e7b4938b961'],
+        fromBlock: 15462213            
+    }));
+
+    mLogs.concat(await provider.core.getLogs({
+        address: mAddress,
+        topics: ['0x7880508a48fd3aee88f7e15917d85e39c3ad059e51ad4aca9bb46e7b4938b961'],
+        fromBlock: 15462213            
+    }));
+
+    // Access each transaction from its hash and return addresses
+    const marketUsers = await Promise.all(mLogs.map(
+        async (log) => await provider.core.getTransaction(log.transactionHash).then(
+            (transaction) => {return {user: transaction?.from, timestamp: log.blockNumber}}
+    )));
+
+    // Filter for "Transfer" event from contract creation to cutoff date, parse logs, and extract events for the address list
+    const theoLogs = await provider.core.getLogs({
+        address: theoAddress,
+        topics: ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
+        fromBlock: 15461791            
+    });
 
     // Construct timeline: For each transfer event, check the remaining balance of the sender and remove from list and count if it is 0
     // Check if receiving address is unique and if so increment the user count, save the timestamp, and add to list of unique addresses 
 
     let i = 0;
-    const logSet = _.chunk(logs, 10);
+    let j = 0;
+    const logSet = _.chunk(theoLogs, 10);
     for (const logBatch of logSet) {
         console.log(`Sending batch ${i}...`);
         for (const log of logBatch) {
+            while (j < marketUsers.length && log.blockNumber > marketUsers[j].timestamp) {
+                if (await uniqueAddress(marketUsers[j].user as string)) {
+                    unique.push(marketUsers[j].user as string);
+                    count++;
+                };
+                dataSet.push({ timestamp: marketUsers[j].timestamp, userCount: count });
+                console.log("J Count: ", count, j);
+                j++
+            }
             let event = iface.parseLog(log)
             let address: string = event.args["from"];
             if (address !== "0x0000000000000000000000000000000000000000" &&
@@ -63,11 +99,10 @@ async function fetchUserData() {
                 unique.push(event.args["to"]);
                 count++;
             };
-            dataSet.push({ timestamp: log.blockNumber, userCount: count });
-            console.log("Count: ", count);
+            dataSet.push({ timestamp: log.blockNumber, userCount: unique.length });
+            console.log("I Count: ", count);
             i++;
-        }
-        await sleep(2000);
+        };
     };
     
     saveResults(dataSet);
