@@ -10,18 +10,13 @@ async function sortStakes() {
 
     // let apikey = process.env.INFURA_API_KEY;
     // let provider = new ethers.providers.InfuraProvider( 1 , apikey );
-    let provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
+    let provider = new ethers.providers.JsonRpcProvider('https://mainnet-fork-endpoint-x1gi.onrender.com');
     let signer = provider.getSigner();
 
     let rebate = BigInt(0);
     if (process.argv.slice(2)[0]) {
             rebate = BigInt(process.argv.slice(2)[0]);
     }
-
-    await hre.network.provider.send("hardhat_setBalance", [
-        '0x06f3a31e675ddFEBafC87435686E63C156E2236C',
-        BigNumber.from(rebate).toHexString(),
-    ]);
     
     const iface = new ethers.utils.Interface(stakingAbi);
     const pTheo = new ethers.Contract(pTheoAddress, pTheoAbi, signer);
@@ -31,7 +26,7 @@ async function sortStakes() {
         address: stakingAddress,
         topics: ['0x5af417134f72a9d41143ace85b0a26dce6f550f894f2cbc1eeee8810603d91b6'],
         fromBlock: 17069365,
-        toBlock: 17629916             
+        toBlock: 18292465             
     });
 
     const events = await Promise.all(logs.map((log) => iface.parseLog(log)));
@@ -54,13 +49,13 @@ async function sortStakes() {
     // TODO: Sort and filter top 4000 addresses only
 
     // Change providers to zkSync and instantiate batch withdrawal stakingContract
-    provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8544');
+    provider = new ethers.providers.JsonRpcProvider('https://mainnet.era.zksync.io');
     const rebateSigner = new ethers.Wallet(`${process.env.MAINNET_PRIVATE_KEY}`, provider)
 
-    await provider.send("hardhat_setBalance", [
-        '0x06f3a31e675ddFEBafC87435686E63C156E2236C',
-        BigNumber.from(rebate + rebate).toHexString(),
-    ]);
+    // await provider.send("hardhat_setBalance", [
+    //     "0x06f3a31e675ddFEBafC87435686E63C156E2236C",
+    //     BigNumber.from(rebate + rebate).toHexString().replace("0x0", "0x"),
+    // ]);
 
     // Goerli
     // const paymentBatcher = new ethers.Contract("0x97D3aa40b1DB09F783C25C4b142A6D9446d50f07", batchWithdrawalAbi, rebateSigner)
@@ -73,7 +68,7 @@ async function sortStakes() {
     // Placeholder data for estimation
     const estimateProportions = (new Array(unique.length)).fill(1000);
     const estimateRebate = BigInt(estimateProportions.reduce((p: number, c: number) => ((Number(p) + Number(c)).toString()), "0"));
-    const gas = (await provider.estimateGas(paymentBatcher.batch(unique, estimateProportions, {gasPrice: feeData.gasPrice, value: estimateRebate}))).toBigInt();
+    const gas = (await paymentBatcher.estimateGas.batch(unique, estimateProportions, {gasPrice: feeData.gasPrice, value: estimateRebate})).toBigInt();
     rebate = rebate - gas * (feeData.gasPrice?.toBigInt() || BigInt(0));
     console.log("Gas adjusted rebate:", rebate, gas, feeData.gasPrice);
 
