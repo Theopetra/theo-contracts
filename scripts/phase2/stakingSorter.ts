@@ -26,7 +26,7 @@ async function sortStakes() {
         address: stakingAddress,
         topics: ['0x5af417134f72a9d41143ace85b0a26dce6f550f894f2cbc1eeee8810603d91b6'],
         fromBlock: 17069365,
-        toBlock: 18292465             
+        toBlock: 18286550             
     });
 
     const events = await Promise.all(logs.map((log) => iface.parseLog(log)));
