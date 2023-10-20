@@ -37,7 +37,7 @@ const getForkedTheo = async () => {
     await hre.network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [treasuryAddress],
-      });
+    });
 
     await hre.network.provider.send("hardhat_setBalance", [
         treasuryAddress,

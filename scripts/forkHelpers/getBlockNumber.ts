@@ -1,16 +1,12 @@
-import * as dotenv from 'dotenv';
 import { ethers } from 'hardhat';
-import hre from 'hardhat';
-import {BigNumber} from "ethers";
-import { address, abi } from '../../deployments/mainnet/TheopetraBondDepository.json';
-dotenv.config();
 
 const main = async () => {
 
-    const provider = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8544');
+    const provider = new ethers.providers.JsonRpcProvider('https://mainnet-fork-endpoint-x1gi.onrender.com');
  
-    const blockNumber = await provider.getBlockNumber();
-    console.log(`The current block number is: ${blockNumber}`);
+    const block = await provider.getBlock(await provider.getBlockNumber())
+    
+    console.log(`The current block number is: ${block.number} and the timestamp is ${block.timestamp}`);
 };
 
 const createNewMarket = async () => {

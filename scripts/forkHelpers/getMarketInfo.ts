@@ -8,14 +8,18 @@ const getInfo = async () => {
     const contract = await ethers.getContractAt(abi, address, signer);
     const liveMarkets: any[] = await contract.liveMarkets();
 
+    console.log("Live Markets: ", liveMarkets);
+
     if ((process.argv.slice(2)[0])) {
         console.log(await contract.markets(parseInt(process.argv.slice(2)[0])));
         console.log(await contract.terms(parseInt(process.argv.slice(2)[0])));
+        console.log(await contract.bondRateVariable(parseInt(process.argv.slice(2)[0])));
     } else {
         for (const i in liveMarkets) {
             console.log(await contract.markets(liveMarkets[i]));
             console.log(await contract.terms(liveMarkets[i]));
             console.log(await contract.marketPrice(liveMarkets[i]));
+            console.log(await contract.bondRateVariable(liveMarkets[i]));
         }
     }
 
