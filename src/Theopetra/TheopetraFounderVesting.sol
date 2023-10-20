@@ -35,6 +35,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     /* ========== STATE VARIABLES ========== */
     ITreasury private treasury;
     ITHEO private THEO;
+    IFounderVesting private vesting;
 
     uint256 private fdvTarget;
 
@@ -72,6 +73,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         ITheopetraAuthority _authority,
         address _treasury,
         address _theo,
+        
         uint256 _fdvTarget,
         address[] memory _payees,
         uint256[] memory _shares,
@@ -89,6 +91,7 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         fdvTarget = _fdvTarget;
         THEO = ITHEO(_theo);
         treasury = ITreasury(_treasury);
+        
         unlockTimes = _unlockTimes;
         unlockAmounts = _unlockAmounts;
 
@@ -97,12 +100,13 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
         }
     }
 
-    function initialMint() public onlyGovernor {
+    function initialMint(address _vesting) public onlyGovernor {
         require(!initialized, "TheopetraFounderVesting: initialMint can only be run once");
         initialized = true;
-
+        
+        vesting = IFounderVesting(_vesting);
         // mint tokens for the initial shares
-        uint256 tokensToMint = totalShares.mul(THEO.totalSupply()).div(10**decimals() - totalShares);
+        uint256 tokensToMint = totalShares.mul(THEO.totalSupply() - THEO.balanceOf(address(vesting))).div(10**decimals());
         treasury.mint(address(this), tokensToMint);
         emit InitialMint(tokensToMint);
     }
@@ -178,18 +182,19 @@ contract TheopetraFounderVesting is IFounderVesting, TheopetraAccessControlled {
     function rebalance() public {
         require(shares[msg.sender] > 0, "TheopetraFounderVesting: account has no shares");
 
-        uint256 totalSupply = THEO.totalSupply();
+        uint256 totalSupply = THEO.totalSupply() - THEO.balanceOf(address(vesting));
         uint256 contractBalance = THEO.balanceOf(address(this));
+        uint256 externalReleased = vesting.getTotalReleased(THEO);
         uint256 totalReleased = erc20TotalReleased[THEO];
 
         // Checks if rebalance has been locked
         if (founderRebalanceLocked) return;
 
         uint256 founderAmount = totalShares
-            .mul(totalSupply - (contractBalance + totalReleased))
+            .mul(totalSupply - (contractBalance + totalReleased + externalReleased))
             .mul(getFdvFactor())
             .div(10**decimals())
-            .div(10**decimals() - totalShares);
+            .div(10**decimals());
 
         if (founderAmount > (contractBalance + totalReleased)) {
             treasury.mint(address(this), founderAmount - (contractBalance + totalReleased));
