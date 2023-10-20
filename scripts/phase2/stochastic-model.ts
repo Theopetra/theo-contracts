@@ -12,6 +12,7 @@ import {
     TheopetraBondDepository__factory,
     TheopetraTreasury__factory,
     TheopetraYieldReporter__factory,
+    TheopetraERC20Token__factory,
     QuoterV2__factory,
     TheopetraERC20Token
 } from '../../typechain-types';
@@ -128,10 +129,11 @@ const parameters = {
     fundingRate: [1000, 20000, 100000, 500000],
     avgHodl: [3, 12, 60],
     variance: [0.5, 1, 3, 5, 10],
-    yield: [
+    yieldReports: [
         [3336, 6673, 10009, 13346, 16682, 20020],
         [3336, 3336, 6673, 6673, 13346, 13346],
     ],
+    yieldPer100k: [8000],
     exponent: [
         -672.77249809319372092128665104754,
         -257.43873046475841477879324271509,
@@ -316,11 +318,6 @@ async function runAnalysis(loop: number, sampleSize: number) {
 
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
-            // report yield, set drY and drB
-            await waitFor(TheopetraYieldReporter.reportYield(yieldReport)); // onlyManager
-            await waitFor(TheopetraBondDepository.setDiscountRateBond(BOND_MARKET_ID, drB)); // onlyPolicy
-            await waitFor(TheopetraBondDepository.setDiscountRateYield(BOND_MARKET_ID, drY)); // onlyPolicy
-
             for (let k = 0; k < EPOCHS_PER_YIELD_REPORT; k++) {
                 console.log(`Running Epoch ${k+1}/${EPOCHS_PER_YIELD_REPORT} in yield report ${j+1}/${yieldReports.length} in run ${parseInt(i)+1}/${runSet.length} of ${loop + 1}/${sampleSize} samples`);
                 const logRebaseFilter = STheopetra.filters["LogRebase(uint256,uint256,uint256)"]();
@@ -780,6 +777,76 @@ async function executeBondTransactions(transactions: number[], signer: any, epoc
         bondVolume: value
     }
 }
+
+async function executeBuybacks(yieldReport: number, ethPrice: number) {
+    // Set up treasury signer 
+        if (!USING_TENDERLY) {
+            await hre.network.provider.request({
+                method: "hardhat_impersonateAccount",
+                params: [MAINNET_TREASURY_DEPLOYMENT.address],
+            });
+        }
+
+        const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
+        const recipient = await provider.getSigner(MAINNET_TREASURY_DEPLOYMENT.address);
+        const uniswapV3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, recipient);
+        const deadline = await time.latest() + 28800;
+        const fee = 10000;
+
+        const Erc20 =  IERC20__factory.connect(WETH9[1].address, recipient);
+        const erc20Balance = await Erc20.balanceOf(recipient._address);
+
+    //Execute buyback
+        const buybackAmount = yieldReport / ethPrice;
+        const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({
+            tokenIn: WETH9[1].address, 
+            tokenOut: THEOERC20_MAINNET_DEPLOYMENT.address, 
+            amount: ethers.utils.parseUnits(buybackAmount.toFixed(ETH_DECIMALS), ETH_DECIMALS), 
+            fee, 
+            sqrtPriceLimitX96: 0 
+        });
+        
+        const {
+            amountOut: newOut,
+            sqrtPriceX96After,
+        } = await quoter.callStatic.quoteExactInputSingle({
+            tokenIn: WETH9[1].address,
+            tokenOut: THEOERC20_MAINNET_DEPLOYMENT.address,
+            amountIn,
+            fee,
+            sqrtPriceLimitX96: 0
+        });
+    
+        if (amountIn.gt(erc20Balance)) {
+            await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
+                recipient,
+                BigNumber.from(100_010).mul(BigNumber.from(10).pow(18)).toHexString(),
+            ]);
+    
+            await wait(200);
+    
+            const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, recipient);
+            await weth9.deposit({ value: BigNumber.from(100_000).mul(BigNumber.from(10).pow(18)) });
+        }
+    
+        let params = {
+            tokenIn: WETH9[1].address, 
+            tokenOut: THEOERC20_MAINNET_DEPLOYMENT.address,
+            fee: BigNumber.from(fee),
+            recipient,
+            deadline: BigNumber.from(deadline),
+            amountIn,
+            amountOutMinimum: newOut,
+            sqrtPriceLimitX96: toHex(sqrtPriceX96After.toString()),
+        };
+    
+        await waitFor(Erc20.approve(uniswapV3Router.address, amountIn));
+        await waitFor(uniswapV3Router.exactInputSingle(params, { gasLimit: 1000000 }));
+
+    // Execute Burn
+        const THEO = TheopetraERC20Token__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, recipient);
+        await waitFor(THEO.burn(amountIn))
+    }
 
 interface PoolInfo {
     token0: string
