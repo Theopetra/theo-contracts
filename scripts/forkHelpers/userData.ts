@@ -69,7 +69,8 @@ async function fetchUserData() {
     });
 
     // Construct timeline: For each transfer event, check the remaining balance of the sender and remove from list and count if it is 0
-    // Check if receiving address is unique and if so increment the user count, save the timestamp, and add to list of unique addresses 
+    // Check if receiving address is unique and if so increment the user count, save the timestamp, and add to list of unique addresses
+    // This loop is kind of a mess but it maintains sequential order in the count
 
     let i = 0;
     let j = 0;
