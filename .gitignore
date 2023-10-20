@@ -13,6 +13,7 @@ yalc.lock
 contractsInfo.json
 deployments/hardhat
 deployments/localhost
+deployments/tenderly
 runResults
 
 /.dapp
