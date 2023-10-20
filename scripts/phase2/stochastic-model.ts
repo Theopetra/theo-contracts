@@ -288,7 +288,7 @@ async function runAnalysis(loop: number, sampleSize: number) {
 
     const STheopetra = STheopetra__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, govSigner);
     const TheopetraTreasury = TheopetraTreasury__factory.connect(MAINNET_TREASURY_DEPLOYMENT.address, govSigner);
-    const maxYieldReportLength = Math.max(...parameters.yield.map((yr) => yr.length));
+    const maxYieldReportLength = Math.max(...parameters.yieldReports.map((yr) => yr.length));
 
     // four dimensional array
     // 1st dimension: yield reports
@@ -311,13 +311,14 @@ async function runAnalysis(loop: number, sampleSize: number) {
         if (parseInt(i) <= skipUntil) continue;
         const [startingTvl, liquidityRatio, fundingRate, avgHodl, variance, yieldReports, exponent] = runSet[i];
         console.log("Run parameters:", runSet[i]);
-        // set starting TVL
+        // Set starting TVL
         await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
 
-        //Add fixture for each unique startingTVL
+        //TODO: Add fixture for each unique startingTVL
 
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
+            await executeBuybacks(yieldReport, 1600);
             for (let k = 0; k < EPOCHS_PER_YIELD_REPORT; k++) {
                 console.log(`Running Epoch ${k+1}/${EPOCHS_PER_YIELD_REPORT} in yield report ${j+1}/${yieldReports.length} in run ${parseInt(i)+1}/${runSet.length} of ${loop + 1}/${sampleSize} samples`);
                 const logRebaseFilter = STheopetra.filters["LogRebase(uint256,uint256,uint256)"]();
@@ -404,6 +405,7 @@ enum Direction {
 }
 
 function generateUniswapTransactions() {
+    //TODO: Base distribution mean on total supply and price
     const countDist: Distribution       = { mean: 5,    stddev: 0 };
     const valueDist: Distribution       = { mean: 1000, stddev: 800 };
     const directionDist: Distribution   = { mean: 0,    stddev: 1 }; // Gaussian distribution centered around 0, greater than 0 is BUY, less than 0 is SELL
