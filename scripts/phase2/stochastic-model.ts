@@ -137,6 +137,9 @@ const parameters = {
     exponent: [
         -672.77249809319372092128665104754,
         -257.43873046475841477879324271509,
+    ],
+    ethPrice: [
+        [1600, 1614, 1622, 1606]
     ]
 };
 
@@ -309,7 +312,7 @@ async function runAnalysis(loop: number, sampleSize: number) {
 
     for (const i in runSet) {
         if (parseInt(i) <= skipUntil) continue;
-        const [startingTvl, liquidityRatio, fundingRate, avgHodl, variance, yieldReports, exponent] = runSet[i];
+        const [startingTvl, liquidityRatio, fundingRate, avgHodl, variance, yieldReports, exponent, ethPrice] = runSet[i];
         console.log("Run parameters:", runSet[i]);
         // Set starting TVL
         await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
@@ -326,7 +329,7 @@ async function runAnalysis(loop: number, sampleSize: number) {
                 const currentEpoch = rebaseEvents.map((i: any) => i.epoch).reduce((p,c) => (c > p ? c : p), 0);
 
                 // a. Get set of transactions to execute on uniswap pool
-                const uniswapTxnsThisEpoch = uniswapTxns[j][k];
+                const uniswapTxnsThisEpoch = generateUniswapTransactions(ethPrice, variance);
 
                 // b. Execute transactions against pool
                 const swapData = await executeUniswapTransactions(uniswapTxnsThisEpoch, govSigner);
@@ -404,10 +407,17 @@ enum Direction {
     sell = "SELL"
 }
 
-function generateUniswapTransactions() {
-    //TODO: Base distribution mean on total supply and price
-    const countDist: Distribution       = { mean: 5,    stddev: 0 };
-    const valueDist: Distribution       = { mean: 1000, stddev: 800 };
+async function generateUniswapTransactions(ethPrice: number, variance: number) {
+    // Calculate daily volume based on 2% of market cap
+    // 2% of market cap is an approximate average of daily volume of ETH, BTC, and comparable tokens
+    const theoErc20 = new ethers.Contract(THEOERC20_MAINNET_DEPLOYMENT.address, THEOERC20_MAINNET_DEPLOYMENT.abi)
+    const poolInfo = await getPoolInfo();
+    const theoPricePerEth = BigNumber.from(poolInfo.sqrtPriceX96).pow(2).div(2**192).mul(10**9);
+    const mcap = BigNumber.from(ethPrice).div(theoPricePerEth).mul(theoErc20.totalSupply());
+    const meanDailyVolume = mcap.mul(0.02).div(BigNumber.from(ethPrice).div(theoPricePerEth))
+
+    const countDist: Distribution       = { mean: 30,    stddev: 1 };
+    const valueDist: Distribution       = { mean: meanDailyVolume.toNumber(), stddev: meanDailyVolume.mul(variance).toNumber() };
     const directionDist: Distribution   = { mean: 0,    stddev: 1 }; // Gaussian distribution centered around 0, greater than 0 is BUY, less than 0 is SELL
     const txnCount = getNormallyDistributedRandomNumber(countDist);
     const txnValues = range(txnCount).map(() => Math.abs(getNormallyDistributedRandomNumber(valueDist)));
