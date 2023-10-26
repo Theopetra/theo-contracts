@@ -299,15 +299,12 @@ async function runAnalysis(loop: number, sampleSize: number) {
     // 3rd dimension: Transactions per epoch
     // TODO: fine tune generateUniswapTransactions w.r.t. the context "Uniswap Transactions Per Epoch"
 
-    const uniswapTxns = range(maxYieldReportLength)
-        .map(() => range(EPOCHS_PER_YIELD_REPORT).map(() => generateUniswapTransactions()));
-
     // TODO: fine tune generateBondPurchases
     const bondPurchases = range(maxYieldReportLength)
         .map(() => range(EPOCHS_PER_YIELD_REPORT).map(() => generateBondPurchases(fundingRate, )));
 
     let runResults = [];
-    const runSet = product(parameters.startingTVL, parameters.liquidityRatio, parameters.fundingRate, parameters.avgHodl, parameters.variance, parameters.yield, parameters.exponent);
+    const runSet = product(parameters.startingTVL, parameters.liquidityRatio, parameters.fundingRate, parameters.avgHodl, parameters.variance, parameters.yieldReports, parameters.exponent);
     const skipUntil = -1;
 
     for (const i in runSet) {
@@ -321,7 +318,7 @@ async function runAnalysis(loop: number, sampleSize: number) {
 
         for (let j = 0; j < yieldReports.length; j++) {
             const yieldReport = yieldReports[j];
-            await executeBuybacks(yieldReport, 1600);
+            await executeBuybacks(yieldReport, ethPrice[j]);
             for (let k = 0; k < EPOCHS_PER_YIELD_REPORT; k++) {
                 console.log(`Running Epoch ${k+1}/${EPOCHS_PER_YIELD_REPORT} in yield report ${j+1}/${yieldReports.length} in run ${parseInt(i)+1}/${runSet.length} of ${loop + 1}/${sampleSize} samples`);
                 const logRebaseFilter = STheopetra.filters["LogRebase(uint256,uint256,uint256)"]();
@@ -329,7 +326,7 @@ async function runAnalysis(loop: number, sampleSize: number) {
                 const currentEpoch = rebaseEvents.map((i: any) => i.epoch).reduce((p,c) => (c > p ? c : p), 0);
 
                 // a. Get set of transactions to execute on uniswap pool
-                const uniswapTxnsThisEpoch = generateUniswapTransactions(ethPrice, variance);
+                const uniswapTxnsThisEpoch = await generateUniswapTransactions(ethPrice, variance);
 
                 // b. Execute transactions against pool
                 const swapData = await executeUniswapTransactions(uniswapTxnsThisEpoch, govSigner);
@@ -345,8 +342,6 @@ async function runAnalysis(loop: number, sampleSize: number) {
                 runResults.push({
                     runNumber: i,
                     startingTvl,
-                    drY,
-                    drB,
                     yieldReport,
                     yieldReportIdx: j, 
                     totalVolume: swapData.swapVolume,
@@ -414,7 +409,7 @@ async function generateUniswapTransactions(ethPrice: number, variance: number) {
     const poolInfo = await getPoolInfo();
     const theoPricePerEth = BigNumber.from(poolInfo.sqrtPriceX96).pow(2).div(2**192).mul(10**9);
     const mcap = BigNumber.from(ethPrice).div(theoPricePerEth).mul(theoErc20.totalSupply());
-    const meanDailyVolume = mcap.mul(0.02).div(BigNumber.from(ethPrice).div(theoPricePerEth))
+    const meanDailyVolume = (mcap.mul(0.02).div(BigNumber.from(ethPrice).div(theoPricePerEth))).abs();
 
     const countDist: Distribution       = { mean: 30,    stddev: 1 };
     const valueDist: Distribution       = { mean: meanDailyVolume.toNumber(), stddev: meanDailyVolume.mul(variance).toNumber() };
@@ -769,96 +764,138 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
 // }
 
 async function executeBondTransactions(transactions: number[], signer: any, epoch: number, exponent: number) {
-    const inputValue = transactions.reduce((p, c) => (p + c), 0);
-    const signerAddress = await signer.getAddress();
     const TheopetraTreasury = TheopetraTreasury__factory.connect(MAINNET_TREASURY_DEPLOYMENT.address, signer);
-    const ERC20 = IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer);
-    const totalSupply = await ERC20.totalSupply();
-    const value = totalSupply.pow((epoch / EPOCH_ROOT) * exponent).mul(inputValue);
+    const THEOerc = IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer);
+    const uniswapV3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, signer);
+    const WETH9erc = IERC20__factory.connect(WETH9[1].address, signer);
     
+    const signerAddress = await signer.getAddress();
+    // const totalSupply = await THEOerc.totalSupply();
+    const slot0 = await uniswapV3Router.slot0();
+    const liquidity = await uniswapV3Router.liquidity();
+    const ethLiquidity = await WETH9erc.balanceOf("0x1fc037ac35af9b940e28e97c2faf39526fbb4556");
+    const theoLiquidity = await THEOerc.balanceOf("0x1fc037ac35af9b940e28e97c2faf39526fbb4556");
+
+    const totalValue = transactions.reduce((p, c) => (p + c), 0);
+    const priceInEth = slot0.sqrtPriceX96.pow(2).div(2^192).mul(10**9);
+    const maxTheoAmount = totalValue * priceInEth;
+    const maxBondPrice = await getBondPrice(priceInEth, exponent, signer, maxTheoAmount); 
+    const priceImpact = BigNumber.from(1).sub(ethLiquidity.div(liquidity.div(theoLiquidity.sub(maxTheoAmount)))); 
+    console.log("Price impact:", priceImpact, "Bond Price: ", maxBondPrice, "Total value: ", totalValue, "Theo Amount: ", maxTheoAmount)
+    
+    // const value = totalSupply.pow((epoch / EPOCH_ROOT) * exponent).mul(inputValue);
+    
+    // Behaviour tree
+    // If the price to bond is lower than the swap price, then bond. If not, then swap. If equal, split 50/50. Else, split proportionally according to price impact. 
+    for (const i of transactions) {
+        try {
+            // Check if bond price is less than the current swap price
+            // Check if the total 
+            if ( BigNumber.from(1).sub(priceInEth.div(maxBondPrice)) > priceImpact && 
+                priceImpact.add(1).mul(priceInEth).mul(totalValue) > maxBondPrice.mul(totalValue) ) {//check if the price after the price impact would be less than the cost to mint, as if you were executing the trade per tx
+
+            } else {
+                // Determine the percentage difference between the price impact and bondPrice, 
+            }
+        } catch (e) {
+            console.log(transactions[i]);
+        }
+    }
     try {
-        const theoToBond = ethers.utils.parseUnits(value.toString(), 9);
+        const theoToBond = ethers.utils.parseUnits(totalValue.toString(), 9);
         await waitFor(TheopetraTreasury.mint(signerAddress, theoToBond))
     } catch (e) {
         console.log(e);
-        const currentBalance = await ERC20.balanceOf(signerAddress);
+        const currentBalance = await THEOerc.balanceOf(signerAddress);
         console.log("currentBalance", currentBalance.toString());
-        console.log("theoToBond", value.toString());
+        console.log("theoToBond", totalValue.toString());
     }
     return {
-        bondVolume: value
+        bondVolume: totalValue
     }
 }
 
 async function executeBuybacks(yieldReport: number, ethPrice: number) {
-    // Set up treasury signer 
-        if (!USING_TENDERLY) {
-            await hre.network.provider.request({
-                method: "hardhat_impersonateAccount",
-                params: [MAINNET_TREASURY_DEPLOYMENT.address],
-            });
-        }
+    //Set up treasury signer 
+    if (!USING_TENDERLY) {
+        await hre.network.provider.request({
+            method: "hardhat_impersonateAccount",
+            params: [MAINNET_TREASURY_DEPLOYMENT.address],
+        });
+    }
 
-        const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
-        const recipient = await provider.getSigner(MAINNET_TREASURY_DEPLOYMENT.address);
-        const uniswapV3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, recipient);
-        const deadline = await time.latest() + 28800;
-        const fee = 10000;
+    const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
+    const recipient = await provider.getSigner(MAINNET_TREASURY_DEPLOYMENT.address);
+    const uniswapV3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, recipient);
+    const deadline = await time.latest() + 28800;
+    const fee = 10000;
 
-        const Erc20 =  IERC20__factory.connect(WETH9[1].address, recipient);
-        const erc20Balance = await Erc20.balanceOf(recipient._address);
+    const Erc20 =  IERC20__factory.connect(WETH9[1].address, recipient);
+    const erc20Balance = await Erc20.balanceOf(recipient._address);
 
     //Execute buyback
-        const buybackAmount = yieldReport / ethPrice;
-        const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({
-            tokenIn: WETH9[1].address, 
-            tokenOut: THEOERC20_MAINNET_DEPLOYMENT.address, 
-            amount: ethers.utils.parseUnits(buybackAmount.toFixed(ETH_DECIMALS), ETH_DECIMALS), 
-            fee, 
-            sqrtPriceLimitX96: 0 
-        });
-        
-        const {
-            amountOut: newOut,
-            sqrtPriceX96After,
-        } = await quoter.callStatic.quoteExactInputSingle({
-            tokenIn: WETH9[1].address,
-            tokenOut: THEOERC20_MAINNET_DEPLOYMENT.address,
-            amountIn,
-            fee,
-            sqrtPriceLimitX96: 0
-        });
+    const buybackAmount = yieldReport / ethPrice;
+    const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({
+        tokenIn: WETH9[1].address, 
+        tokenOut: THEOERC20_MAINNET_DEPLOYMENT.address, 
+        amount: ethers.utils.parseUnits(buybackAmount.toFixed(ETH_DECIMALS), ETH_DECIMALS), 
+        fee, 
+        sqrtPriceLimitX96: 0 
+    });
     
-        if (amountIn.gt(erc20Balance)) {
-            await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
-                recipient,
-                BigNumber.from(100_010).mul(BigNumber.from(10).pow(18)).toHexString(),
-            ]);
-    
-            await wait(200);
-    
-            const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, recipient);
-            await weth9.deposit({ value: BigNumber.from(100_000).mul(BigNumber.from(10).pow(18)) });
-        }
-    
-        let params = {
-            tokenIn: WETH9[1].address, 
-            tokenOut: THEOERC20_MAINNET_DEPLOYMENT.address,
-            fee: BigNumber.from(fee),
-            recipient,
-            deadline: BigNumber.from(deadline),
-            amountIn,
-            amountOutMinimum: newOut,
-            sqrtPriceLimitX96: toHex(sqrtPriceX96After.toString()),
-        };
-    
-        await waitFor(Erc20.approve(uniswapV3Router.address, amountIn));
-        await waitFor(uniswapV3Router.exactInputSingle(params, { gasLimit: 1000000 }));
+    const {
+        amountOut: newOut,
+        sqrtPriceX96After,
+    } = await quoter.callStatic.quoteExactInputSingle({
+        tokenIn: WETH9[1].address,
+        tokenOut: THEOERC20_MAINNET_DEPLOYMENT.address,
+        amountIn,
+        fee,
+        sqrtPriceLimitX96: 0
+    });
 
-    // Execute Burn
-        const THEO = TheopetraERC20Token__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, recipient);
-        await waitFor(THEO.burn(amountIn))
+    if (amountIn.gt(erc20Balance)) {
+        await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
+            recipient,
+            BigNumber.from(100_010).mul(BigNumber.from(10).pow(18)).toHexString(),
+        ]);
+
+        await wait(200);
+
+        const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, recipient);
+        await weth9.deposit({ value: BigNumber.from(100_000).mul(BigNumber.from(10).pow(18)) });
     }
+
+    let params = {
+        tokenIn: WETH9[1].address, 
+        tokenOut: THEOERC20_MAINNET_DEPLOYMENT.address,
+        fee: BigNumber.from(fee),
+        recipient,
+        deadline: BigNumber.from(deadline),
+        amountIn,
+        amountOutMinimum: newOut,
+        sqrtPriceLimitX96: toHex(sqrtPriceX96After.toString()),
+    };
+
+    await waitFor(Erc20.approve(uniswapV3Router.address, amountIn));
+    await waitFor(uniswapV3Router.exactInputSingle(params, { gasLimit: 1000000 }));
+
+    //Execute Burn
+    const THEO = TheopetraERC20Token__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, recipient);
+    await waitFor(THEO.burn(amountIn))
+}
+
+async function getBondPrice(swapPrice: number, exponent: number, signer: any, amount: number) {
+    const THEOerc = IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer);
+    const totalSupply = await THEOerc.totalSupply();
+    return (BigNumber.from(swapPrice).div(totalSupply.pow(exponent)).mul(totalSupply.add(amount).pow(exponent)));
+}
+
+async function adjustLiquidityToPrice(signer: any) {
+    // Simulates price changes in ETH by adjusting liquidity single sided above the current price
+
+    //
+}
 
 interface PoolInfo {
     token0: string
