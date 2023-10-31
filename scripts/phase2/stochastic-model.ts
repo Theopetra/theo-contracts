@@ -94,36 +94,24 @@ const SET_BALANCE_RPC_CALL = USING_TENDERLY ? "tenderly_setBalance" : "hardhat_s
 
 let quoter: any;
 
-// const parameters = {
-//     startingTVL: [50000, 180000, 5000, 20000, 360000, 1000000],
-//     liquidityRatio: [
-//         // 0.0001805883567
-//         [
-//             10000000000000, // numerator
-//             1805883567 // denominator
-//         ]
-//     ],
-//     drY: [0, 0.01*10**9, 0.025*10**9, 0.0375*10**9, 0.05*10**9, 10**9],
-//     drB: [0, 0.01*10**9, 0.025*10**9, 0.0375*10**9, 0.05*10**9, 10**9],
-//     yieldReports: [
-//         [2400, 2400, 2400, 2400],
-//         [2400, 2400, 2400, 2400, 2400, 2400, 2400, 2400],
-//         [2400, 4800, 8200, 10600],
-//         [2400, 4800, 9600, 19200]
-//     ]
-// };
-
-//For liquidity ratio, we could just query the live ETH and live THEO price and calculate the ratio
+/*  Parameters
+    startingTVL:    Adjusts the LP to the TVL in USD, with equal liquidity on each side
+    fundingRate:    Controls monthly bond volume 
+    avgHodl:        Adds bond volume to swap volume after x months
+    variance:       Adjusts the randomness of generated transactions for bonds and swaps
+    yieldReports:   -- should probably be replaced with a state variable based on total funding, yieldPer100k and time elapsed
+    yieldPer100k:   Average RE yield based on 100k in funding
+    exponent:       Base and time factor for the exponent in the pricing curve
+    ethPrice:       Simulated ETH price in a given month
+    sentiment:      Changes the mean direction of generated swaps. Sentiment of -1 is all sells, 1 is all buys.
+*/
 
 const parameters = {
     startingTVL: [500000],
     liquidityRatio: [
-        // 0.0001805883567
         [
             6746, // sqrtPriceX96 at slot0, squared then divided by 2 ^ 192, adjusted to THEO decimals and rounded down
             1
-            // 10000000000000, // numerator
-            // 1805883567 // denominator
         ]
     ],
     fundingRate: [1000, 20000, 100000, 500000],
@@ -135,13 +123,16 @@ const parameters = {
     ],
     yieldPer100k: [8000],
     exponent: [
-        -672.77249809319372092128665104754,
-        -257.43873046475841477879324271509,
+        {base: 1, step: 0.1},
+        {base: 2, step: 0.01},
     ],
     ethPrice: [
         [1600, 1614, 1622, 1606]
-    ]
+    ],
+    sentiment: [0, 0.2, -0.2]
 };
+
+const bondHistory: number[] = [];
 
 async function resetFork() {
     await network.provider.request({
@@ -309,7 +300,7 @@ async function runAnalysis(loop: number, sampleSize: number) {
 
     for (const i in runSet) {
         if (parseInt(i) <= skipUntil) continue;
-        const [startingTvl, liquidityRatio, fundingRate, avgHodl, variance, yieldReports, exponent, ethPrice] = runSet[i];
+        const [startingTvl, liquidityRatio, fundingRate, avgHodl, variance, yieldReports, exponent, ethPrice, sentiment] = runSet[i];
         console.log("Run parameters:", runSet[i]);
         // Set starting TVL
         await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
@@ -326,7 +317,7 @@ async function runAnalysis(loop: number, sampleSize: number) {
                 const currentEpoch = rebaseEvents.map((i: any) => i.epoch).reduce((p,c) => (c > p ? c : p), 0);
 
                 // a. Get set of transactions to execute on uniswap pool
-                const uniswapTxnsThisEpoch = await generateUniswapTransactions(ethPrice, variance);
+                const uniswapTxnsThisEpoch = await generateUniswapTransactions(ethPrice, variance, sentiment);
 
                 // b. Execute transactions against pool
                 const swapData = await executeUniswapTransactions(uniswapTxnsThisEpoch, govSigner);
@@ -402,7 +393,7 @@ enum Direction {
     sell = "SELL"
 }
 
-async function generateUniswapTransactions(ethPrice: number, variance: number) {
+async function generateUniswapTransactions(ethPrice: number, variance: number, sentiment: number) {
     // Calculate daily volume based on 2% of market cap
     // 2% of market cap is an approximate average of daily volume of ETH, BTC, and comparable tokens
     const theoErc20 = new ethers.Contract(THEOERC20_MAINNET_DEPLOYMENT.address, THEOERC20_MAINNET_DEPLOYMENT.abi)
@@ -413,7 +404,7 @@ async function generateUniswapTransactions(ethPrice: number, variance: number) {
 
     const countDist: Distribution       = { mean: 30,    stddev: 1 };
     const valueDist: Distribution       = { mean: meanDailyVolume.toNumber(), stddev: meanDailyVolume.mul(variance).toNumber() };
-    const directionDist: Distribution   = { mean: 0,    stddev: 1 }; // Gaussian distribution centered around 0, greater than 0 is BUY, less than 0 is SELL
+    const directionDist: Distribution   = { mean: sentiment,    stddev: 1 }; // Gaussian distribution centered around 0, greater than 0 is BUY, less than 0 is SELL
     const txnCount = getNormallyDistributedRandomNumber(countDist);
     const txnValues = range(txnCount).map(() => Math.abs(getNormallyDistributedRandomNumber(valueDist)));
     const txnDirections = range(txnCount).map(() => getNormallyDistributedRandomNumber(directionDist) > 0 ? Direction.buy : Direction.sell);
@@ -770,7 +761,6 @@ async function executeBondTransactions(transactions: number[], signer: any, epoc
     const WETH9erc = IERC20__factory.connect(WETH9[1].address, signer);
     
     const signerAddress = await signer.getAddress();
-    // const totalSupply = await THEOerc.totalSupply();
     const slot0 = await uniswapV3Router.slot0();
     const liquidity = await uniswapV3Router.liquidity();
     const ethLiquidity = await WETH9erc.balanceOf("0x1fc037ac35af9b940e28e97c2faf39526fbb4556");
@@ -891,10 +881,24 @@ async function getBondPrice(swapPrice: number, exponent: number, signer: any, am
     return (BigNumber.from(swapPrice).div(totalSupply.pow(exponent)).mul(totalSupply.add(amount).pow(exponent)));
 }
 
-async function adjustLiquidityToPrice(signer: any) {
+async function adjustLiquidityToPrice(ethPrice: number, lastEthPrice: number, signer: any) {
     // Simulates price changes in ETH by adjusting liquidity single sided above the current price
+    const uniswapV3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, signer);
+    const UNISWAP_NFPM_CONTRACT = new ethers.Contract(UNISWAP_NFPM, UNISWAP_FACTORY_ABI, signer);
+    const WETH9erc = IERC20__factory.connect(WETH9[1].address, signer);
 
-    //
+    const poolInfo = await getPoolInfo();
+    const delta = ethPrice / lastEthPrice;
+    const amount = BigNumber.from(poolInfo.liquidity).mul(delta).sub(BigNumber.from(poolInfo.liquidity));
+    const positionCount = UNISWAP_NFPM_CONTRACT.balanceOf(signer._address);
+    const tokenId = UNISWAP_NFPM_CONTRACT.tokenOfOwnerByIndex(signer._address, positionCount - 1);
+
+    // If positive, add liquidity, else remove liquidity
+    if (amount.gt(0)) {
+        UNISWAP_NFPM_CONTRACT.increaseLiquidity()
+    } else {
+
+    }
 }
 
 interface PoolInfo {
