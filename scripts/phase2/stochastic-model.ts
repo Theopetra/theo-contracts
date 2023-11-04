@@ -1010,12 +1010,25 @@ async function debug() {
     const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
     const govSigner = provider.getSigner(governorAddress);
     const [avgHodl, ethPrice, exponent, fundingRate, liquidityRatio, sentiment, startingTvl, variance, yieldPer100k, yieldReports] = [parameters.avgHodl[0], parameters.ethPrice[0], parameters.exponent[0], parameters.fundingRate[0], parameters.liquidityRatio[0], parameters.sentiment[0], parameters.startingTVL[0], parameters.variance[0], parameters.yieldPer100k[0], parameters.yieldReports[0]]
+    console.log("Adjusting LP...");
     await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
+    
+    console.log("Generating swaps...");
     const swaps = await generateUniswapTransactions(ethPrice[1], variance, sentiment);
+
+    console.log("Executing swaps...");
     const swapData = await executeUniswapTransactions(swaps, govSigner);
+
+    console.log("Generating bonds...");
     const bonds = generateBondPurchases(fundingRate, variance);
+
+    console.log("Executing bonds...");
     const bondData = await executeBondTransactions(bonds, govSigner, 1, exponent.base);
-    await adjustLiquidityToPrice(ethPrice[1], ethPrice[0], govSigner)
+
+    console.log("Adjusting liquidity to price...");
+    await adjustLiquidityToPrice(ethPrice[1], ethPrice[0], govSigner);
+
+    console.log("Results: ", swaps, swapData, bonds, bondData);
 }
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
