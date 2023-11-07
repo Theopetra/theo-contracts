@@ -59,6 +59,7 @@ const EPOCHS_PER_YIELD_REPORT = 3*30; // 3 per day, 30 days a month
 const BOND_MARKET_ID = 0; // TODO: Get actual market ID
 const sampleSize = 10; // # of simulation loops
 
+
 const THEO_DECIMALS = 9;
 const ETH_DECIMALS = 18;
 
@@ -66,6 +67,7 @@ const product = (_ as any).product; // stupid typescript doesn't recognize `prod
 const BigNumber = ethers.BigNumber;
 const FixedNumber = ethers.FixedNumber;
 const Contract = ethers.Contract;
+const bondHistory: BigNumberish[] = [];
 
 /*
     Buybacks are performed on a set interval based on the current yield
@@ -295,7 +297,6 @@ async function runAnalysis(loop: number, sampleSize: number) {
     for (const i in runSet) {
         if (parseInt(i) <= skipUntil) continue;
         const [startingTvl, liquidityRatio, fundingRate, avgHodl, variance, yieldReports, exponent, ethPrice, sentiment] = runSet[i];
-        const bondHistory: number[] = [];
         console.log("Run parameters:", runSet[i]);
 
         // Generate bond purchases
@@ -767,39 +768,102 @@ async function executeBondTransactions(transactions: number[], signer: any, epoc
     const WETH9erc = IERC20__factory.connect(WETH9[1].address, signer);
     
     const signerAddress = await signer.getAddress();
-    const slot0 = await uniswapV3Router.slot0();
+    let slot0 = await uniswapV3Router.slot0();
     const liquidity = await uniswapV3Router.liquidity();
     const ethLiquidity = await WETH9erc.balanceOf("0x1fc037ac35af9b940e28e97c2faf39526fbb4556");
     const theoLiquidity = await THEOerc.balanceOf("0x1fc037ac35af9b940e28e97c2faf39526fbb4556");
 
     const totalValue = transactions.reduce((p, c) => (p + c), 0);
-    const priceInEth = slot0.sqrtPriceX96.pow(2).div(2^192).mul(10**9);
+    let priceInEth = slot0.sqrtPriceX96.pow(2).div(2^192).mul(10**9);
     const maxTheoAmount = totalValue * priceInEth;
     const maxBondPrice = await getBondPrice(priceInEth, exponent, signer, maxTheoAmount); 
-    const priceImpact = BigNumber.from(1).sub(ethLiquidity.div(liquidity.div(theoLiquidity.sub(maxTheoAmount)))); 
+    let priceImpact = BigNumber.from(1).sub(ethLiquidity.div(liquidity.div(theoLiquidity.sub(maxTheoAmount)))); 
+    let theoToBond = 0;
+    let theoSwap = BigNumber.from(0);
+
     console.log("Price impact:", priceImpact, "Bond Price: ", maxBondPrice, "Total value: ", totalValue, "Theo Amount: ", maxTheoAmount)
     
-    // const value = totalSupply.pow((epoch / EPOCH_ROOT) * exponent).mul(inputValue);
-    
     // Behaviour tree
-    // If the price to bond is lower than the swap price, then bond. If not, then swap. If equal, split 50/50. Else, split proportionally according to price impact. 
-    for (const i of transactions) {
-        try {
-            // Check if bond price is less than the current swap price
-            // Check if the total 
-            if ( BigNumber.from(1).sub(priceInEth.div(maxBondPrice)) > priceImpact && 
-                priceImpact.add(1).mul(priceInEth).mul(totalValue) > maxBondPrice.mul(totalValue) ) {//check if the price after the price impact would be less than the cost to mint, as if you were executing the trade per tx
+    // If the price to bond is lower than the swap price, then bond. If not, then swap. 
+    // If equal, split 50/50. Else, split proportionally according to price impact. 
+    
+    // Check if the full amount can be bonded below market price, accounting for price impact
+    if (BigNumber.from(1).sub(priceInEth.div(maxBondPrice)) > priceImpact && 
+        priceImpact.add(1).mul(priceInEth).mul(totalValue) > maxBondPrice.mul(totalValue) ) {
+            theoToBond = totalValue;
+    } else {
+        for (const i of transactions) {
+            try {
+                // Calculate new price
+                priceImpact = BigNumber.from(1).sub(ethLiquidity.div(liquidity.div(theoLiquidity.sub(theoSwap))));
+                priceInEth = slot0.sqrtPriceX96.pow(2).div(2^192).mul(10**9).mul(priceImpact);
 
-            } else {
-                // Determine the percentage difference between the price impact and bondPrice, 
+                // Check if bond price is less than the current swap price
+                if (priceInEth > getBondPrice(priceInEth, exponent, signer, transactions[i])) {
+                    theoToBond += transactions[i];
+                } else {
+                    // Add to swap total
+                    theoSwap.add(ethers.utils.parseUnits(transactions[i].toString(), 9));
+                }
+            } catch (e) {
+                console.log(transactions[i]);
             }
-        } catch (e) {
-            console.log(transactions[i]);
         }
     }
+
+    // Execute transactions with final amounts
     try {
-        const theoToBond = ethers.utils.parseUnits(totalValue.toString(), 9);
-        await waitFor(TheopetraTreasury.mint(signerAddress, theoToBond))
+        if (theoToBond > 0) {
+            const bondAmount = ethers.utils.parseUnits(theoToBond.toString(), 9);
+            await waitFor(TheopetraTreasury.mint(signerAddress, bondAmount));
+            bondHistory.push(theoToBond);
+        } 
+        if (theoSwap.gt(0)) {
+            const Erc20 = IERC20__factory.connect(WETH9[1].address, signer);
+            const tokenIn = WETH9[1].address;
+            const tokenOut = THEOERC20_MAINNET_DEPLOYMENT.address;
+            const amountOut = ethers.utils.parseUnits(theoSwap.toString(), 9);
+            const erc20Balance = await Erc20.balanceOf(signerAddress);
+            const deadline = await time.latest() + 28800;
+            const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({tokenIn, tokenOut, amount: amountOut, fee: 10000, sqrtPriceLimitX96: 0 });
+            const {
+                amountOut: newOut,
+                sqrtPriceX96After,
+            } = await quoter.callStatic.quoteExactInputSingle({
+                tokenIn,
+                tokenOut,
+                amountIn,
+                fee: 10000,
+                sqrtPriceLimitX96: 0
+            });
+
+            if (amountIn.gt(erc20Balance)) {
+                await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
+                    signerAddress,
+                    BigNumber.from(100_010).mul(BigNumber.from(10).pow(18)).toHexString(),
+                ]);
+
+                await wait(200);
+
+                const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, signer);
+                await weth9.deposit({ value: BigNumber.from(100_000).mul(BigNumber.from(10).pow(18)) });
+            }
+
+            const params = {
+                tokenIn,
+                tokenOut,
+                fee: BigNumber.from(10000),
+                recipient: signer._address,
+                deadline: BigNumber.from(deadline),
+                amountIn,
+                amountOutMinimum: amountOut,
+                sqrtPriceLimitX96: toHex(sqrtPriceX96After.toString()),
+            };
+
+            await waitFor(Erc20.approve(uniswapV3Router.address, amountIn));
+            await waitFor(uniswapV3Router.exactInputSingle(params, { gasLimit: 1000000 }));
+        }
+        
     } catch (e) {
         console.log(e);
         const currentBalance = await THEOerc.balanceOf(signerAddress);
@@ -807,7 +871,8 @@ async function executeBondTransactions(transactions: number[], signer: any, epoc
         console.log("theoToBond", totalValue.toString());
     }
     return {
-        bondVolume: totalValue
+        bondVolume: theoToBond,
+        swapVolume: theoSwap
     }
 }
 
@@ -893,13 +958,15 @@ async function adjustLiquidityToPrice(ethPrice: number, lastEthPrice: number, si
     const WETH9erc = IERC20__factory.connect(WETH9[1].address, signer);
 
     // TODO: Might need to divide out ETH liquidity vs THEO liquidity
-    const poolInfo = await getPoolInfo();
+    let poolInfo = await getPoolInfo();
     const delta = ethPrice / lastEthPrice;
     const amount = BigNumber.from(poolInfo.liquidity).mul(delta).sub(BigNumber.from(poolInfo.liquidity));
     const positionCount = UNISWAP_NFPM_CONTRACT.balanceOf(signer._address); // Using the latest position, which should contain the entire pool
     const tokenId = UNISWAP_NFPM_CONTRACT.tokenOfOwnerByIndex(signer._address, positionCount - 1);
     const deadline = await time.latest() + 28800;
     const calldatas = [];
+
+    console.log("Price before: ", BigNumber.from(poolInfo.sqrtPriceX96).pow(2).div(2^192).mul(10**9));
 
     // If positive, add liquidity, else remove liquidity
     if (amount.gt(0)) {
@@ -934,6 +1001,8 @@ async function adjustLiquidityToPrice(ethPrice: number, lastEthPrice: number, si
     }
     
     await UNISWAP_NFPM_CONTRACT.multicall(calldatas);
+    poolInfo = await getPoolInfo();
+    console.log("Price after: ", BigNumber.from(poolInfo.sqrtPriceX96).pow(2).div(2^192).mul(10**9));
 }
 
 interface PoolInfo {
@@ -1033,9 +1102,21 @@ async function debug() {
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+debug()
+    .then(() => process.exit(0))
+    .catch((e) => {
+    console.log('the error is', e);
+    process.exit(1)
+    });
+
+console.log("Success!");
+wait(5000)
+
 main()
     .then(() => process.exit(0))
     .catch((e) => {
         console.log('the error is', e);
         process.exit(1)
     });
+
+
