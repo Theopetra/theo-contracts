@@ -52,12 +52,14 @@ const policyAddress = '0x3a051657830b6baadd4523d35061a84ec7ce636a';
 const managerAddress = '0xf4abccd90596c8d11a15986240dcad09eb9d6049';
 
 const RPC_URL = process.env.ETH_NODE_URI_MAINNET;
-const BLOCK_NUMBER = 17251681; // CHANGE ME
-const EPOCH_ROOT = 3 * 365 * 100; // 3 per day, 365 days per year, 100 years
+const BLOCK_NUMBER = 18522741; // CHANGE ME
+// const EPOCH_ROOT = 3 * 365 * 100; // 3 per day, 365 days per year, 100 years
 const EPOCH_LENGTH = 8 * 60 * 60;
-const EPOCHS_PER_YIELD_REPORT = 3*30; // 3 per day, 30 days a month
+// const EPOCHS_PER_YIELD_REPORT = 3*30; // 3 per day, 30 days a month
 const BOND_MARKET_ID = 0; // TODO: Get actual market ID
+const EPOCH = 120; // Each epoch represents one month of activity
 const sampleSize = 10; // # of simulation loops
+let totalFunding = 100000; // Set initial funding here
 
 
 const THEO_DECIMALS = 9;
@@ -67,7 +69,7 @@ const product = (_ as any).product; // stupid typescript doesn't recognize `prod
 const BigNumber = ethers.BigNumber;
 const FixedNumber = ethers.FixedNumber;
 const Contract = ethers.Contract;
-const bondHistory: BigNumberish[] = [];
+let bondHistory: BigNumberish[] = [];
 
 /*
     Buybacks are performed on a set interval based on the current yield
@@ -220,6 +222,10 @@ async function resetFork() {
 
     const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, govSigner);
     await weth9.deposit({ value: BigNumber.from(99_999).mul(BigNumber.from(10).pow(18)) });
+
+    // Reset state variables
+    totalFunding = 0;
+    bondHistory = [];
 }
 
 async function runAnalysis(loop: number, sampleSize: number) {
@@ -282,7 +288,6 @@ async function runAnalysis(loop: number, sampleSize: number) {
 
     const STheopetra = STheopetra__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, govSigner);
     const TheopetraTreasury = TheopetraTreasury__factory.connect(MAINNET_TREASURY_DEPLOYMENT.address, govSigner);
-    const maxYieldReportLength = Math.max(...parameters.yieldReports.map((yr) => yr.length));
 
     // four dimensional array
     // 1st dimension: yield reports
@@ -291,31 +296,26 @@ async function runAnalysis(loop: number, sampleSize: number) {
     
 
     let runResults = [];
-    const runSet = product(parameters.startingTVL, parameters.liquidityRatio, parameters.fundingRate, parameters.avgHodl, parameters.variance, parameters.yieldReports, parameters.exponent);
+    const runSet = product(parameters.startingTVL, parameters.liquidityRatio, parameters.fundingRate, parameters.avgHodl, parameters.variance, parameters.yieldPer100k, parameters.exponent);
     const skipUntil = -1;
 
     for (const i in runSet) {
         if (parseInt(i) <= skipUntil) continue;
-        const [startingTvl, liquidityRatio, fundingRate, avgHodl, variance, yieldReports, exponent, ethPrice, sentiment] = runSet[i];
+        const [startingTvl, liquidityRatio, fundingRate, avgHodl, variance, yieldPer100k, exponent, ethPrice, sentiment] = runSet[i];
         console.log("Run parameters:", runSet[i]);
 
         // Generate bond purchases
-        const bondPurchases = range(maxYieldReportLength)
-        .map(() => range(EPOCHS_PER_YIELD_REPORT).map(() => generateBondPurchases(fundingRate, variance)));
+        const bondPurchases = range(EPOCH).map(() => generateBondPurchases(fundingRate, variance));
 
         // Set starting TVL
         await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
 
         //TODO: Add fixture for each unique startingTVL
+        // Change time management to remove yield reports
 
-        for (let j = 0; j < yieldReports.length; j++) {
-            const yieldReport = yieldReports[j];
-            await executeBuybacks(yieldReport, ethPrice[j]);
-            for (let k = 0; k < EPOCHS_PER_YIELD_REPORT; k++) {
-                console.log(`Running Epoch ${k+1}/${EPOCHS_PER_YIELD_REPORT} in yield report ${j+1}/${yieldReports.length} in run ${parseInt(i)+1}/${runSet.length} of ${loop + 1}/${sampleSize} samples`);
-                const logRebaseFilter = STheopetra.filters["LogRebase(uint256,uint256,uint256)"]();
-                const rebaseEvents = await STheopetra.queryFilter(logRebaseFilter);
-                const currentEpoch = rebaseEvents.map((i: any) => i.epoch).reduce((p,c) => (c > p ? c : p), 0);
+        for (let j = 0; j < EPOCH; j++) {
+            await executeBuybacks(yieldPer100k, ethPrice[j]);
+                console.log(`Running Epoch ${j+1}/${EPOCH} in run ${parseInt(i)+1}/${runSet.length} of ${loop + 1}/${sampleSize} samples`);
 
                 // a. Adjust ETH price 
                 await adjustLiquidityToPrice(ethPrice[j]? ethPrice[j] : ethPrice[ethPrice.length], ethPrice[j-1]? ethPrice[j-1] : ethPrice[ethPrice.length], govSigner);
@@ -324,27 +324,25 @@ async function runAnalysis(loop: number, sampleSize: number) {
                 const uniswapTxnsThisEpoch = await generateUniswapTransactions(ethPrice, variance, sentiment);
 
                 // c. Execute transactions against pool
-                const swapData = await executeUniswapTransactions(uniswapTxnsThisEpoch, govSigner);
+                const swapData = await executeUniswapTransactions(uniswapTxnsThisEpoch, avgHodl, govSigner);
 
                 // d. Execute tokenPerformanceUpdate
                 await waitFor(TheopetraTreasury.tokenPerformanceUpdate());
 
                 // e. Execute bond transactions
-                const bondPurchasesThisEpoch = bondPurchases[j][k];
-                const bondData = await executeBondTransactions(bondPurchasesThisEpoch, govSigner, k, exponent);
+                const bondData = await executeBondTransactions(bondPurchases[j], govSigner, j, exponent);
 
                 // f. Collect deltaTokenPrice, marketPrice, bondRateVariable, marketPrice, epoch number
                 runResults.push({
                     runNumber: i,
                     startingTvl,
-                    yieldReport,
+                    yieldPer100k,
                     yieldReportIdx: j, 
                     totalVolume: swapData.swapVolume,
                     buySellRatio: swapData.buySellRatio,
                     totalSwaps: swapData.totalSwaps,
                     totalDBVolume: bondData.bondVolume,
-                    epochIdx: k,
-                    epochNumber: currentEpoch,
+                    epochIdx: j,
                     deltaTokenPrice: await TheopetraTreasury.deltaTokenPrice(),
                     bondPrice: await getBondPrice(swapData.swapPrice, exponent, govSigner, 1),
                     marketPrice: swapData.swapPrice,
@@ -352,7 +350,6 @@ async function runAnalysis(loop: number, sampleSize: number) {
 
                 // fast-forward chain-time to next epoch
                 await network.provider.send('evm_increaseTime', [EPOCH_LENGTH]);
-            }
         }
 
         saveResults(runResults, i);
@@ -615,7 +612,7 @@ function encodeValue(element: any) {
     return ethers.utils.defaultAbiCoder.encode([element.type], [element.value]);
 }
 
-async function executeUniswapTransactions(transactions: Array<Array<(number|Direction)>>, signer: any) {
+async function executeUniswapTransactions(transactions: Array<Array<(number|Direction)>>, avgHodl: number, signer: any) {
 
     const recipient = await signer.getAddress();
     const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
@@ -625,7 +622,8 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
     //Sum all generated swap transactions into one aggregate transaction, subtract fee % to account for price impact
     const buySwapSize = transactions.map((tx) => tx[1] === Direction.buy ? tx[0] as number : 0).reduce((p, c) => (p + Math.floor(c * 0.99)), 0);
     const sellSwapSize = transactions.map((tx) => tx[1] === Direction.sell ? tx[0] as number : 0).reduce((p, c) => (p + Math.floor(c * 0.99)), 0);
-    const buyCount = transactions.reduce((p, c) => ( c[1] === Direction.buy ? p + 1 : p), 0)
+    const buyCount = transactions.reduce((p, c) => ( c[1] === Direction.buy ? p + 1 : p), 0);
+    const bondsToSell = BigNumber.from(bondHistory[bondHistory.length - avgHodl]);
     let value = Math.abs(buySwapSize - sellSwapSize);
     console.log("Swap sizes:", buySwapSize, sellSwapSize, value);
 
@@ -651,7 +649,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
         }
     };
 
-    if (buySwapSize > sellSwapSize) {
+    if (buySwapSize > sellSwapSize + bondsToSell.toNumber()) {
         const amountOut = ethers.utils.parseUnits(value.toFixed(tokenOutDecimals), tokenOutDecimals); //.mul(BigNumber.from(10).pow(tokenOutDecimals));
         const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({tokenIn, tokenOut, amount: amountOut, fee, sqrtPriceLimitX96: 0 });
         const {
@@ -692,7 +690,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
         await waitFor(uniswapV3Router.exactInputSingle(params, { gasLimit: 1000000 }));
 
     } else {
-        const amountIn = ethers.utils.parseUnits(value.toFixed(tokenInDecimals), tokenInDecimals);
+        const amountIn = ethers.utils.parseUnits((value + bondsToSell.toNumber()).toFixed(tokenInDecimals), tokenInDecimals);
 
         const {
             amountOut,
@@ -817,6 +815,7 @@ async function executeBondTransactions(transactions: number[], signer: any, epoc
             const bondAmount = ethers.utils.parseUnits(theoToBond.toString(), 9);
             await waitFor(TheopetraTreasury.mint(signerAddress, bondAmount));
             bondHistory.push(theoToBond);
+            totalFunding += theoToBond;
         } 
         if (theoSwap.gt(0)) {
             const Erc20 = IERC20__factory.connect(WETH9[1].address, signer);
@@ -876,7 +875,7 @@ async function executeBondTransactions(transactions: number[], signer: any, epoc
     }
 }
 
-async function executeBuybacks(yieldReport: number, ethPrice: number) {
+async function executeBuybacks(yieldPer100k: number, ethPrice: number) {
     //Set up treasury signer 
     if (!USING_TENDERLY) {
         await hre.network.provider.request({
@@ -895,7 +894,7 @@ async function executeBuybacks(yieldReport: number, ethPrice: number) {
     const erc20Balance = await Erc20.balanceOf(recipient._address);
 
     //Execute buyback
-    const buybackAmount = yieldReport / ethPrice;
+    const buybackAmount = (totalFunding / yieldPer100k) / ethPrice;
     const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({
         tokenIn: WETH9[1].address, 
         tokenOut: THEOERC20_MAINNET_DEPLOYMENT.address, 
@@ -1081,12 +1080,15 @@ async function debug() {
     const [avgHodl, ethPrice, exponent, fundingRate, liquidityRatio, sentiment, startingTvl, variance, yieldPer100k, yieldReports] = [parameters.avgHodl[0], parameters.ethPrice[0], parameters.exponent[0], parameters.fundingRate[0], parameters.liquidityRatio[0], parameters.sentiment[0], parameters.startingTVL[0], parameters.variance[0], parameters.yieldPer100k[0], parameters.yieldReports[0]]
     console.log("Adjusting LP...");
     await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
+
+    console.log("Executing buyback...");
+    await executeBuybacks(yieldPer100k, ethPrice[0]);
     
     console.log("Generating swaps...");
     const swaps = await generateUniswapTransactions(ethPrice[1], variance, sentiment);
 
     console.log("Executing swaps...");
-    const swapData = await executeUniswapTransactions(swaps, govSigner);
+    const swapData = await executeUniswapTransactions(swaps, avgHodl, govSigner);
 
     console.log("Generating bonds...");
     const bonds = generateBondPurchases(fundingRate, variance);
