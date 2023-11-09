@@ -43,7 +43,6 @@ import {BigNumberish} from "ethers";
 import JSBI from "jsbi";
 
 const SWAP_ROUTER_ADDRESS = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
-const NON_FUNGIBLE_POSITION_MANAGER_ADDRESS = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
 const UNISWAP_POOL_ADDRESS = "0x1fc037ac35af9b940e28e97c2faf39526fbb4556";
 const UNISWAP_NFPM = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
 const UNISWAP_FACTORY_ADDRESS = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
@@ -59,7 +58,8 @@ const EPOCH_LENGTH = 8 * 60 * 60;
 const BOND_MARKET_ID = 0; // TODO: Get actual market ID
 const EPOCH = 120; // Each epoch represents one month of activity
 const sampleSize = 10; // # of simulation loops
-let totalFunding = 100000; // Set initial funding here
+const startingFunding = 100000; // Set initial funding here
+let totalFunding: number;
 
 
 const THEO_DECIMALS = 9;
@@ -166,6 +166,11 @@ async function resetFork() {
             method: "hardhat_impersonateAccount",
             params: [policyAddress],
         });
+
+        await hre.network.provider.request({
+            method: "hardhat_impersonateAccount",
+            params: [MAINNET_TREASURY_DEPLOYMENT.address],
+        });
     }
 
     await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
@@ -180,7 +185,7 @@ async function resetFork() {
 
     await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
         MAINNET_TREASURY_DEPLOYMENT.address,
-        "0x8ac7230489e80000",
+        BigNumber.from(100_000).mul(BigNumber.from(10).pow(18)).toHexString(),
     ]);
 
     await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
@@ -224,7 +229,7 @@ async function resetFork() {
     await weth9.deposit({ value: BigNumber.from(99_999).mul(BigNumber.from(10).pow(18)) });
 
     // Reset state variables
-    totalFunding = 0;
+    totalFunding = startingFunding;
     bondHistory = [];
 }
 
@@ -321,7 +326,7 @@ async function runAnalysis(loop: number, sampleSize: number) {
                 await adjustLiquidityToPrice(ethPrice[j]? ethPrice[j] : ethPrice[ethPrice.length], ethPrice[j-1]? ethPrice[j-1] : ethPrice[ethPrice.length], govSigner);
 
                 // b. Get set of transactions to execute on uniswap pool
-                const uniswapTxnsThisEpoch = await generateUniswapTransactions(ethPrice, variance, sentiment);
+                const uniswapTxnsThisEpoch = await generateUniswapTransactions(ethPrice, variance, sentiment, govSigner);
 
                 // c. Execute transactions against pool
                 const swapData = await executeUniswapTransactions(uniswapTxnsThisEpoch, avgHodl, govSigner);
@@ -394,17 +399,18 @@ enum Direction {
     sell = "SELL"
 }
 
-async function generateUniswapTransactions(ethPrice: number, variance: number, sentiment: number) {
+async function generateUniswapTransactions(ethPrice: number, variance: number, sentiment: number, signer: any) {
     // Calculate daily volume based on 2% of market cap
     // 2% of market cap is an approximate average of daily volume of ETH, BTC, and comparable tokens
-    const theoErc20 = new ethers.Contract(THEOERC20_MAINNET_DEPLOYMENT.address, THEOERC20_MAINNET_DEPLOYMENT.abi)
+    const theoErc20 = new ethers.Contract(THEOERC20_MAINNET_DEPLOYMENT.address, THEOERC20_MAINNET_DEPLOYMENT.abi, signer);
     const poolInfo = await getPoolInfo();
-    const theoPricePerEth = BigNumber.from(poolInfo.sqrtPriceX96).pow(2).div(2**192).mul(10**9);
-    const mcap = BigNumber.from(ethPrice).div(theoPricePerEth).mul(theoErc20.totalSupply());
-    const meanDailyVolume = (mcap.mul(0.02).div(BigNumber.from(ethPrice).div(theoPricePerEth))).abs();
+    const theoSupply = await theoErc20.totalSupply();
+    const theoPricePerEth = BigNumber.from(poolInfo.sqrtPriceX96).pow(2).mul(10**9).div(BigNumber.from(2).pow(192)).toString(); 
+    const mcap = BigNumber.from(ethPrice).mul(theoSupply).div(theoPricePerEth).div(10**9).abs();
+    const meanDailyVolume = (mcap.mul(2).div(100)).abs();
 
     const countDist: Distribution       = { mean: 30,    stddev: 1 };
-    const valueDist: Distribution       = { mean: meanDailyVolume.toNumber(), stddev: meanDailyVolume.mul(variance).toNumber() };
+    const valueDist: Distribution       = { mean: meanDailyVolume.toNumber(), stddev: meanDailyVolume.mul(variance * 10000).div(10000).toNumber() }; // If variance is ever lower than 0.01%... change this
     const directionDist: Distribution   = { mean: sentiment,    stddev: 1 }; // Gaussian distribution centered around 0, greater than 0 is BUY, less than 0 is SELL
     const txnCount = getNormallyDistributedRandomNumber(countDist);
     const txnValues = range(txnCount).map(() => Math.abs(getNormallyDistributedRandomNumber(valueDist)));
@@ -623,7 +629,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
     const buySwapSize = transactions.map((tx) => tx[1] === Direction.buy ? tx[0] as number : 0).reduce((p, c) => (p + Math.floor(c * 0.99)), 0);
     const sellSwapSize = transactions.map((tx) => tx[1] === Direction.sell ? tx[0] as number : 0).reduce((p, c) => (p + Math.floor(c * 0.99)), 0);
     const buyCount = transactions.reduce((p, c) => ( c[1] === Direction.buy ? p + 1 : p), 0);
-    const bondsToSell = BigNumber.from(bondHistory[bondHistory.length - avgHodl]);
+    const bondsToSell = BigNumber.from(bondHistory[bondHistory.length - avgHodl]? bondHistory[bondHistory.length - avgHodl] : 0);
     let value = Math.abs(buySwapSize - sellSwapSize);
     console.log("Swap sizes:", buySwapSize, sellSwapSize, value);
 
@@ -649,7 +655,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
         }
     };
 
-    if (buySwapSize > sellSwapSize + bondsToSell.toNumber()) {
+    if (buySwapSize > sellSwapSize + bondsToSell?.toNumber()) {
         const amountOut = ethers.utils.parseUnits(value.toFixed(tokenOutDecimals), tokenOutDecimals); //.mul(BigNumber.from(10).pow(tokenOutDecimals));
         const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({tokenIn, tokenOut, amount: amountOut, fee, sqrtPriceLimitX96: 0 });
         const {
@@ -690,7 +696,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
         await waitFor(uniswapV3Router.exactInputSingle(params, { gasLimit: 1000000 }));
 
     } else {
-        const amountIn = ethers.utils.parseUnits((value + bondsToSell.toNumber()).toFixed(tokenInDecimals), tokenInDecimals);
+        const amountIn = ethers.utils.parseUnits((value + bondsToSell?.toNumber()).toFixed(tokenInDecimals), tokenInDecimals);
 
         const {
             amountOut,
@@ -887,18 +893,25 @@ async function executeBuybacks(yieldPer100k: number, ethPrice: number) {
     const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
     const recipient = await provider.getSigner(MAINNET_TREASURY_DEPLOYMENT.address);
     const uniswapV3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, recipient);
+    const tokenIn = WETH9[1].address;
+    const tokenOut = THEOERC20_MAINNET_DEPLOYMENT.address;
     const deadline = await time.latest() + 28800;
     const fee = 10000;
 
+    quoter = QuoterV2__factory.connect('0x61fFE014bA17989E743c5F6cB21bF9697530B21e', recipient);
     const Erc20 =  IERC20__factory.connect(WETH9[1].address, recipient);
     const erc20Balance = await Erc20.balanceOf(recipient._address);
 
+    console.log("Params", yieldPer100k, ethPrice, deadline, fee, erc20Balance);
+
     //Execute buyback
-    const buybackAmount = (totalFunding / yieldPer100k) / ethPrice;
+    const buybackAmount = ((totalFunding / 100000) * yieldPer100k) / ethPrice;
+    const amountOut = ethers.utils.parseUnits(buybackAmount.toFixed(ETH_DECIMALS), ETH_DECIMALS).toHexString();
+    console.log(buybackAmount)
     const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({
-        tokenIn: WETH9[1].address, 
-        tokenOut: THEOERC20_MAINNET_DEPLOYMENT.address, 
-        amount: ethers.utils.parseUnits(buybackAmount.toFixed(ETH_DECIMALS), ETH_DECIMALS), 
+        tokenIn, 
+        tokenOut, 
+        amount: amountOut, 
         fee, 
         sqrtPriceLimitX96: 0 
     });
@@ -1081,14 +1094,14 @@ async function debug() {
     console.log("Adjusting LP...");
     await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
 
-    console.log("Executing buyback...");
-    await executeBuybacks(yieldPer100k, ethPrice[0]);
-    
     console.log("Generating swaps...");
-    const swaps = await generateUniswapTransactions(ethPrice[1], variance, sentiment);
+    const swaps = await generateUniswapTransactions(ethPrice[1], variance, sentiment, govSigner);
 
     console.log("Executing swaps...");
     const swapData = await executeUniswapTransactions(swaps, avgHodl, govSigner);
+
+    console.log("Executing buyback...");
+    await executeBuybacks(yieldPer100k, ethPrice[0]);
 
     console.log("Generating bonds...");
     const bonds = generateBondPurchases(fundingRate, variance);
@@ -1105,20 +1118,21 @@ async function debug() {
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 debug()
-    .then(() => process.exit(0))
+    .then(() => {
+        console.log("Success!");
+        process.exit(0)})
     .catch((e) => {
     console.log('the error is', e);
     process.exit(1)
     });
 
-console.log("Success!");
 wait(5000)
 
-main()
-    .then(() => process.exit(0))
-    .catch((e) => {
-        console.log('the error is', e);
-        process.exit(1)
-    });
+// main()
+//     .then(() => process.exit(0))
+//     .catch((e) => {
+//         console.log('the error is', e);
+//         process.exit(1)
+//     });
 
 
