@@ -36,7 +36,7 @@ import {
     nearestUsableTick, TickMath, FeeAmount, SqrtPriceMath
 
 } from '@uniswap/v3-sdk';
-import {BigintIsh, CurrencyAmount, Fraction, Percent, sqrt, Token, TradeType, WETH9, } from '@uniswap/sdk-core';
+import {BigintIsh, CurrencyAmount, Fraction, Percent, sqrt, Token, TradeType, WETH9, NativeCurrency } from '@uniswap/sdk-core';
 
 import {waitFor} from "../../test/utils";
 import {BigNumberish} from "ethers";
@@ -977,51 +977,82 @@ async function getBondPrice(swapPrice: number, exponent: number, signer: any, am
 async function adjustLiquidityToPrice(ethPrice: number, lastEthPrice: number, signer: any) {
     // Simulates price changes in ETH by adjusting liquidity single sided above the current price
     const UNISWAP_NFPM_CONTRACT = new ethers.Contract(UNISWAP_NFPM, UNISWAP_FACTORY_ABI, signer);
-    const WETH9erc = IERC20__factory.connect(WETH9[1].address, signer);
+    const weth9 = new ethers.Contract(WETH9[1].address, WETH9_ABI.abi, signer);
 
-    // TODO: Might need to divide out ETH liquidity vs THEO liquidity
+    // TODO: divide out ETH liquidity vs THEO liquidity
     let poolInfo = await getPoolInfo();
-    const delta = ethPrice / lastEthPrice;
-    const amount = BigNumber.from(poolInfo.liquidity).mul(delta).sub(BigNumber.from(poolInfo.liquidity));
-    const positionCount = UNISWAP_NFPM_CONTRACT.balanceOf(signer._address); // Using the latest position, which should contain the entire pool
-    const tokenId = UNISWAP_NFPM_CONTRACT.tokenOfOwnerByIndex(signer._address, positionCount - 1);
+    const delta = (ethPrice / lastEthPrice) * 10**9; // Added decimals to preserve precision
+    const amount = BigNumber.from(poolInfo.liquidity).mul(delta).div(10**9).sub(BigNumber.from(poolInfo.liquidity));
+    const positionCount = await UNISWAP_NFPM_CONTRACT.balanceOf(signer._address); // Using the latest position, which should contain the entire pool
+    const tokenId = await UNISWAP_NFPM_CONTRACT.tokenOfOwnerByIndex(signer._address, positionCount - 1);
     const deadline = await time.latest() + 28800;
     const calldatas = [];
 
-    console.log("Price before: ", BigNumber.from(poolInfo.sqrtPriceX96).pow(2).div(2^192).mul(10**9));
+    const positionInfo = await UNISWAP_NFPM_CONTRACT.positions(tokenId);
+
+    const t0 = WETH9[1];
+    const t1 = new Token(1, THEOERC20_MAINNET_DEPLOYMENT.address, 9, 't1', 'THEO');
+    const liquidity = positionInfo.liquidity.toString();
+    const tickLower = Number(positionInfo.tickLower.toString());
+    const tickUpper = Number(positionInfo.tickUpper.toString());
+    const fee = positionInfo.fee;
+
+    const pool = new Pool(t0, t1, fee, poolInfo.sqrtPriceX96.toString(), poolInfo.liquidity.toString(), poolInfo.tick);
+    const position = new Position({ pool, liquidity, tickLower, tickUpper });
+    const p0 = Position.fromAmounts({
+        pool,
+        tickLower:
+            nearestUsableTick(pool.tickCurrent, pool.tickSpacing) -
+            pool.tickSpacing * 2,
+        tickUpper:
+            nearestUsableTick(pool.tickCurrent, pool.tickSpacing) +
+            pool.tickSpacing * 2,
+        amount0,
+        amount1,
+        useFullPrecision: true,
+    })
+
+    console.log("Price before: ", poolInfo.slot0.sqrtPriceX96.pow(2).mul(10**9).div(BigNumber.from(2).pow(192)));
+    console.log(amount);
+    console.log("Delta %: ", new Percent(delta > 0 ? delta - 10**9 : delta + 10**9, 1))
 
     // If positive, add liquidity, else remove liquidity
     if (amount.gt(0)) {
         calldatas.push(
             //Increase liquidity in position proportionally to the change in price
-            NonfungiblePositionManager.INTERFACE.encodeFunctionData('increaseLiquidity', [
-                {value: amount},
+            NonfungiblePositionManager.addCallParameters(
+                position,
                 {
-                    tokenId: tokenId,
-                    amount0Desired: toHex(amount.toString()),
-                    amount1Desired: toHex(0),
-                    amount0Min: toHex(0),
-                    amount1Min: toHex(0),
-                    deadline
-                }
-            ])
+                    tokenId,
+                    slippageTolerance: new Percent(1, 1),
+                    deadline,
+                },
+            )
+            
         )
-        await WETH9erc.connect(signer).approve(UNISWAP_NFPM_CONTRACT.address, amount);
+        await weth9.deposit({ value: amount });
+        await weth9.approve(UNISWAP_NFPM_CONTRACT.address, amount);
     } else {
         calldatas.push(
             //Decrease liquidity in position proportionally to the change in price
-            NonfungiblePositionManager.INTERFACE.encodeFunctionData('decreaseLiquidity', [
+            NonfungiblePositionManager.removeCallParameters(
+                position,
                 {
-                    tokenId: tokenId,
-                    liquidity: toHex(amount.toString()),
-                    amount0Min: toHex(amount.toString()),
-                    amount1Min: toHex(0),
-                    deadline
+                    tokenId,
+                    liquidityPercentage: new Percent(delta + 1, 1),
+                    slippageTolerance: new Percent(1, 1),
+                    deadline,
+                    collectOptions: {
+                        expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(t0, '0'),
+                        expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(t1, '0'),
+                        recipient: signer._address
+                    }
                 }
-            ])
+            )
         ) 
     }
     
+    console.log("Multicall");
     await UNISWAP_NFPM_CONTRACT.multicall(calldatas);
     poolInfo = await getPoolInfo();
     console.log("Price after: ", BigNumber.from(poolInfo.sqrtPriceX96).pow(2).div(2^192).mul(10**9));
@@ -1109,6 +1140,9 @@ async function debug() {
     console.log("Executing buyback...");
     await executeBuybacks(yieldPer100k, ethPrice[0]);
 
+    console.log("Adjusting liquidity to price...");
+    await adjustLiquidityToPrice(ethPrice[1], ethPrice[0], govSigner);
+
     console.log("Generating bonds...");
     const bonds = generateBondPurchases(fundingRate, variance);
     console.log(bonds);
@@ -1116,8 +1150,6 @@ async function debug() {
     console.log("Executing bonds...");
     const bondData = await executeBondTransactions(bonds, govSigner, 1, exponent.base);
 
-    console.log("Adjusting liquidity to price...");
-    await adjustLiquidityToPrice(ethPrice[1], ethPrice[0], govSigner);
 
     console.log("Generating swaps...");
     const swaps = await generateUniswapTransactions(ethPrice[1], variance, sentiment, govSigner);
