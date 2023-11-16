@@ -185,7 +185,7 @@ async function resetFork() {
 
     await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
         MAINNET_TREASURY_DEPLOYMENT.address,
-        BigNumber.from(100_000).mul(BigNumber.from(10).pow(18)).toHexString(),
+        BigNumber.from(1_000_000).mul(BigNumber.from(10).pow(18)).toHexString(),
     ]);
 
     await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
@@ -624,6 +624,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
     const provider = new ethers.providers.JsonRpcProvider(JSON_RPC_URL);
     const signatore = await provider.getSigner(recipient);
     const uniswapV3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, signatore);
+    quoter = QuoterV2__factory.connect('0x61fFE014bA17989E743c5F6cB21bF9697530B21e', signatore);
 
     //Sum all generated swap transactions into one aggregate transaction, subtract fee % to account for price impact
     const buySwapSize = transactions.map((tx) => tx[1] === Direction.buy ? tx[0] as number : 0).reduce((p, c) => (p + Math.floor(c * 0.99)), 0);
@@ -643,7 +644,9 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
     const fee = 10000;
     const deadline = await time.latest() + 28800;
     const erc20Balance = await Erc20.balanceOf(signerAddress);
-    const slot0 = await uniswapV3Router.slot0();
+    const slot0 = (await getPoolInfo()).slot0;
+
+    //TODO: Normalize value to tokenIn, value is in dollar equivalent 
 
     //Handle 0 case
     if (value == 0) {
@@ -657,7 +660,7 @@ async function executeUniswapTransactions(transactions: Array<Array<(number|Dire
 
     if (buySwapSize > sellSwapSize + bondsToSell?.toNumber()) {
         const amountOut = ethers.utils.parseUnits(value.toFixed(tokenOutDecimals), tokenOutDecimals); //.mul(BigNumber.from(10).pow(tokenOutDecimals));
-        const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({tokenIn, tokenOut, amount: amountOut, fee, sqrtPriceLimitX96: 0 });
+        const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({tokenIn, tokenOut, amount: amountOut, fee, sqrtPriceLimitX96: 0 }); 
         const {
             amountOut: newOut,
             sqrtPriceX96After,
@@ -770,18 +773,20 @@ async function executeBondTransactions(transactions: number[], signer: any, epoc
     const THEOerc = IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer);
     const uniswapV3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, UNISWAP_SWAP_ROUTER_ABI, signer);
     const WETH9erc = IERC20__factory.connect(WETH9[1].address, signer);
+    quoter = QuoterV2__factory.connect('0x61fFE014bA17989E743c5F6cB21bF9697530B21e', signer);
     
     const signerAddress = await signer.getAddress();
-    let slot0 = await uniswapV3Router.slot0();
-    const liquidity = await uniswapV3Router.liquidity();
+    const poolInfo = await getPoolInfo()
     const ethLiquidity = await WETH9erc.balanceOf("0x1fc037ac35af9b940e28e97c2faf39526fbb4556");
     const theoLiquidity = await THEOerc.balanceOf("0x1fc037ac35af9b940e28e97c2faf39526fbb4556");
 
-    const totalValue = transactions.reduce((p, c) => (p + c), 0);
-    let priceInEth = slot0.sqrtPriceX96.pow(2).div(2^192).mul(10**9);
-    const maxTheoAmount = totalValue * priceInEth;
+    const totalValue = Math.floor(transactions.reduce((p, c) => (p + c), 0));
+    console.log("Values: ", ethLiquidity, theoLiquidity, totalValue)
+    let priceInEth = poolInfo.slot0.sqrtPriceX96.pow(2).mul(10**9).div(BigNumber.from(2).pow(192));
+    console.log("Price: ", priceInEth, poolInfo.slot0);
+    const maxTheoAmount = Math.floor(totalValue) * priceInEth;
     const maxBondPrice = await getBondPrice(priceInEth, exponent, signer, maxTheoAmount); 
-    let priceImpact = BigNumber.from(1).sub(ethLiquidity.div(liquidity.div(theoLiquidity.sub(maxTheoAmount)))); 
+    let priceImpact = BigNumber.from(1).sub(ethLiquidity.div(BigNumber.from(poolInfo.liquidity).div(theoLiquidity.sub(maxTheoAmount)))); 
     let theoToBond = 0;
     let theoSwap = BigNumber.from(0);
 
@@ -799,8 +804,8 @@ async function executeBondTransactions(transactions: number[], signer: any, epoc
         for (const i of transactions) {
             try {
                 // Calculate new price
-                priceImpact = BigNumber.from(1).sub(ethLiquidity.div(liquidity.div(theoLiquidity.sub(theoSwap))));
-                priceInEth = slot0.sqrtPriceX96.pow(2).div(2^192).mul(10**9).mul(priceImpact);
+                priceImpact = BigNumber.from(1).sub(ethLiquidity.div(BigNumber.from(poolInfo.liquidity).div(theoLiquidity.sub(theoSwap))));
+                priceInEth = poolInfo.slot0.sqrtPriceX96.pow(2).div(2^192).mul(10**9).mul(priceImpact);
 
                 // Check if bond price is less than the current swap price
                 if (priceInEth > getBondPrice(priceInEth, exponent, signer, transactions[i])) {
@@ -906,8 +911,12 @@ async function executeBuybacks(yieldPer100k: number, ethPrice: number) {
 
     //Execute buyback
     const buybackAmount = ((totalFunding / 100000) * yieldPer100k) / ethPrice;
-    const amountOut = ethers.utils.parseUnits(buybackAmount.toFixed(ETH_DECIMALS), ETH_DECIMALS).toHexString();
+    // const amountOut = ethers.utils.parseUnits(buybackAmount.toFixed(ETH_DECIMALS), ETH_DECIMALS);
+    const amountOut = 5000000000;
     console.log(buybackAmount)
+    const uniswapPool = new ethers.Contract(UNISWAP_POOL_ADDRESS, UNISWAP_POOL_ABI, recipient);
+    const liquidity = await uniswapPool.liquidity();
+    console.log("Remaining liquidity: ", liquidity);
     const { amountIn }  = await quoter.callStatic.quoteExactOutputSingle({
         tokenIn, 
         tokenOut, 
@@ -929,7 +938,7 @@ async function executeBuybacks(yieldPer100k: number, ethPrice: number) {
 
     if (amountIn.gt(erc20Balance)) {
         await hre.network.provider.send(SET_BALANCE_RPC_CALL, [
-            recipient,
+            recipient._address,
             BigNumber.from(100_010).mul(BigNumber.from(10).pow(18)).toHexString(),
         ]);
 
@@ -943,7 +952,7 @@ async function executeBuybacks(yieldPer100k: number, ethPrice: number) {
         tokenIn: WETH9[1].address, 
         tokenOut: THEOERC20_MAINNET_DEPLOYMENT.address,
         fee: BigNumber.from(fee),
-        recipient,
+        recipient: recipient._address,
         deadline: BigNumber.from(deadline),
         amountIn,
         amountOutMinimum: newOut,
@@ -955,13 +964,14 @@ async function executeBuybacks(yieldPer100k: number, ethPrice: number) {
 
     //Execute Burn
     const THEO = TheopetraERC20Token__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, recipient);
-    await waitFor(THEO.burn(amountIn))
+    const balance = await THEO.balanceOf(recipient._address);
+    await waitFor(THEO.burn(balance))
 }
 
 async function getBondPrice(swapPrice: number, exponent: number, signer: any, amount: number) {
     const THEOerc = IERC20__factory.connect(THEOERC20_MAINNET_DEPLOYMENT.address, signer);
     const totalSupply = await THEOerc.totalSupply();
-    return (BigNumber.from(swapPrice).div(totalSupply.pow(exponent)).mul(totalSupply.add(amount).pow(exponent)));
+    return (BigNumber.from(swapPrice).mul(totalSupply).div(totalSupply.pow(exponent).div(totalSupply)).mul(totalSupply.add(amount).pow(exponent))); //Rewrite to avoid underflow
 }
 
 async function adjustLiquidityToPrice(ethPrice: number, lastEthPrice: number, signer: any) {
@@ -1025,6 +1035,7 @@ interface PoolInfo {
     sqrtPriceX96: BigNumberish
     liquidity: BigNumberish
     tick: number
+    slot0: any
 }
 
 async function getPoolInfo(): Promise<PoolInfo> {
@@ -1066,6 +1077,7 @@ async function getPoolInfo(): Promise<PoolInfo> {
         liquidity,
         sqrtPriceX96: slot0[0],
         tick: slot0[1],
+        slot0: slot0
     }
 }
 
@@ -1094,23 +1106,24 @@ async function debug() {
     console.log("Adjusting LP...");
     await adjustUniswapTVLToTarget(startingTvl, liquidityRatio);
 
-    console.log("Generating swaps...");
-    const swaps = await generateUniswapTransactions(ethPrice[1], variance, sentiment, govSigner);
-
-    console.log("Executing swaps...");
-    const swapData = await executeUniswapTransactions(swaps, avgHodl, govSigner);
-
     console.log("Executing buyback...");
     await executeBuybacks(yieldPer100k, ethPrice[0]);
 
     console.log("Generating bonds...");
     const bonds = generateBondPurchases(fundingRate, variance);
+    console.log(bonds);
 
     console.log("Executing bonds...");
     const bondData = await executeBondTransactions(bonds, govSigner, 1, exponent.base);
 
     console.log("Adjusting liquidity to price...");
     await adjustLiquidityToPrice(ethPrice[1], ethPrice[0], govSigner);
+
+    console.log("Generating swaps...");
+    const swaps = await generateUniswapTransactions(ethPrice[1], variance, sentiment, govSigner);
+
+    console.log("Executing swaps...");
+    const swapData = await executeUniswapTransactions(swaps, avgHodl, govSigner);
 
     console.log("Results: ", swaps, swapData, bonds, bondData);
 }
