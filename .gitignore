@@ -14,6 +14,7 @@ contractsInfo.json
 deployments/hardhat
 deployments/localhost
 deployments/tenderly
+deployments/staging
 runResults
 
 /.dapp
