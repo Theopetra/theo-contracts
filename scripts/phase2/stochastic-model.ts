@@ -33,7 +33,7 @@ import {
     tickToPrice,
     Trade,
     SwapRouter,
-    nearestUsableTick, TickMath, FeeAmount, SqrtPriceMath
+    nearestUsableTick, TickMath, FeeAmount, SqrtPriceMath, AddLiquidityOptions
 
 } from '@uniswap/v3-sdk';
 import {BigintIsh, CurrencyAmount, Fraction, Percent, sqrt, Token, TradeType, WETH9, NativeCurrency } from '@uniswap/sdk-core';
@@ -999,18 +999,32 @@ async function adjustLiquidityToPrice(ethPrice: number, lastEthPrice: number, si
 
     const pool = new Pool(t0, t1, fee, poolInfo.sqrtPriceX96.toString(), poolInfo.liquidity.toString(), poolInfo.tick);
     const position = new Position({ pool, liquidity, tickLower, tickUpper });
-    const p0 = Position.fromAmounts({
-        pool,
-        tickLower:
-            nearestUsableTick(pool.tickCurrent, pool.tickSpacing) -
-            pool.tickSpacing * 2,
-        tickUpper:
-            nearestUsableTick(pool.tickCurrent, pool.tickSpacing) +
-            pool.tickSpacing * 2,
-        amount0,
-        amount1,
-        useFullPrecision: true,
-    })
+    console.log("amount0in", position.amount0.multiply(10**18).toFixed(0));
+    const amount0 = position.amount0.multiply(delta > 0 ? delta : delta + 20**9).divide(10**9).multiply(10**18).toFixed(0);
+    const amount1 = position.amount1.multiply(10**9).toFixed(0);
+    console.log("amount0: ", amount0, amount1);
+    const newPosition = Position.fromAmounts({ 
+        pool, 
+        tickLower: nearestUsableTick(pool.tickCurrent, pool.tickSpacing) - pool.tickSpacing * 2,
+        tickUpper: nearestUsableTick(pool.tickCurrent, pool.tickSpacing) + pool.tickSpacing * 2, 
+        amount0, 
+        amount1, 
+        useFullPrecision: true});
+
+    console.log(position);
+    console.log("New position: ", newPosition);
+    // const p0 = Position.fromAmounts({
+    //     pool,
+    //     tickLower:
+    //         nearestUsableTick(pool.tickCurrent, pool.tickSpacing) -
+    //         pool.tickSpacing * 2,
+    //     tickUpper:
+    //         nearestUsableTick(pool.tickCurrent, pool.tickSpacing) +
+    //         pool.tickSpacing * 2,
+    //     amount0,
+    //     amount1,
+    //     useFullPrecision: true,
+    // })
 
     console.log("Price before: ", poolInfo.slot0.sqrtPriceX96.pow(2).mul(10**9).div(BigNumber.from(2).pow(192)));
     console.log(amount);
@@ -1018,28 +1032,37 @@ async function adjustLiquidityToPrice(ethPrice: number, lastEthPrice: number, si
 
     // If positive, add liquidity, else remove liquidity
     if (amount.gt(0)) {
-        calldatas.push(
-            //Increase liquidity in position proportionally to the change in price
-            NonfungiblePositionManager.addCallParameters(
-                position,
-                {
-                    tokenId,
-                    slippageTolerance: new Percent(1, 1),
-                    deadline,
-                },
+
+        const addLiquidityOptions: AddLiquidityOptions = {
+            deadline: Math.floor(Date.now() / 1000) + 60 * 20,
+            slippageTolerance: new Percent(1, 1),
+            tokenId,
+          }
+        
+        //Increase liquidity in position proportionally to the change in price
+        const { calldata, value }  = NonfungiblePositionManager.addCallParameters(
+                newPosition,
+                addLiquidityOptions
             )
             
-        )
         await weth9.deposit({ value: amount });
         await weth9.approve(UNISWAP_NFPM_CONTRACT.address, amount);
+        console.log("Multicall", calldata, value);
+        // await signer.sendTransaction({
+        //     data: calldata,
+        //     to: UNISWAP_NFPM_CONTRACT.ADDRESS,
+        //     value: value,
+        //     from: signer._address
+        // })
+        await UNISWAP_NFPM_CONTRACT.multicall([{data: calldata, value: value}]);
     } else {
-        calldatas.push(
-            //Decrease liquidity in position proportionally to the change in price
-            NonfungiblePositionManager.removeCallParameters(
-                position,
+        
+        //Decrease liquidity in position proportionally to the change in price
+        const { calldata, value } = NonfungiblePositionManager.removeCallParameters(
+                newPosition,
                 {
                     tokenId,
-                    liquidityPercentage: new Percent(delta + 1, 1),
+                    liquidityPercentage: new Percent(delta + 10**9, 1),
                     slippageTolerance: new Percent(1, 1),
                     deadline,
                     collectOptions: {
@@ -1048,12 +1071,11 @@ async function adjustLiquidityToPrice(ethPrice: number, lastEthPrice: number, si
                         recipient: signer._address
                     }
                 }
-            )
-        ) 
+            ) 
+        console.log("Multicall");
+        await UNISWAP_NFPM_CONTRACT.multicall([calldata, {value: value}]);
     }
-    
-    console.log("Multicall");
-    await UNISWAP_NFPM_CONTRACT.multicall(calldatas);
+
     poolInfo = await getPoolInfo();
     console.log("Price after: ", BigNumber.from(poolInfo.sqrtPriceX96).pow(2).div(2^192).mul(10**9));
 }
