@@ -9,19 +9,17 @@ import "../Types/Signed.sol";
 
 contract WethHelper is Signed {
     IWETH9 public weth;
-    IBondDepository public bondDepo;
-    IWhitelistBondDepository public whitelistBondDepo;
-    IWhitelistBondDepository public publicPreListBondDepo;
+    IWhitelistBondDepository[] public depoList;
 
     constructor(
         address _weth,
         ITheopetraAuthority _authority,
-        address _bondDepo,
-        address _whitelistBondDepo
+        IWhitelistBondDepository[] memory _bondDepos
     ) TheopetraAccessControlled(_authority) {
         weth = IWETH9(_weth);
-        bondDepo = IBondDepository(_bondDepo);
-        whitelistBondDepo = IWhitelistBondDepository(_whitelistBondDepo);
+        for (uint256 i=0; i < _bondDepos.length; ++i) {
+            depoList.push(_bondDepos[i]);
+        }
     }
 
     /**
@@ -33,7 +31,7 @@ contract WethHelper is Signed {
      * @param _maxPrice    the maximum price at which to buy
      * @param _user        the recipient of the payout
      * @param _referral    the front end operator address
-     * @param _autoStake   bool, true if the payout should be automatically staked (this value is not used by the whitelist bond depository)
+     * @param _index       the index of the depo address 
      * @param _isWhitelist bool, true if the bond depository is the whitelist bond depo or public pre-list bond depo
      * @param signature    the signature for verification of a whitelisted depositor
      */
@@ -42,36 +40,38 @@ contract WethHelper is Signed {
         uint256 _maxPrice,
         address _user,
         address _referral,
-        bool _autoStake,
+        uint256 _index,
         bool _isWhitelist,
         bytes calldata signature
     ) public payable {
         require(msg.value > 0, "No value");
+        require(_index <= depoList.length, "Depo does not exist");
 
         weth.deposit{ value: msg.value }();
+        weth.approve(address(depoList[_index]), msg.value);
 
-        if (_isWhitelist && address(publicPreListBondDepo) == address(0)) {
+        if (_isWhitelist) {
             verifySignature("", signature);
-            weth.approve(address(whitelistBondDepo), msg.value);
-            whitelistBondDepo.deposit(_id, msg.value, _maxPrice, _user, _referral, signature);
-        } else if (_isWhitelist) {
-            weth.approve(address(publicPreListBondDepo), msg.value);
-            publicPreListBondDepo.deposit(_id, msg.value, _maxPrice, _user, _referral, signature);
+            weth.approve(address(depoList[_index]), msg.value);
+            depoList[_index].deposit(_id, msg.value, _maxPrice, _user, _referral, signature);
         } else {
-            weth.approve(address(bondDepo), msg.value);
-            bondDepo.deposit(_id, msg.value, _maxPrice, _user, _referral, _autoStake);
+            weth.approve(address(depoList[_index]), msg.value);
+            depoList[_index].deposit(_id, msg.value, _maxPrice, _user, _referral, signature);
         }
     }
 
     /**
-     * @notice             Set the address of the Public Pre-List Bond Depository
-     * @dev                After setting to a non-zero address, calls to the `deposit` method with
-     *                     `_isWhitelist` == true will result in deposits being made to the Public Pre-List bond depository
-     *                     (as oposed to the Private Whitelist bond depository)
-     *                     See also `deposit` method
+     * @notice             Add an address to the depository list
+     * @dev                See also `deposit` method
      * @param _publicPreList          the address of the Public Pre-List Bond Depository Contract
      */
-    function setPublicPreList(address _publicPreList) external onlyGovernor {
-        publicPreListBondDepo = IWhitelistBondDepository(_publicPreList);
+    function addDepo(address _publicPreList) external onlyGovernor {
+        depoList.push(IWhitelistBondDepository(_publicPreList));
+    }
+
+    function removeDepo(uint256 index) external onlyGovernor {
+        require(index < depoList.length, "Index does not exist");
+        depoList[index] = depoList[depoList.length - 1];
+        depoList.pop();
     }
 }
