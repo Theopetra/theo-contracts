@@ -8,6 +8,8 @@ import '@typechain/hardhat';
 import 'solidity-coverage';
 import 'hardhat-contract-sizer';
 import 'hardhat-tracer'
+import * as tdly from "@tenderly/hardhat-tenderly";
+tdly.setup({ automaticVerifications: true });
 
 import { node_url, accounts } from './utils/network';
 
@@ -105,10 +107,10 @@ const config: HardhatUserConfig = {
     },
     tenderly: {
       chainId: 1, //Mainnet fork on Tenderly
-      url: 'https://rpc.tenderly.co/fork/c65d17db-4095-4d6b-a156-e46252bc36de'
+      url: 'https://rpc.tenderly.co/fork/6bffd224-ce48-43ac-acd9-eb5e114e907b'
     },
     localhost: {
-      url: node_url('localhost'),
+      url: 'http://127.0.0.1:8545/',
       accounts: accounts(),
     },
     localhost2:{
@@ -160,6 +162,10 @@ const config: HardhatUserConfig = {
         }
       }
     },
+  },
+  tenderly: {
+    project: 'project',
+    username: 'HomicidalChicken'
   },
   etherscan: {
     apiKey: "F2TFGGSCBP5I9E5DU8TUP6VZSW7SX3EAT6"
