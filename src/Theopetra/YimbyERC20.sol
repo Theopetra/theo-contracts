@@ -3,23 +3,25 @@
 
 pragma solidity ^0.8.20;
 
-import {IERC20, IERC20Metadata, ERC20} from "../ERC20.sol";
-import {SafeERC20} from "../utils/SafeERC20.sol";
+import {IERC20, IERC20Metadata, ERC20} from "openzeppelin5/token/ERC20/ERC20.sol";
+
+import {SafeERC20} from "openzeppelin5/token/ERC20/utils/SafeERC20.sol";
+import {ITHEO} from "../Interfaces/ITHEO.sol";
 
 /**
  * @dev Extension of the ERC-20 token contract to support token wrapping.
  * 
  */
 contract YimbyERC20 is ERC20 {
-    IERC20 private immutable _underlying;
+    ITHEO private immutable _underlying;
 
     /**
      * @dev The underlying token couldn't be wrapped.
      */
     error ERC20InvalidUnderlying(address token);
 
-    constructor(IERC20 underlyingToken) {
-        if (underlyingToken == this) {
+    constructor(ITHEO underlyingToken) ERC20("YIMBY", "YIMBY") {
+        if (address(underlyingToken) == address(this)) {
             revert ERC20InvalidUnderlying(address(this));
         }
         _underlying = underlyingToken;
@@ -39,7 +41,7 @@ contract YimbyERC20 is ERC20 {
     /**
      * @dev Returns the address of the underlying ERC-20 token that is being wrapped.
      */
-    function underlying() public view returns (IERC20) {
+    function underlying() public view returns (ITHEO) {
         return _underlying;
     }
 
